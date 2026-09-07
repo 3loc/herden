@@ -11,6 +11,8 @@ Entries reference the issue that motivated them.
 ### Changed
 
 - Forked Heeler as Herden while preserving upstream history and mergeability.
+- Adopted the transparent Muddy Boot pixel-art shepherd as Herden's app icon
+  and in-app mark.
 - Agent detail is terminal-only: the separate Composer is hidden and Direct
   Input is the default.
 

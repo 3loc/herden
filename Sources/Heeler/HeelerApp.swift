@@ -10,6 +10,7 @@ struct HeelerApp: App {
     private var pushDelegate
 
     init() {
+        Brand.registerFonts()
         try? ImagePreparer.cleanupRemnants()
         try? FilePreparer.cleanupRemnants()
     }

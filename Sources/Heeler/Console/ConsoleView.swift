@@ -55,9 +55,19 @@ struct ConsoleView: View {
         // projection of it, so notification deep links keep working.
         NavigationSplitView {
             content
-                .navigationTitle("Agents")
+                .navigationTitle("Herden")
+                .navigationBarTitleDisplayMode(.inline)
                 .navigationSplitViewColumnWidth(min: 320, ideal: 380)
                 .toolbar {
+                    ToolbarItem(placement: .principal) {
+                        HStack(spacing: 8) {
+                            HerdenMark(size: 30)
+                            Text("Herden.")
+                                .font(Brand.display(.title3))
+                                .foregroundStyle(Brand.ink)
+                        }
+                        .accessibilityElement(children: .combine)
+                    }
                     // A filter is meaningless with a single Host.
                     if hosts.hosts.count > 1 {
                         ToolbarItem(placement: .primaryAction) {
