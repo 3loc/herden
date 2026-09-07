@@ -8,13 +8,61 @@ Entries reference the issue that motivated them.
 
 ## [Unreleased]
 
+### Added
+
+- Add the Herden Host runtime, derived from pristine upstream herdr 0.8.2, to
+  the same project as the iOS app.
+- Add built-in `herden pair`, which creates a short-lived restricted Bootstrap
+  Key and displays the iPhone Pairing Code directly in the terminal.
+- Add a two-command public installer for the Host and its optional notification
+  extension, plus release automation for Linux and macOS Host binaries.
+
+- Add a native Share Sheet destination for sending a document, image, or video directly to a chosen Agent. Herden stages the file privately on the Host and inserts its remote path without submitting the prompt.
+- Show saved machine names and connection details in the New Agent Host picker; newly scanned Pairing Codes now preserve the machine's short hostname.
+- Add compact-width edge swipes between the Spaces/Agents picker and the most recently opened full Agent terminal.
+
 ### Changed
 
+- Simplify Spaces and Agents to one list with Add and Settings menus; remove
+  presentation switching and directory-path clutter from Agent rows.
+- Support horizontal navigation across terminal output and the picker, with
+  prompt drags reserved for cursor editing and the bottom Agent strip retained.
+- Remove the duplicate bottom-right keyboard button; the control deck keeps
+  the keyboard toggle.
+- Limit on-device dictation to Traditional Chinese (Taiwan), Simplified Chinese,
+  Swedish, Portuguese (Portugal), and English (US), migrating old language choices.
+- Start and restore Claude and Codex with their native vi editor settings.
+- Make the Host installer plugin-free by default; add checked source installation
+  and guides for Tailscale, QR pairing, iOS signing and the terminal keyboard.
+- Move Herden's site and Push Relay behind the 3loc Headscale tailnet at
+  `herden.austrheim.ca7.fm` and `herden-apns.austrheim.ca7.fm`; application CI
+  now verifies builds without holding homelab deployment credentials.
 - Forked Heeler as Herden while preserving upstream history and mergeability.
 - Adopted the transparent Muddy Boot pixel-art shepherd as Herden's app icon
   and in-app mark.
+- Restored Founder Terminal's Fansvine palette, typography, paired-leaf logo,
+  app icon, and full-height terminal control deck; Spaces now lead the Console
+  with Agents listed below them, open into their Agent list, and remain one tap
+  away from every terminal.
 - Agent detail is terminal-only: the separate Composer is hidden and Direct
   Input is the default.
+- Agent text input now defaults to lowercase with autocorrection, automatic
+  capitalization, smart punctuation, spellcheck, and inline predictions off.
+- New Hosts now flow straight into Space creation; New Space is the Console's
+  primary action, and Space rows open reusable shell terminals without first
+  creating an Agent.
+- Ctrl-C in the Agent terminal deck now uses the reliable quick-key path, so
+  it remains available through keyboard transitions and interrupted scrolling.
+- Dictation edits now use the reliable terminal-input path, preventing dropped
+  partial corrections from repeating letters or complete words.
+- Dictation language is selectable per iPhone and remembers the choice,
+  including Taiwanese Mandarin, Swedish, German, French, and Portuguese when
+  the corresponding on-device recognizer is available.
+- Added a new pixel-art field-and-flock illustration for Spaces and Agents
+  while preserving the original Herden app icon.
+- Space rows now use field-only pixel art, while every Agent row uses the
+  original Herden sheep artwork so the field/Space and sheep/Agent metaphor is
+  consistent throughout the Console.
 
 ### Added
 
@@ -27,6 +75,10 @@ Entries reference the issue that motivated them.
 
 ### Fixed
 
+- Keep the editing cursor after text inserted in the middle of a prompt, track
+  dictation backspace corrections, and move by characters instead of UTF-16 units.
+- Stop dictation before touch cursor editing; correct the terminal caret's tap
+  coordinates so a tap on a character does not target the next row.
 - Long dictation sessions preserve earlier text when on-device speech
   recognition rolls its partial transcript forward.
 

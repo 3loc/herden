@@ -1,0 +1,394 @@
+@preconcurrency import AVFAudio
+import Foundation
+import OSLog
+@preconcurrency import Speech
+
+/// One intentional choice per requested language, independent of the many
+/// regional recognisers Apple exposes. Unavailable on-device models stay out
+/// of the picker instead of falling back to sending audio to a server.
+enum HerdenDictationLanguages {
+    static let identifiers = ["zh_TW", "zh_CN", "sv_SE", "pt_PT", "en_US"]
+
+    private static func canonical(_ locale: Locale) -> String {
+        let language = locale.language.languageCode?.identifier ?? ""
+        let region = locale.region?.identifier ?? ""
+        return "\(language)_\(region)"
+    }
+
+    static func available(in locales: some Sequence<Locale>) -> [Locale] {
+        let byIdentifier = Dictionary(
+            locales.map { (canonical($0), $0) }, uniquingKeysWith: { first, _ in first })
+        return identifiers.compactMap { byIdentifier[$0] }
+    }
+
+    static func selection(saved: Locale, current: Locale, available: [Locale]) -> Locale? {
+        for preferred in [saved, current] {
+            if let exact = available.first(where: { canonical($0) == canonical(preferred) }) {
+                return exact
+            }
+            // Migrate the removed English/Portuguese variants. Do not confuse
+            // Traditional and Simplified Chinese by matching language alone.
+            let language = preferred.language.languageCode?.identifier
+            if language != "zh", let match = available.first(where: {
+                $0.language.languageCode?.identifier == language
+            }) { return match }
+        }
+        return available.first(where: { canonical($0) == "en_US" }) ?? available.first
+    }
+
+    static func displayName(for locale: Locale) -> String {
+        switch canonical(locale) {
+        case "zh_TW": "繁體中文（台灣）"
+        case "zh_CN": "简体中文"
+        case "sv_SE": "Svenska"
+        case "pt_PT": "Português"
+        case "en_US": "English (US)"
+        default: locale.identifier
+        }
+    }
+}
+
+/// Streams on-device speech recognition into the live terminal. Herden keeps
+/// this separate from Apple's keyboard dictation so it works while the compact
+/// terminal controls are visible and never sends audio off the phone.
+@MainActor
+final class HerdenSpeechRecorder: ObservableObject {
+    static let selectedLocaleDefaultsKey = "dictation.selected-locale"
+
+    enum State: Equatable {
+        case idle
+        case preparing
+        case recording
+        case unavailable(String)
+    }
+
+    @Published private(set) var state: State = .idle
+    @Published private(set) var transcript = ""
+    @Published private(set) var supportedLocales: [Locale] = []
+    @Published private(set) var selectedLocale: Locale
+    @Published private(set) var settingsRequired = false
+
+    private let logger = Logger(subsystem: "com.3loc.herden", category: "speech")
+    private let defaults: UserDefaults
+    private let engine = AVAudioEngine()
+    private var request: SFSpeechAudioBufferRecognitionRequest?
+    private var task: SFSpeechRecognitionTask?
+    private var tapInstalled = false
+    private var generation = 0
+
+    init(defaults: UserDefaults = .standard) {
+        self.defaults = defaults
+        let savedIdentifier = defaults.string(forKey: Self.selectedLocaleDefaultsKey)
+        _selectedLocale = Published(
+            initialValue: savedIdentifier.map(Locale.init(identifier:)) ?? .current)
+    }
+
+    func prepareLocales() {
+        supportedLocales = HerdenDictationLanguages.available(in:
+            SFSpeechRecognizer.supportedLocales()
+                .filter { SFSpeechRecognizer(locale: $0)?.supportsOnDeviceRecognition == true })
+        if let selected = HerdenDictationLanguages.selection(
+            saved: selectedLocale, current: .current, available: supportedLocales) {
+            selectedLocale = selected
+            defaults.set(selected.identifier, forKey: Self.selectedLocaleDefaultsKey)
+        }
+        if supportedLocales.isEmpty {
+            state = .unavailable("On-device speech recognition is not available on this iPhone.")
+        }
+    }
+
+    func selectLocale(identifier: String) {
+        guard let locale = supportedLocales.first(where: { $0.identifier == identifier }) else {
+            return
+        }
+        stop()
+        selectedLocale = locale
+        defaults.set(locale.identifier, forKey: Self.selectedLocaleDefaultsKey)
+    }
+
+    func displayName(for locale: Locale) -> String {
+        HerdenDictationLanguages.displayName(for: locale)
+    }
+
+    func start() async {
+        guard state != .preparing, state != .recording else { return }
+        generation += 1
+        let attempt = generation
+        state = .preparing
+        transcript = ""
+        settingsRequired = false
+        do {
+            let permitted = await Self.hasPermissions()
+            guard generation == attempt, state == .preparing else { return }
+            guard permitted else { throw HerdenSpeechFailure.permissionDenied }
+            guard let recognizer = SFSpeechRecognizer(locale: selectedLocale),
+                  recognizer.isAvailable,
+                  recognizer.supportsOnDeviceRecognition else {
+                throw HerdenSpeechFailure.modelUnavailable
+            }
+            let request = SFSpeechAudioBufferRecognitionRequest()
+            request.shouldReportPartialResults = true
+            request.requiresOnDeviceRecognition = true
+            request.taskHint = .dictation
+            request.contextualStrings = [
+                "Codex", "Herden", "Herdr", "Forgejo", "Claude", "terminal",
+            ]
+            self.request = request
+            task = Self.makeRecognitionTask(
+                recognizer: recognizer,
+                request: request,
+                recorder: self,
+                generation: attempt)
+            try startAudio(request: request)
+            state = .recording
+        } catch {
+            guard generation == attempt else { return }
+            stopAudio()
+            request = nil
+            task?.cancel()
+            task = nil
+            try? AVAudioSession.sharedInstance().setActive(
+                false, options: .notifyOthersOnDeactivation)
+            settingsRequired = (error as? HerdenSpeechFailure)?.requiresSettings == true
+            state = .unavailable(error.localizedDescription)
+            log(error)
+        }
+    }
+
+    func stop() {
+        guard state == .preparing || state == .recording else { return }
+        generation += 1
+        stopAudio()
+        request?.endAudio()
+        request = nil
+        task?.finish()
+        task = nil
+        try? AVAudioSession.sharedInstance().setActive(
+            false, options: .notifyOthersOnDeactivation)
+        state = .idle
+    }
+
+    private func startAudio(request: SFSpeechAudioBufferRecognitionRequest) throws {
+        let session = AVAudioSession.sharedInstance()
+        try session.setCategory(.record, mode: .measurement)
+        try session.setActive(true, options: .notifyOthersOnDeactivation)
+        let input = engine.inputNode
+        let format = input.outputFormat(forBus: 0)
+        Self.installAudioTap(input: input, format: format, request: request)
+        tapInstalled = true
+        engine.prepare()
+        try engine.start()
+    }
+
+    private func stopAudio() {
+        if engine.isRunning { engine.stop() }
+        if tapInstalled {
+            engine.inputNode.removeTap(onBus: 0)
+            tapInstalled = false
+        }
+    }
+
+    private func stopAfterRecognitionFailure(_ failure: HerdenSpeechCallbackFailure) {
+        stopAudio()
+        request?.endAudio()
+        request = nil
+        task = nil
+        try? AVAudioSession.sharedInstance().setActive(
+            false, options: .notifyOthersOnDeactivation)
+        state = .unavailable("Speech recognition stopped: \(failure.message)")
+        logger.error(
+            "recognition stopped domain=\(failure.domain, privacy: .public) code=\(failure.code) message=\(failure.message, privacy: .public)")
+    }
+
+    private nonisolated static func hasPermissions() async -> Bool {
+        let speech = await withCheckedContinuation { continuation in
+            SFSpeechRecognizer.requestAuthorization { continuation.resume(returning: $0) }
+        }
+        guard speech == .authorized else { return false }
+        return await withCheckedContinuation { continuation in
+            AVAudioApplication.requestRecordPermission {
+                continuation.resume(returning: $0)
+            }
+        }
+    }
+
+    private nonisolated static func makeRecognitionTask(
+        recognizer: SFSpeechRecognizer,
+        request: SFSpeechAudioBufferRecognitionRequest,
+        recorder: HerdenSpeechRecorder,
+        generation: Int
+    ) -> SFSpeechRecognitionTask {
+        recognizer.recognitionTask(with: request) { [weak recorder] result, error in
+            let transcript = result?.bestTranscription.formattedString
+            let failure = error.map { error in
+                let value = error as NSError
+                return HerdenSpeechCallbackFailure(
+                    domain: value.domain,
+                    code: value.code,
+                    message: value.localizedDescription)
+            }
+            Task { @MainActor [weak recorder, transcript, failure] in
+                guard let recorder,
+                      recorder.task != nil,
+                      recorder.generation == generation else { return }
+                if let transcript { recorder.transcript = transcript }
+                if let failure { recorder.stopAfterRecognitionFailure(failure) }
+            }
+        }
+    }
+
+    private nonisolated static func installAudioTap(
+        input: AVAudioInputNode,
+        format: AVAudioFormat,
+        request: SFSpeechAudioBufferRecognitionRequest
+    ) {
+        input.installTap(onBus: 0, bufferSize: 4096, format: format) { buffer, _ in
+            request.append(buffer)
+        }
+    }
+
+    private func log(_ error: Error) {
+        let value = error as NSError
+        logger.error(
+            "start failed domain=\(value.domain, privacy: .public) code=\(value.code) message=\(value.localizedDescription, privacy: .public)")
+    }
+}
+
+private struct HerdenSpeechCallbackFailure: Sendable {
+    let domain: String
+    let code: Int
+    let message: String
+}
+
+enum HerdenSpeechFailure: LocalizedError, Equatable {
+    case permissionDenied
+    case modelUnavailable
+
+    var requiresSettings: Bool { self == .permissionDenied }
+
+    var errorDescription: String? {
+        switch self {
+        case .permissionDenied:
+            "Microphone or Speech Recognition access is denied. Enable it in Settings."
+        case .modelUnavailable:
+            "On-device speech recognition is not available for this language."
+        }
+    }
+}
+
+/// Keeps partial-result corrections honest: when Speech revises a previous
+/// word, send enough DEL bytes to replace only the changed suffix.
+struct HerdenDictationInputState: Equatable {
+    /// Speech recognition is free to revise its latest hypothesis, but a long
+    /// session can also discard the beginning and start reporting only a
+    /// recent window. Keep large, old prefixes committed so that a recognizer
+    /// rollover can never turn into a destructive run of DEL bytes.
+    private static let maximumCorrectionCharacters = 48
+    private static let maximumOverlapCharacters = 128
+
+    private var committedTranscript = ""
+    private var recognitionTranscript = ""
+    private var terminalTranscript = ""
+    private(set) var isActive = false
+
+    mutating func begin() {
+        committedTranscript = ""
+        recognitionTranscript = ""
+        terminalTranscript = ""
+        isActive = true
+    }
+
+    mutating func apply(_ transcript: String, locale: Locale) -> Data {
+        guard isActive else { return Data() }
+        let recognized = Self.singleLine(transcript).lowercased(with: locale)
+        guard !recognized.isEmpty else { return Data() }
+
+        let sharedPrefixCount = Self.sharedPrefixCount(
+            recognitionTranscript,
+            recognized)
+        let correctionCount = recognitionTranscript.count - sharedPrefixCount
+        if correctionCount > Self.maximumCorrectionCharacters {
+            commitRecognitionWindow(beforeStarting: recognized)
+        }
+
+        recognitionTranscript = recognized
+        let command = committedTranscript + recognitionTranscript
+        let edit = Self.terminalEdit(from: terminalTranscript, to: command)
+        terminalTranscript = command
+        // Defense in depth at the PTY boundary: dictation may edit the line,
+        // but only the explicit Return key is allowed to submit it.
+        return Data(edit.utf8.filter { $0 != 0x0A && $0 != 0x0D })
+    }
+
+    mutating func end() {
+        committedTranscript = ""
+        recognitionTranscript = ""
+        terminalTranscript = ""
+        isActive = false
+    }
+
+    private mutating func commitRecognitionWindow(beforeStarting next: String) {
+        let overlapCount = Self.sharedOverlapCount(
+            suffixOf: recognitionTranscript,
+            prefixOf: next)
+        if overlapCount > 0 {
+            committedTranscript += String(recognitionTranscript.dropLast(overlapCount))
+        } else {
+            committedTranscript += recognitionTranscript
+            if !committedTranscript.hasSuffix(" "), !next.hasPrefix(" ") {
+                committedTranscript.append(" ")
+            }
+        }
+    }
+
+    private static func sharedPrefixCount(_ left: String, _ right: String) -> Int {
+        zip(left, right).prefix { $0 == $1 }.count
+    }
+
+    private static func sharedOverlapCount(suffixOf old: String, prefixOf new: String) -> Int {
+        let oldCharacters = Array(old)
+        let newCharacters = Array(new)
+        let maximum = min(
+            oldCharacters.count,
+            newCharacters.count,
+            maximumOverlapCharacters)
+        guard maximum > 0 else { return 0 }
+
+        for count in stride(from: maximum, through: 1, by: -1) {
+            let startsAtWordBoundary = count == oldCharacters.count
+                || oldCharacters[oldCharacters.count - count - 1].isWhitespace
+            let endsAtWordBoundary = count == newCharacters.count
+                || newCharacters[count].isWhitespace
+            if startsAtWordBoundary,
+               endsAtWordBoundary,
+               oldCharacters.suffix(count).elementsEqual(newCharacters.prefix(count)) {
+                return count
+            }
+        }
+        return 0
+    }
+
+    static func terminalEdit(from old: String, to new: String) -> String {
+        let oldCharacters = Array(old)
+        let newCharacters = Array(new)
+        let sharedCount = sharedPrefixCount(old, new)
+        let deletes = String(repeating: "\u{7f}", count: oldCharacters.count - sharedCount)
+        return deletes + String(newCharacters.dropFirst(sharedCount))
+    }
+
+    static func singleLine(_ transcript: String) -> String {
+        var result = ""
+        var replacedNewline = false
+        for scalar in transcript.unicodeScalars {
+            if CharacterSet.newlines.contains(scalar) {
+                if !result.hasSuffix(" ") { result.append(" ") }
+                replacedNewline = true
+            } else {
+                result.unicodeScalars.append(scalar)
+                replacedNewline = false
+            }
+        }
+        if replacedNewline { return result.trimmingCharacters(in: .whitespaces) }
+        return result
+    }
+}

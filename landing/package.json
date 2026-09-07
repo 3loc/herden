@@ -1,9 +1,9 @@
 {
-  "name": "heeler-landing",
+  "name": "herden-landing",
   "version": "0.1.0",
   "private": true,
   "license": "AGPL-3.0-only",
-  "description": "Marketing site for Heeler (heeler.bybee.dev), built with Astro and deployed to Cloudflare Workers",
+  "description": "Static Herden site served privately through the 3loc Headscale tailnet",
   "type": "module",
   "engines": {
     "node": ">=20"
@@ -12,13 +12,11 @@
     "dev": "astro dev",
     "build": "astro build",
     "preview": "astro preview",
-    "check": "astro check",
-    "deploy": "wrangler deploy"
+    "check": "astro check"
   },
   "devDependencies": {
     "@astrojs/check": "^0.9.5",
     "astro": "^7.2.1",
-    "typescript": "^5.9.3",
-    "wrangler": "^4.122.0"
+    "typescript": "^5.9.3"
   }
 }

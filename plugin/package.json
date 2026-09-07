@@ -1,17 +1,14 @@
 {
-  "name": "heeler-pairing",
-  "version": "0.3.0",
+  "name": "herden-host-extension",
+  "version": "0.4.0",
   "private": true,
   "license": "AGPL-3.0-only",
-  "description": "herdr plugin that renders a Pairing Code QR for Herden device onboarding",
+  "description": "Encrypted notification and Live Activity extension for Herden Hosts",
   "type": "module",
   "engines": {
     "node": ">=20"
   },
   "scripts": {
     "test": "node --test"
-  },
-  "dependencies": {
-    "qrcode": "^1.5.4"
   }
 }

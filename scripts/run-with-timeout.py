@@ -111,7 +111,7 @@ def simulator_side_processes(patterns: Sequence[str]) -> list[tuple[int, str]]:
 
 
 def sample_processes(root_pid: int, diagnostics_dir: Path) -> None:
-    if os.environ.get("HEELER_TIMEOUT_DISABLE_SAMPLE") == "1":
+    if os.environ.get("HERDEN_TIMEOUT_DISABLE_SAMPLE") == "1":
         return
     sample = shutil.which("sample")
     if sample is None:

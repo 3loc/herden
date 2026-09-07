@@ -22,6 +22,13 @@ relay/.wrangler/
 relay/node_modules/
 *.p8
 
+# Native Herden Host runtime build output.
+runtime/target/
+runtime/.zig-global-cache/
+runtime/.zig-cache/
+runtime/vendor/libghostty-vt/.zig-cache/
+runtime/vendor/libghostty-vt/zig-out/
+
 # Python (test fixtures under scripts/fixtures)
 __pycache__/
 *.pyc
@@ -38,3 +45,4 @@ __pycache__/
 
 # Agent workspace (research reports, scratch)
 .claude/
+.archive/

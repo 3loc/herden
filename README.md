@@ -1,145 +1,158 @@
 <div align="center">
 
-<img src="docs/images/logo.png" width="96" alt="Herden logo" />
+<img src="docs/images/logo.png" width="96" alt="Herden sheep logo" />
 
 # Herden
 
-**A terminal-first iOS companion for [herdr](https://herdr.dev), maintained by [3LOC](https://github.com/3loc).**
+**Keep your coding agents running. Take them with you.**
 
-[![CI](https://github.com/3loc/herden/actions/workflows/ci.yml/badge.svg)](https://github.com/3loc/herden/actions/workflows/ci.yml)
-[![License: AGPL v3](https://img.shields.io/badge/License-AGPL_v3-blue.svg)](LICENSE)
-[![Upstream](https://img.shields.io/badge/upstream-Heeler-6b7280.svg)](https://github.com/ZingerLittleBee/Heeler)
-[![Swift](https://img.shields.io/badge/Swift-6-F05138?logo=swift&logoColor=white)](https://www.swift.org)
-[![iOS](https://img.shields.io/badge/iOS-18%2B-000000?logo=apple&logoColor=white)](https://developer.apple.com/ios/)
-[![TestFlight](https://img.shields.io/badge/TestFlight-beta-0D96F6?logo=apple&logoColor=white)](https://testflight.apple.com/join/aXSxRn4r)
-
-Forked from Heeler with its complete history. Herden deliberately keeps the
-upstream Xcode target and source names internally so upstream changes remain
-easy to merge.
+[Get started](docs/guides/install-host.md) · [Build the iPhone app](docs/guides/build-ios.md) · [Keyboard guide](docs/guides/keyboard.md)
 
 </div>
 
----
+Herden connects your iPhone to Claude Code and Codex running on a computer you
+control. See what they are doing, answer a question, dictate a prompt, or share
+a document from another app. Your work stays on that computer.
 
-Herden is an **agent console**: a native dashboard of every coding agent running
-on your machines, sorted by who needs you. Open an Agent to read and steer its
-live terminal directly over SSH. There is no second input window: the compact
-control deck, iOS keyboard, and on-device dictation all write to the real PTY.
+Herden is one project with two parts:
 
-Dictation can revise partial text but cannot submit it—every line break is
-removed before bytes reach the terminal. Tap along the active prompt line, or
-use the iOS keyboard's space-bar trackpad, to move the real TTY cursor and fix
-recognition errors with your fingers.
+- **Host:** the program that keeps terminal sessions running on Linux or macOS.
+  Its command is `herden`. It includes the runtime derived from herdr and built-in
+  QR pairing. You do not need a separate herdr installation or a plugin.
+- **iPhone app:** the native interface to your Hosts, Spaces and Agents.
+  Spaces group your work; Agents are the Claude or Codex processes doing it.
 
-## Screenshots
+## Start here
 
-| Agent Console | Live terminal | Terminal controls |
-| --- | --- | --- |
-| <img src="docs/images/console-iphone.png" width="240" alt="Agent Console on iPhone" /> | <img src="docs/images/live-terminal-iphone.png" width="240" alt="Agent's live terminal with Direct Input on iPhone" /> | <img src="docs/images/agent-iphone.png" width="240" alt="Agent terminal with the tools keyboard on iPhone" /> |
+You need a Linux or macOS Host, an iPhone with iOS 18 or later, and a Mac with
+Xcode if you are building the app yourself. Install and sign in to Claude Code
+or Codex on the Host first, using your own account.
 
-| Terminal | Skills | Live Activity |
-| --- | --- | --- |
-| <img src="docs/images/terminal-iphone.png" width="240" alt="Plain Terminal with Text and Keys on iPhone" /> | <img src="docs/images/skills-iphone.png" width="240" alt="Composer Skills suggestions on iPhone" /> | <img src="docs/images/live-activity-iphone.png" width="240" alt="Lock-screen Live Activity tracking Agents on iPhone" /> |
+**Release status:** this checkout contains the unified Host and iOS source.
+Public Host binaries have not been published yet. Use the source installation
+below today; the release installer is ready for the first binary release.
 
-## Features
+### 1. Install the Host
 
-- **Console** — every Agent on every machine in one status-sorted list
-  (Blocked first), filterable by Host, updated live.
-- **Attach** — the Agent's real terminal rendered by libghostty: native
-  scrollback, momentum touch scrolling that also drives full-screen TUIs,
-  long-press selection, takeover of a stale terminal owner, and quietly
-  collected web links to open later.
-- **Direct terminal input** — an always-visible deck with Esc, Ctrl-B, Ctrl-C,
-  vi movement keys, keyboard toggle, dedicated on-device dictation, and Return.
-- **Touch correction** — tap the prompt or use the iOS keyboard trackpad to
-  reposition the actual PTY cursor; no separate draft or input box.
-- **Terminal** — open a plain shell in the Agent's directory, with Text and
-  Keys modes and one reused tab per Workspace.
-- **Attachments** — stage a photo or a file up to 64 MiB onto the Host over
-  SFTP and insert its path into the draft.
-- **QR pairing** — scan a Pairing Code to add a machine; keys are generated
-  on device, private keys stay in the Keychain, and the code pins the host
-  key fingerprint.
-- **Notifications + Live Activities** — end-to-end encrypted pushes when an
-  Agent goes Blocked or Done, and a lock-screen / Dynamic Island banner
-  tracking Agents in real time; the relay can never read the content
-  ([PRIVACY.md](PRIVACY.md)).
-- **Worktrees** — start an Agent on a clean checkout of the workspace's repo.
-- **Appearance** — System, Light, or Dark; 30 terminal themes with separate
-  Light and Dark slots; bundled JetBrains Mono and IBM Plex Mono; pinch to
-  zoom.
-- **Jump Host** — reach unroutable machines through an SSH jump, with keys
-  verified at both hops.
+Follow the [Host installation guide](docs/guides/install-host.md) to install the
+build tools. Then, in the Host's Terminal:
 
-## How it connects
+~~~sh
+git clone https://github.com/3loc/herden.git
+cd herden
+make host-install
+export PATH="$HOME/.local/bin:$PATH"
+herden
+~~~
 
-Herden speaks herdr's JSON API over SSH: each request opens a
-direct-streamlocal channel onto `herdr.sock`, one long-lived channel carries
-the event stream, and interactive terminals run `herdr agent attach
---takeover` on an SSH PTY. The only prerequisites are SSH access and a
-running herdr — no server changes, no extra packages. The SSH server must
-allow stream-local forwarding (the OpenSSH default); onboarding calls it out
-when it's disabled.
+Herden opens a persistent terminal session. Leave the Host powered on and awake.
+Disconnecting the phone does not stop your Agents; shutting down the Host does
+stop running processes.
 
-Unroutable machines can sit behind an SSH Jump Host:
+After binary releases are available, installation will be:
 
-- [Set up remote access step by step](docs/guides/vps-jump-host-setup.md)
-- [Architecture, security boundaries, and the VPS runbook](docs/guides/vps-jump-host.md)
+~~~sh
+curl -fsSL https://raw.githubusercontent.com/3loc/herden/main/install.sh | sh
+export PATH="$HOME/.local/bin:$PATH"
+herden
+~~~
 
-## Adding a machine
+The installer verifies the download's SHA-256 checksum and installs to
+`~/.local/bin`. The core product needs no Node, npm, plugin or push relay.
 
-On the machine running herdr (Node >= 20, herdr >= 0.7.5, OpenSSH server on —
-macOS: **System Settings > General > Sharing > Remote Login**):
+### 2. Connect your Host and phone with Tailscale
 
-```bash
-herdr plugin install 3loc/herden/plugin --ref main --yes
-herdr plugin action invoke heeler.pair
-```
+Install [Tailscale](https://tailscale.com/download) on both devices, sign in to
+the same network, and connect. Keep ordinary OpenSSH enabled on the Host:
+Herden uses its SSH Device Key and Unix-socket forwarding over the Tailscale
+connection. Leave the separate **Tailscale SSH** feature disabled on this Host.
+See [SSH over Tailscale](https://tailscale.com/docs/reference/ssh-over-tailscale)
+and [our setup steps](docs/guides/install-host.md#connect-with-tailscale).
 
-Scan the Pairing Code QR it shows and the machine is added as a Host — the
-code carries the addresses, the host key fingerprint, and SSH key enrollment.
-The same [plugin](plugin/README.md) delivers the encrypted notifications once
-you enable them for the Host in the app.
+Headscale users can join their existing private network instead. Herden does
+not require access to 3LOC's network or domains. You do not need to forward a
+port on your home router.
 
-## Stack
+### 3. Install the iPhone app
 
-- SwiftUI, iOS 18+, iPhone today (iPad planned)
-- The repository-local `Packages/HeelerSSH` (libssh2 + OpenSSL) for SSH
-- [libghostty-spm](https://github.com/lakr233/libghostty-spm) for terminal emulation and Metal rendering
+The [iOS build guide](docs/guides/build-ios.md) covers installing Xcode, signing
+with your own Apple team, Developer Mode, and deploying by USB or Wi-Fi.
+The Simulator is also available for trying the interface.
 
-See `docs/adr/` for why — the transport story in particular is not obvious.
+### 4. Show the QR code and scan it
 
-## Upstream sync
+In an **ordinary shell tab inside your Herden session**, run:
 
-The GitHub repository is a real fork. Clone it with both remotes and merge
-upstream normally:
+~~~sh
+herden pair
+~~~
 
-```bash
-git remote add upstream https://github.com/ZingerLittleBee/Heeler.git
-git fetch upstream
-git switch main
-git merge --ff-only upstream/main
-git push origin main
-```
+Do not type this into Claude or Codex's message field. A second Terminal window
+under the same Host user works too.
 
-Herden-specific behavior is concentrated in the Direct Input chrome,
-dictation, product identity, and small terminal cursor hook. Internal target
-names remain `Heeler` on purpose; renaming the module would turn every upstream
-merge into noise.
+On your iPhone, open **Herden → Hosts → Add Host**, choose the scanner, and point
+the camera at the QR code. Check the Host fingerprint when asked. Once paired,
+choose or create a Space, then open an Agent. The code expires after two minutes;
+run the command again if needed. Repeat for each phone.
 
-The committed Xcode project builds directly with `make build`, `make test`, or
-`make install`; XcodeGen is not a build-server dependency. Run `make generate`
-only after intentionally editing `project.yml`. If a remote shell on a Mac
-cannot see the Apple account stored in its logged-in desktop session, launch
-`scripts/build-ios-device.command` with `open` and install the resulting app
-from `/tmp/herden-ios-device-derived`.
+To advertise a specific Tailscale address:
 
-## Contributing
+~~~sh
+herden pair --address 100.64.1.2
+~~~
 
-Issues and PRs are welcome — see [CONTRIBUTING.md](CONTRIBUTING.md) for
-layout, build/test, and conventions.
+Replace the example with your Host's address from Tailscale. Pairing is built
+into Herden. The iPhone generates its permanent private key locally and keeps
+it in the Keychain.
 
-## Status
+## How it feels
 
-Working fork, built and installed from Ted's Mac Studio. It is not
-affiliated with the herdr project or represented as the upstream Heeler app.
+Tap a Space or Agent to open its terminal. Swipe right across terminal output
+to return to the picker; swipe left in the picker to reopen the last session.
+The bottom Agent strip lets you switch directly between Agents.
+
+The keyboard serves the terminal. Type or dictate into the actual prompt,
+touch it to place the cursor, then drag left or right to adjust it. Dragging
+within the prompt is editing; swiping across output is navigation. The control
+deck holds Esc, Ctrl-C, vi controls, dictation, Return and one keyboard toggle.
+
+Herden launches and restores Claude and Codex with their native vi editing
+enabled. **Press i to type; press Esc to return to movement commands.** Existing
+processes keep their current mode. See the [keyboard guide](docs/guides/keyboard.md)
+for manually launched agents and editing examples.
+
+Dictation offers Traditional Chinese (Taiwan), Simplified Chinese, Swedish,
+Portuguese (Portugal), and English (US), where the iPhone has an on-device
+recogniser. Dictation never presses Return. Touching the prompt stops dictation
+before you move the cursor, so a later speech correction cannot overwrite your edit.
+
+## Privacy and optional services
+
+Terminal traffic and shared files travel directly between your iPhone and Host
+over SSH. Herden has no account service in that path. Your Claude or Codex
+provider still processes what you send to that Agent under its own terms.
+
+The notification extension and Push Relay are optional. The 3LOC relay is
+private infrastructure, not a public service included with your installation.
+Core pairing and remote control work without it. See
+[plugin/README.md](plugin/README.md) and [PRIVACY.md](PRIVACY.md).
+
+## Develop and contribute
+
+~~~sh
+make help          # available tasks
+make host-check    # check Host build tools
+make host-install  # build and install the Host
+make sim           # run the app in a Simulator, on a Mac
+make test          # run iOS and SSH package tests, on a Mac
+~~~
+
+The Rust Host lives in [runtime/](runtime/). The app, Share Extension and SSH
+transport live in [Sources/](Sources/) and [Packages/HerdenSSH/](Packages/HerdenSSH/).
+See [CONTRIBUTING.md](CONTRIBUTING.md) and the [architecture decisions](docs/adr/).
+
+The iOS app began as [Heeler](https://github.com/ZingerLittleBee/Heeler) and
+retains that history. The Host began from pristine
+[herdr](https://github.com/herdrdev/herdr), with provenance in
+[runtime/UPSTREAM.md](runtime/UPSTREAM.md). The app uses [AGPL v3](LICENSE);
+the upstream-derived runtime retains [Apache 2.0](runtime/LICENSE).

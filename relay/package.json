@@ -1,5 +1,5 @@
 {
-  "name": "herdr-push-relay",
+  "name": "herden-push-relay",
   "version": "0.1.0",
   "private": true,
   "license": "AGPL-3.0-only",
@@ -9,6 +9,7 @@
     "node": ">=20"
   },
   "scripts": {
+    "start": "node src/server.js",
     "test": "node --test"
   }
 }

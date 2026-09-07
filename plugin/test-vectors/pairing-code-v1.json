@@ -1,5 +1,5 @@
 {
-  "description": "Shared Pairing Code v1 test vectors. Single source of truth for the envelope, consumed by both the Node plugin tests and the Swift app tests (ADR 0007). Codes were generated independently of both implementations. `decodeOnly: true` marks codes that must decode to `payload` but are not the canonical encoding of it; all other valid vectors must round-trip exactly through encode.",
+  "description": "Shared Pairing Code v1 test vectors. Single source of truth for the legacy-compatible envelope, consumed by the Rust Host encoder and Swift app decoder. Codes were generated independently of both implementations. `decodeOnly: true` marks codes that must decode to `payload` but are not canonical encodings; the full bootstrap vector must match the Host encoder exactly.",
   "valid": [
     {
       "name": "config-only single LAN IPv4, default port",

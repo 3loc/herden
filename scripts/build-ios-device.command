@@ -21,8 +21,8 @@ trap finish EXIT
 
 cd "$repo_root"
 xcodebuild build \
-    -project Heeler.xcodeproj \
-    -scheme Heeler \
+    -project Herden.xcodeproj \
+    -scheme Herden \
     -configuration Debug \
     -destination 'generic/platform=iOS' \
     -derivedDataPath "$derived_data" \

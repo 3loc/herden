@@ -42,7 +42,7 @@ set -uo pipefail
 repo_root="$(cd "$(dirname "$0")/.." && pwd)"
 gate_script="$repo_root/scripts/run-ci-ios-tests.sh"
 green_log="$repo_root/scripts/testdata/gate-2f50170.log"
-work="$(mktemp -d "${TMPDIR:-/tmp}/heeler-gate-guards.XXXXXX")"
+work="$(mktemp -d "${TMPDIR:-/tmp}/herden-gate-guards.XXXXXX")"
 trap 'rm -rf "$work"' EXIT
 
 # Facts about the committed capture, asserted rather than assumed: if the
@@ -56,11 +56,11 @@ expected_cases=39
 # is the concatenation of exactly these, so splitting it on the xcodebuild
 # invocation banners reproduces the files the gate's own assertions read.
 lane_names=(
-    HeelerSSHSessionE2ETests
-    HeelerSSHPTYE2ETests
-    HeelerSSHDirectStreamLocalE2ETests
-    HeelerSSHJumpHostGateE2ETests
-    HeelerSSHTransportBehaviorE2ETests
+    HerdenSSHSessionE2ETests
+    HerdenSSHPTYE2ETests
+    HerdenSSHDirectStreamLocalE2ETests
+    HerdenSSHJumpHostGateE2ETests
+    HerdenSSHTransportBehaviorE2ETests
     ImageStagingE2ETests
     WeakNetworkE2ETests
     PairingCeremonyE2ETests
@@ -110,9 +110,9 @@ app_fixture_lane_count=$(grep -c '^run_suite ' "$gate_script")
 # shellcheck disable=SC2016
 grep -qF 'if [[ "$ci_lane" == "package" ]]; then' "$gate_script" \
     || die "gate has no isolated package lane"
-grep -qF 'HEELER_CI_LANE: package' "$repo_root/.github/workflows/ci.yml" \
+grep -qF 'HERDEN_CI_LANE: package' "$repo_root/.github/workflows/ci.yml" \
     || die "workflow has no package-only job"
-grep -qF 'HEELER_CI_LANE: app' "$repo_root/.github/workflows/ci.yml" \
+grep -qF 'HERDEN_CI_LANE: app' "$repo_root/.github/workflows/ci.yml" \
     || die "workflow does not pin the app-only job"
 # shellcheck disable=SC2016
 grep -qF '"KexAlgorithms curve25519-sha256" >> "$modern_config"' "$gate_script" \
@@ -130,7 +130,7 @@ awk '
     || die "app lane does not clear fixture environment before the full test lane"
 awk '
     /if \[\[ "\$ci_lane" == "package" \]\]; then/ { in_pkg = 1 }
-    in_pkg && /HeelerSSH package build/ { saw_build_label = 1 }
+    in_pkg && /HerdenSSH package build/ { saw_build_label = 1 }
     in_pkg && /build-for-testing/ { build = NR }
     in_pkg && /simctl bootstatus/ { boot = NR }
     in_pkg && /test-without-building/ { test_action = NR }
@@ -239,11 +239,11 @@ bounds = starts + [len(lines)]
 for index, name in enumerate(names):
     chunk = lines[bounds[index]:bounds[index + 1]]
     banner = chunk[1] if len(chunk) > 1 else ""
-    found = re.search(r"only-testing:HeelerTests/(\w+)", banner)
+    found = re.search(r"only-testing:HerdenTests/(\w+)", banner)
     if name == "package-e2e":
-        expected_ok = "-scheme HeelerSSH" in banner
+        expected_ok = "-scheme HerdenSSH" in banner
     elif name == "full-lane":
-        expected_ok = found is None and "-scheme Heeler" in banner
+        expected_ok = found is None and "-scheme Herden" in banner
     else:
         expected_ok = found is not None and found.group(1) == name
     if not expected_ok:
@@ -281,9 +281,9 @@ new_case() {
     mkdir -p "$dir"
     cp "$work/lanes/"*.log "$dir/"
     cat \
-        "$dir/HeelerSSHPTYE2ETests.log" \
-        "$dir/HeelerSSHJumpHostGateE2ETests.log" \
-        "$dir/HeelerSSHTransportBehaviorE2ETests.log" \
+        "$dir/HerdenSSHPTYE2ETests.log" \
+        "$dir/HerdenSSHJumpHostGateE2ETests.log" \
+        "$dir/HerdenSSHTransportBehaviorE2ETests.log" \
         "$dir/ImageStagingE2ETests.log" \
         "$dir/WeakNetworkE2ETests.log" \
         "$dir/PairingCeremonyE2ETests.log" \
@@ -322,8 +322,8 @@ run_case() {
         # shellcheck disable=SC2034
         password_fixture_available="$case_password_fixture"
         pinned_lane_logs=(
-            "$case_dir/HeelerSSHSessionE2ETests.log"
-            "$case_dir/HeelerSSHDirectStreamLocalE2ETests.log"
+            "$case_dir/HerdenSSHSessionE2ETests.log"
+            "$case_dir/HerdenSSHDirectStreamLocalE2ETests.log"
             "$case_dir/SharedFixtureE2ETests.log"
         )
         # The guards signal failure with `exit`, which would take this capture
@@ -404,7 +404,7 @@ for entry in "${full_lane_behaviors[@]}"; do
         assert_behavior "${entry%%|*}" full-lane "${entry#*|}"
 done
 run_case pass '' "Jump Host product path is proven" "$case_dir" \
-    assert_behavior "Jump Host product path" HeelerSSHJumpHostGateE2ETests \
+    assert_behavior "Jump Host product path" HerdenSSHJumpHostGateE2ETests \
     "$jump_host_product_path"
 
 echo
@@ -512,12 +512,12 @@ for entry in "${full_lane_behaviors[@]}"; do
 done
 
 case_dir=$(new_case neutered-jump-host)
-neuter "$jump_host_product_path" "$case_dir/HeelerSSHJumpHostGateE2ETests.log" \
+neuter "$jump_host_product_path" "$case_dir/HerdenSSHJumpHostGateE2ETests.log" \
     || die "could not neuter the Jump Host product path"
 run_case fail \
     "Mandatory behaviour not proven: Jump Host product path ($jump_host_product_path)" \
     "neutered: Jump Host product path" "$case_dir" \
-    assert_behavior "Jump Host product path" HeelerSSHJumpHostGateE2ETests \
+    assert_behavior "Jump Host product path" HerdenSSHJumpHostGateE2ETests \
     "$jump_host_product_path"
 
 echo
@@ -641,17 +641,17 @@ run_suite_case() {
 # A lane that passes its counts must be appended, or the provenance guard has
 # nothing to reason from. This is the case that dies if the append is removed.
 run_suite_case pass "PINNED_LAST=$work/cases" \
-    "a passing lane is recorded as evidence" HeelerSSHPTYE2ETests \
-    HeelerSSHPTYE2ETests 3 1 0 HeelerSSHPTYE2ETests
+    "a passing lane is recorded as evidence" HerdenSSHPTYE2ETests \
+    HerdenSSHPTYE2ETests 3 1 0 HerdenSSHPTYE2ETests
 
 # And run_suite's own guards, which were equally untested: a lane whose executed
 # count moved, and a lane that skipped where no skip was budgeted.
 run_suite_case fail "did not execute all 4 tests" \
-    "a lane with the wrong executed count is refused" HeelerSSHPTYE2ETests \
-    HeelerSSHPTYE2ETests 4 1 0 HeelerSSHPTYE2ETests
+    "a lane with the wrong executed count is refused" HerdenSSHPTYE2ETests \
+    HerdenSSHPTYE2ETests 4 1 0 HerdenSSHPTYE2ETests
 run_suite_case fail "skipped 2 tests; exactly 0 may skip" \
-    "an unbudgeted skip is refused" HeelerSSHSessionE2ETests \
-    HeelerSSHSessionE2ETests 14 1 0 HeelerSSHSessionE2ETests
+    "an unbudgeted skip is refused" HerdenSSHSessionE2ETests \
+    HerdenSSHSessionE2ETests 14 1 0 HerdenSSHSessionE2ETests
 
 echo
 echo "== privileged sshd stop is bounded before preserving evidence =="
@@ -674,7 +674,7 @@ printf '%s\n' 4242 > "$case_dir/sshd-password.pid"
     password_pid_file="$case_dir/sshd-password.pid"
     password_log="$case_dir/sshd-password.log"
     password_log_printed=0
-    password_username=heeler-ci-password
+    password_username=herden-ci-password
     password_user_cleanup_needed=1
     password_ssh_sacl_added=1
     ps_probe_count=0
@@ -746,7 +746,7 @@ printf '%s\n' 4242 > "$case_dir/sshd-password.pid"
     password_pid_file="$case_dir/sshd-password.pid"
     password_log="$case_dir/sshd-password.log"
     password_log_printed=0
-    password_username=heeler-ci-password
+    password_username=herden-ci-password
     password_user_cleanup_needed=0
     password_ssh_sacl_added=0
 
@@ -825,7 +825,7 @@ cleanup_output=$(
         password_pid_file="$case_dir/sshd-password.pid"
         password_log="$case_dir/sshd-password.log"
         password_log_printed=0
-        password_username=heeler-ci-password
+        password_username=herden-ci-password
         password_user_cleanup_needed=1
         password_ssh_sacl_added=1
 
@@ -853,7 +853,7 @@ elif grep -qF '/usr/sbin/sysadminctl -deleteUser' "$command_log"; then
 elif [[ ! -d "$case_dir" ]]; then
     reason="cleanup removed fixture evidence after SSH access removal failed"
 elif ! printf '%s\n' "$cleanup_output" \
-    | grep -qF "Failed to remove password account heeler-ci-password from SSH access."; then
+    | grep -qF "Failed to remove password account herden-ci-password from SSH access."; then
     reason="cleanup did not diagnose the SSH access removal failure"
 fi
 case_labels+=("password SSH access removal failure preserves evidence")
@@ -892,7 +892,7 @@ command_log="$work/password-account-absent-commands.log"
     password_pid_file="$case_dir/sshd-password.pid"
     password_log="$case_dir/sshd-password.log"
     password_log_printed=0
-    password_username=heeler-ci-password
+    password_username=herden-ci-password
     password_user_cleanup_needed=1
     password_ssh_sacl_added=0
 
@@ -911,7 +911,7 @@ cleanup_exit=$?
 reason=""
 if [[ "$cleanup_exit" != 0 ]]; then
     reason="cleanup failed when the password account record was absent"
-elif ! grep -qF 'dscl . -read /Users/heeler-ci-password' "$command_log"; then
+elif ! grep -qF 'dscl . -read /Users/herden-ci-password' "$command_log"; then
     reason="cleanup did not query the exact password account record"
 elif grep -qF '/usr/sbin/sysadminctl -deleteUser' "$command_log"; then
     reason="cleanup tried to delete an absent password account"
@@ -951,7 +951,7 @@ cleanup_output=$(
         password_pid_file="$case_dir/sshd-password.pid"
         password_log="$case_dir/sshd-password.log"
         password_log_printed=0
-        password_username=heeler-ci-password
+        password_username=herden-ci-password
         password_user_cleanup_needed=1
         password_ssh_sacl_added=0
 
@@ -973,12 +973,12 @@ if [[ "$cleanup_exit" == 0 ]]; then
     reason="cleanup succeeded after password account deletion failed"
 elif [[ ! -d "$case_dir" ]]; then
     reason="cleanup removed fixture evidence after password account deletion failed"
-elif ! grep -qF 'dscl . -read /Users/heeler-ci-password' "$command_log"; then
+elif ! grep -qF 'dscl . -read /Users/herden-ci-password' "$command_log"; then
     reason="cleanup did not query the exact partial password account record"
 elif ! grep -qF '/usr/sbin/sysadminctl -deleteUser' "$command_log"; then
     reason="cleanup did not try to delete the partial password account record"
 elif ! printf '%s\n' "$cleanup_output" \
-    | grep -qF "Failed to delete password account heeler-ci-password."; then
+    | grep -qF "Failed to delete password account herden-ci-password."; then
     reason="cleanup did not diagnose the password account deletion failure"
 fi
 case_labels+=("password account deletion failure preserves evidence")
@@ -1023,7 +1023,7 @@ cleanup_output=$(
         password_pid_file="$case_dir/sshd-password.pid"
         password_log="$case_dir/sshd-password.log"
         password_log_printed=0
-        password_username=heeler-ci-password
+        password_username=herden-ci-password
         password_user_cleanup_needed=0
         password_ssh_sacl_added=0
         fixture_log_tail_lines=80

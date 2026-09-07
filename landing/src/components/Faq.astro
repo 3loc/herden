@@ -2,23 +2,19 @@
 const questions = [
   {
     q: 'What do I need on the machine?',
-    a: 'Node &gt;= 20, herdr &gt;= 0.7.5, and an OpenSSH server enabled. On macOS that is System Settings &gt; General &gt; Sharing &gt; Remote Login.',
-  },
-  {
-    q: 'Does it work on iPad?',
-    a: 'iPhone today. iPad support is planned for a later release.',
+    a: 'A Linux or macOS machine with OpenSSH Server enabled. On macOS that is System Settings &gt; General &gt; Sharing &gt; Remote Login. Node is optional and only used by encrypted notifications.',
   },
   {
     q: 'What happens to the terminal I already had open?',
-    a: 'Attach and Reattach use herdr takeover mode, disconnecting the previous terminal owner when necessary.',
+    a: 'Attach and Reattach use Herden takeover mode, disconnecting the previous terminal owner when necessary.',
   },
   {
-    q: 'Is it affiliated with herdr?',
-    a: 'No. Heeler is in beta on TestFlight, personal-use first, and not affiliated with the herdr project.',
+    q: 'Where did the Host runtime come from?',
+    a: 'It is an Apache-2.0 derivative of pristine upstream herdrdev/herdr. Herden is maintained independently by 3LOC and records the exact upstream baseline in the repository.',
   },
   {
     q: 'Where can I read the design decisions?',
-    a: 'In <span class="mono">docs/adr/</span> — the transport story in particular is not obvious.',
+    a: 'In <a class="text-link" href="https://github.com/3loc/herden/tree/main/docs/adr"><span class="mono">docs/adr/</span></a>. The transport story in particular is not obvious.',
   },
 ];
 ---

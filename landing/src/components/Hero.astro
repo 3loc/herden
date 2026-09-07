@@ -2,20 +2,12 @@
 import { Picture } from 'astro:assets';
 import agentShot from '../assets/screens/agent-iphone.png';
 import composerShot from '../assets/screens/composer-iphone.png';
-import consoleShot from '../assets/screens/console-iphone.png';
 import liveActivityShot from '../assets/screens/live-activity-iphone.png';
-import skillsShot from '../assets/screens/skills-iphone.png';
 import terminalShot from '../assets/screens/terminal-iphone.png';
 import Badge from './Badge.astro';
 import Button from './Button.astro';
 
 const screens = [
-  {
-    image: consoleShot,
-    alt: 'Agent Console on iPhone',
-    label: 'Console',
-    caption: 'Every Agent in one priority-sorted view',
-  },
   {
     image: agentShot,
     alt: 'Agent terminal with the tools keyboard on iPhone',
@@ -35,14 +27,8 @@ const screens = [
     caption: 'A shell pane with Text and Keys',
   },
   {
-    image: skillsShot,
-    alt: 'Composer Skills suggestions on iPhone',
-    label: 'Skills',
-    caption: 'Inline Skills while you type a prefix',
-  },
-  {
     image: liveActivityShot,
-    alt: 'Heeler Live Activity showing agent status on the iPhone Lock Screen',
+    alt: 'Herden Live Activity showing agent status on the iPhone Lock Screen',
     label: 'Live Activity',
     caption: 'Agent status at a glance on the Lock Screen',
   },
@@ -58,16 +44,16 @@ const screens = [
       <Badge>AGPL-3.0</Badge>
     </div>
     <h1 class="headline">Every coding agent on your machines, sorted by who needs you.</h1>
-    <p class="lede">Heeler is a native iOS companion for <a class="text-link" href="https://herdr.dev">herdr</a>, the agent-first terminal runtime. Read and steer a live terminal, draft with the full iOS keyboard, send the message once — all over plain SSH.</p>
+    <p class="lede">Herden keeps coding agents running on your machines and puts their real terminals on your iPhone. See who needs you, reply with the full iOS keyboard or on-device dictation, and send files from any app—all over plain SSH.</p>
     <div class="actions">
       <Button href="https://testflight.apple.com/join/aXSxRn4r">Join the beta</Button>
-      <Button href="https://github.com/ZingerLittleBee/Heeler" variant="secondary">Star on GitHub</Button>
+      <Button href="https://github.com/3loc/herden" variant="secondary">Star on GitHub</Button>
       <Button
-        href="https://github.com/ZingerLittleBee/Heeler#adding-a-machine"
-        variant="secondary">Read the setup</Button
+        href="#build"
+        variant="secondary">Install a Host</Button
       >
     </div>
-    <p class="stack">SwiftUI &nbsp;·&nbsp; libghostty-spm &nbsp;·&nbsp; libssh2 &nbsp;·&nbsp; herdr &gt;= 0.7.5</p>
+    <p class="stack">Herden Host &nbsp;·&nbsp; SwiftUI &nbsp;·&nbsp; libghostty-spm &nbsp;·&nbsp; libssh2</p>
 
     <ul class="screens">
       {

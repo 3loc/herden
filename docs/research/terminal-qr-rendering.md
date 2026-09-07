@@ -67,7 +67,7 @@ it:
 ### Cell math
 
 Budget: roughly 66 columns x 20 rows (the `pair` pane is `width = "80%"`,
-`height = "90%"` per `plugin/herdr-plugin.toml:22-23`). All figures use a
+`height = "90%"` per `plugin/herden-plugin.toml:22-23`). All figures use a
 4-module quiet zone. Computed with the repo's own `qrcode` dependency.
 
 | Payload | EC | Version | Modules | ANSI 2-space | Half `▀▄█` | Sextant | Octant |

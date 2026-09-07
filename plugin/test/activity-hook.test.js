@@ -83,7 +83,7 @@ async function startFakeRelay(respond = () => ({ status: 200, body: { apnsId: "x
 
 function writeHerdrStub(
   agents,
-  workspaces = [{ workspace_id: "w1", label: "Heeler" }],
+  workspaces = [{ workspace_id: "w1", label: "Herden" }],
 ) {
   const binPath = join(stubDir, "herdr");
   writeFileSync(join(stubDir, "response.json"), JSON.stringify({ agents, workspaces }));
@@ -302,7 +302,7 @@ suite("activity-hook: update and end", () => {
     assert.equal(opened.payload.agents[0].pane, PANE_ID);
     assert.equal(opened.payload.agents[0].status, "working");
     assert.equal(opened.payload.agents[0].title, "实现锁屏显示 agent 工作状态");
-    assert.equal(opened.payload.agents[0].workspace, "Heeler");
+    assert.equal(opened.payload.agents[0].workspace, "Herden");
     decryptEnvelope(byToken.get(ACTIVITY_TOKEN_B).envelope, KEY_B);
     assert.deepEqual(stubInvocations().map((entry) => entry.args), [
       ["agent", "list"],
@@ -468,7 +468,7 @@ suite("activity-hook: relay failures", () => {
     const second = decryptEnvelope(relay.requests[1].body.envelope, KEY_A);
     assert.equal(first.payload.agents[0].title, "a long enough title to drop");
     assert.equal("title" in second.payload.agents[0], false);
-    assert.equal(second.payload.agents[0].workspace, "Heeler");
+    assert.equal(second.payload.agents[0].workspace, "Herden");
     assert.equal(second.payload.agents[0].pane, PANE_ID);
     assert.equal(second.payload.agents[0].status, "working");
   });

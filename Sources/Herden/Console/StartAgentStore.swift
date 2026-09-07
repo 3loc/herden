@@ -1,0 +1,596 @@
+import Foundation
+import Observation
+
+/// The new-agent flow's form logic (#12, User Story 8): pick a Host, pick a
+/// launch target (an existing Workspace, or a new one at a remote directory),
+/// detect and select an installed Agent, parse its native arguments, and
+/// dispatch it via the Transport launch flow. The started pane surfaces in
+/// the Console through the store's normal snapshot/delta machinery; on
+/// success the store reports the started Agent's Console identity so the
+/// owning screen can open it right away.
+///
+/// Kept off the SSH types (standing repo rule): it talks to injected closures
+/// over the `ConsoleStore`, so it is testable against a scripted transport.
+@MainActor
+@Observable
+final class StartAgentStore {
+    enum State: Equatable {
+        /// Editing the form; no start in flight.
+        case editing
+        /// An `agent.start` RPC is in flight.
+        case starting
+        /// The last start failed; the message is user-facing.
+        case failed(String)
+        /// The start succeeded; the payload is the started Agent's Console
+        /// identity, which the owner opens after the screen dismisses.
+        case started(ConsoleAgent.ID)
+    }
+
+    enum AgentDiscoveryState: Equatable {
+        case idle
+        case loading
+        case loaded
+        case failed(String)
+    }
+
+    /// Context inherited when the flow opens from an agent's own screen: the
+    /// launch reuses that agent's Host, workspace, and working directory
+    /// instead of asking for all three again. The new agent lands in a fresh
+    /// tab beside the one it was started from, in the same directory.
+    struct LaunchOrigin: Equatable, Sendable {
+        let hostID: Host.ID
+        let workspaceID: String
+        let cwd: String
+    }
+
+    /// Where a Console-originated launch should create the Agent (#230).
+    /// Origin launches skip this choice: they inherit the origin Workspace.
+    enum LaunchTarget: Equatable, Hashable {
+        case existingWorkspace
+        case newWorkspace
+    }
+
+    /// The Transport variant `submit()` dispatches. Invalid combinations
+    /// (a Worktree of a Workspace that does not exist yet) cannot be
+    /// represented.
+    enum LaunchDestination: Equatable, Sendable {
+        case existingWorkspace
+        case newWorktree(WorktreeSpec)
+        case newWorkspace(NewWorkspaceSpec)
+    }
+
+    enum ArgumentError: Error, Equatable {
+        case danglingEscape
+        case unclosedSingleQuote
+        case unclosedDoubleQuote
+        case controlCharacter
+
+        var message: String {
+            switch self {
+            case .danglingEscape:
+                "Arguments end with an unfinished escape."
+            case .unclosedSingleQuote:
+                "Arguments contain an unclosed single quote."
+            case .unclosedDoubleQuote:
+                "Arguments contain an unclosed double quote."
+            case .controlCharacter:
+                "Arguments contain an unsupported control character."
+            }
+        }
+    }
+
+    /// The Hosts the user can dispatch to — the Host picker's options.
+    let hosts: [Host]
+
+    /// Non-nil when the flow was opened from an agent rather than the
+    /// Console: Host, workspace, and working directory are already decided,
+    /// so the form collapses to the agent fields.
+    let origin: LaunchOrigin?
+
+    var selectedHostID: Host.ID? {
+        didSet {
+            // A workspace belongs to one Host; switching Hosts drops a stale
+            // pick so it can never target the wrong session.
+            if selectedHostID != oldValue {
+                pickedWorkspaceID = nil
+                availableAgentKinds = []
+                selectedAgentKind = nil
+                agentDiscoveryState = .idle
+                launchTarget = .existingWorkspace
+                newWorkspaceDirectory = ""
+                newWorkspaceLabel = ""
+                startsInNewWorktree = false
+                worktreeBranch = ""
+                worktreeBase = ""
+            }
+        }
+    }
+
+    /// The existing Workspace the agent starts in: what the user picked, else
+    /// the one they last started an agent in on this Host, else the Host's
+    /// first.
+    ///
+    /// Nil while the Host reports no Workspaces at all. Existing-Workspace
+    /// and origin launches cannot submit until a concrete Workspace is
+    /// available; New Workspace does not use this pick.
+    var selectedWorkspaceID: String? {
+        get {
+            // The origin agent is living proof its workspace exists, so it
+            // wins outright rather than being filtered against a snapshot
+            // that may not have landed yet.
+            if let origin { return origin.workspaceID }
+            let available = workspaces
+            if let pickedWorkspaceID,
+                available.contains(where: { $0.id == pickedWorkspaceID })
+            {
+                return pickedWorkspaceID
+            }
+            if let selectedHostID, let remembered = recents.workspaceID(for: selectedHostID),
+                available.contains(where: { $0.id == remembered })
+            {
+                return remembered
+            }
+            return available.first?.id
+        }
+        set { pickedWorkspaceID = newValue }
+    }
+
+    /// The user's explicit pick; nil means "follow the default above". Kept
+    /// separate so a snapshot arriving after the sheet opens still gets to
+    /// supply the default.
+    private var pickedWorkspaceID: String?
+    /// The unique live-agent name required by herden protocol 17. Optional in
+    /// the form: empty falls back to a kind-derived name (`claude`,
+    /// `claude-2`, …), mirroring how the herden TUI labels unnamed agents.
+    var name: String = ""
+    /// The canonical kind selected from the Host availability probe.
+    var selectedAgentKind: SupportedAgentKind?
+    /// Optional native arguments, parsed into argv without invoking a shell.
+    /// The editor disables smart punctuation at the UIKit input-trait layer;
+    /// parsing still normalizes any smart characters supplied by paste or a
+    /// third-party keyboard without mutating the live editing buffer.
+    var arguments: String = ""
+    /// Existing Workspace vs New Workspace on the Console-originated form.
+    /// Switching target drops an incompatible Worktree request so it cannot
+    /// ride along with a launch that has no source Workspace.
+    var launchTarget: LaunchTarget = .existingWorkspace {
+        didSet {
+            if launchTarget != oldValue {
+                startsInNewWorktree = false
+                worktreeBranch = ""
+                worktreeBase = ""
+            }
+        }
+    }
+    /// Remote directory for a New Workspace launch. Required once that
+    /// target is selected; trimmed at submit.
+    var newWorkspaceDirectory: String = ""
+    /// Optional label for a New Workspace launch. Empty or whitespace
+    /// becomes nil so herden applies its default.
+    var newWorkspaceLabel: String = ""
+    /// Whether the launch targets a fresh git worktree of the selected
+    /// workspace's repository instead of the workspace itself (#97).
+    var startsInNewWorktree = false
+    /// Optional branch for the new worktree; empty uses herden's generated
+    /// `worktree/<name>` branch. Validated client-side because herden folds
+    /// every git failure into one raw-stderr error code.
+    var worktreeBranch: String = ""
+    /// Optional base commit-ish for the new branch; empty branches off HEAD.
+    /// Not validated: any rev syntax is legal here, so the server's message
+    /// passthrough is the honest feedback.
+    var worktreeBase: String = ""
+
+    private(set) var state: State = .editing
+    private(set) var agentDiscoveryState: AgentDiscoveryState = .idle
+    private(set) var availableAgentKinds: [SupportedAgentKind] = []
+
+    private let workspacesProvider: (Host.ID) -> [ConsoleWorkspace]
+    /// The agent names already live on a Host, so a generated default never
+    /// collides with them. Names only: herden's duplicate check ignores
+    /// detected kind labels, but the Console reports those as names too, and
+    /// skipping them merely bumps the suffix.
+    private let existingAgentNames: (Host.ID) -> Set<String>
+    private let discoverAgentKinds: (Host.ID) async throws -> [SupportedAgentKind]
+    /// Dispatches the assembled request through the matching Transport
+    /// launch variant.
+    private let start: (AgentLaunchRequest, LaunchDestination, Host.ID) async throws -> Agent
+    /// Suspends (bounded) until the started Agent is visible in the Console.
+    /// The row the owner navigates to exists only after the post-start resync
+    /// lands; waiting here keeps the opened detail from flashing its
+    /// missing-Agent placeholder over a launch that just succeeded.
+    private let awaitAgentVisible: (ConsoleAgent.ID) async -> Void
+    @ObservationIgnored private let recents: RecentWorkspaceStore
+    /// In-flight guard flipped synchronously before the first await, so a
+    /// double-tap cannot dispatch the same command twice through the window
+    /// before `state == .starting` disables the button.
+    private var isStarting = false
+
+    init(
+        hosts: [Host],
+        workspaces: @escaping (Host.ID) -> [ConsoleWorkspace],
+        existingAgentNames: @escaping (Host.ID) -> Set<String>,
+        discoverAgentKinds: @escaping (Host.ID) async throws -> [SupportedAgentKind],
+        start: @escaping (AgentLaunchRequest, LaunchDestination, Host.ID) async throws -> Agent,
+        awaitAgentVisible: @escaping (ConsoleAgent.ID) async -> Void,
+        origin: LaunchOrigin? = nil,
+        recents: RecentWorkspaceStore = RecentWorkspaceStore()
+    ) {
+        self.hosts = hosts
+        self.origin = origin
+        self.workspacesProvider = workspaces
+        self.existingAgentNames = existingAgentNames
+        self.discoverAgentKinds = discoverAgentKinds
+        self.start = start
+        self.awaitAgentVisible = awaitAgentVisible
+        self.recents = recents
+        // Pre-select when there is no choice to make.
+        self.selectedHostID = origin?.hostID ?? (hosts.count == 1 ? hosts.first?.id : nil)
+    }
+
+    /// Whether the fresh-worktree variant is offered. An origin launch is
+    /// defined by landing in the origin agent's directory, and a worktree
+    /// launch lands in a brand-new checkout instead — the two cannot both
+    /// hold, so the origin flow drops the option rather than silently
+    /// ignoring the requested directory. New Workspace likewise has no
+    /// source Workspace to branch from.
+    var offersWorktree: Bool { origin == nil && launchTarget == .existingWorkspace }
+
+    /// Whether the form offers Existing vs New Workspace. Origin launches
+    /// inherit the origin agent's Workspace and directory, so the choice
+    /// would contradict that inheritance.
+    var offersNewWorkspace: Bool { origin == nil }
+
+    /// The workspaces the selected Host knows; empty when no Host is picked.
+    var workspaces: [ConsoleWorkspace] {
+        guard let selectedHostID else { return [] }
+        return workspacesProvider(selectedHostID)
+    }
+
+    var parsedArguments: Result<[String], ArgumentError> {
+        Self.parseArguments(Self.normalizeSmartPunctuation(arguments))
+    }
+
+    var argumentErrorMessage: String? {
+        guard case .failure(let error) = parsedArguments else { return nil }
+        return error.message
+    }
+
+    /// User-facing name feedback; nil while the field is empty (empty means
+    /// "use the generated default").
+    var nameErrorMessage: String? {
+        let trimmed = name.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmed.isEmpty else { return nil }
+        return AgentName.validationError(trimmed)
+    }
+
+    /// The name `submit()` falls back to while the field is empty; nil until
+    /// a Host and Agent are selected. Shown as the field's placeholder so the
+    /// fallback is never a surprise.
+    var defaultAgentName: String? {
+        guard let selectedHostID, let kind = selectedAgentKind else { return nil }
+        return Self.defaultAgentName(for: kind, taken: existingAgentNames(selectedHostID))
+    }
+
+    /// User-facing branch feedback; nil while the toggle is off or the field
+    /// is empty (empty means "use herden's generated branch").
+    var worktreeBranchErrorMessage: String? {
+        guard startsInNewWorktree else { return nil }
+        let branch = worktreeBranch.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !branch.isEmpty else { return nil }
+        return GitBranchName.validationError(branch)
+    }
+
+    /// Whether the form is complete enough to dispatch.
+    var canSubmit: Bool {
+        selectedHostID != nil && hasLaunchTarget
+            && nameErrorMessage == nil
+            && selectedAgentKind != nil
+            && parsedArguments.isSuccess
+            && worktreeBranchErrorMessage == nil
+            && agentDiscoveryState == .loaded
+            && state != .starting
+    }
+
+    /// Existing Workspace and origin launches need a reported Workspace;
+    /// New Workspace needs a non-empty trimmed directory instead.
+    private var hasLaunchTarget: Bool {
+        if origin != nil { return selectedWorkspaceID != nil }
+        switch launchTarget {
+        case .existingWorkspace:
+            return selectedWorkspaceID != nil
+        case .newWorkspace:
+            return Self.nonEmptyTrimmed(newWorkspaceDirectory) != nil
+        }
+    }
+
+    /// Whether the sheet may be dismissed without abandoning an in-flight
+    /// launch whose server-side outcome may already be committed.
+    var canDismiss: Bool {
+        state != .starting
+    }
+
+    func discoverAgents() async {
+        guard let hostID = selectedHostID else {
+            availableAgentKinds = []
+            selectedAgentKind = nil
+            agentDiscoveryState = .idle
+            return
+        }
+        availableAgentKinds = []
+        selectedAgentKind = nil
+        agentDiscoveryState = .loading
+        do {
+            let kinds = try await discoverAgentKinds(hostID)
+            guard selectedHostID == hostID else { return }
+            availableAgentKinds = kinds
+            selectedAgentKind = kinds.first
+            agentDiscoveryState = .loaded
+        } catch is CancellationError {
+            guard selectedHostID == hostID else { return }
+            agentDiscoveryState = .idle
+        } catch {
+            guard selectedHostID == hostID else { return }
+            agentDiscoveryState = .failed(Self.discoveryMessage(for: error))
+        }
+    }
+
+    /// Dispatches the command via `agent.start`. Incomplete forms are ignored;
+    /// on success the state flips to `.started` carrying the new Agent's
+    /// Console identity for the screen to dismiss and open.
+    func submit() async {
+        guard
+            !isStarting,
+            let hostID = selectedHostID,
+            let kind = selectedAgentKind,
+            let destination = launchDestination,
+            case .success(let arguments) = parsedArguments,
+            worktreeBranchErrorMessage == nil,
+            nameErrorMessage == nil
+        else { return }
+        let trimmedName = name.trimmingCharacters(in: .whitespacesAndNewlines)
+        let agentName =
+            trimmedName.isEmpty
+            ? Self.defaultAgentName(for: kind, taken: existingAgentNames(hostID))
+            : trimmedName
+        isStarting = true
+        state = .starting
+        defer { isStarting = false }
+        let workspaceID: String?
+        switch destination {
+        case .newWorkspace:
+            workspaceID = nil
+        case .existingWorkspace, .newWorktree:
+            workspaceID = selectedWorkspaceID
+        }
+        let request = AgentLaunchRequest(
+            kind: kind.rawValue,
+            name: agentName,
+            arguments: arguments,
+            workspaceID: workspaceID,
+            cwd: origin?.cwd)
+        do {
+            let agent = try await start(request, destination, hostID)
+            if case .newWorkspace = destination {
+                recents.remember(agent.workspaceID, for: hostID)
+            } else if let workspaceID {
+                recents.remember(workspaceID, for: hostID)
+            }
+            let startedID = ConsoleAgent.ID(hostID: hostID, paneID: agent.paneID)
+            // The wait is bounded; on timeout the owner still navigates and
+            // the row catches up with the next resync.
+            await awaitAgentVisible(startedID)
+            state = .started(startedID)
+        } catch {
+            state = .failed(Self.message(for: error))
+        }
+    }
+
+    /// Assembles the Transport variant from the current form. Nil when the
+    /// chosen target is incomplete, so `submit()` is a no-op rather than
+    /// inventing a Workspace id.
+    private var launchDestination: LaunchDestination? {
+        if origin != nil {
+            guard selectedWorkspaceID != nil else { return nil }
+            return .existingWorkspace
+        }
+        switch launchTarget {
+        case .existingWorkspace:
+            guard selectedWorkspaceID != nil else { return nil }
+            if offersWorktree && startsInNewWorktree {
+                return .newWorktree(
+                    WorktreeSpec(
+                        branch: Self.nonEmptyTrimmed(worktreeBranch),
+                        base: Self.nonEmptyTrimmed(worktreeBase)))
+            }
+            return .existingWorkspace
+        case .newWorkspace:
+            guard let directory = Self.nonEmptyTrimmed(newWorkspaceDirectory) else {
+                return nil
+            }
+            return .newWorkspace(
+                NewWorkspaceSpec(
+                    directory: directory,
+                    label: Self.nonEmptyTrimmed(newWorkspaceLabel)))
+        }
+    }
+
+    /// Parses a familiar shell-like argument string into argv without ever
+    /// passing it through a shell. Quotes group whitespace, adjacent quoted
+    /// and unquoted segments join one argument, and backslash escapes the next
+    /// character. Empty quoted arguments are preserved.
+    static func parseArguments(_ input: String) -> Result<[String], ArgumentError> {
+        enum Quote {
+            case single
+            case double
+        }
+
+        var result: [String] = []
+        var current = ""
+        var hasCurrent = false
+        var quote: Quote?
+        var escaping = false
+
+        for character in input {
+            if escaping {
+                guard !isControl(character) else {
+                    return .failure(.controlCharacter)
+                }
+                current.append(character)
+                hasCurrent = true
+                escaping = false
+                continue
+            }
+
+            switch quote {
+            case .single:
+                if character == "'" {
+                    quote = nil
+                } else {
+                    guard !isControl(character) else {
+                        return .failure(.controlCharacter)
+                    }
+                    current.append(character)
+                }
+                hasCurrent = true
+            case .double:
+                if character == "\"" {
+                    quote = nil
+                } else if character == "\\" {
+                    escaping = true
+                } else {
+                    guard !isControl(character) else {
+                        return .failure(.controlCharacter)
+                    }
+                    current.append(character)
+                }
+                hasCurrent = true
+            case nil:
+                if character == "'" {
+                    quote = .single
+                    hasCurrent = true
+                } else if character == "\"" {
+                    quote = .double
+                    hasCurrent = true
+                } else if character == "\\" {
+                    escaping = true
+                    hasCurrent = true
+                } else if character.isWhitespace {
+                    if hasCurrent {
+                        result.append(current)
+                        current = ""
+                        hasCurrent = false
+                    }
+                } else {
+                    guard !isControl(character) else {
+                        return .failure(.controlCharacter)
+                    }
+                    current.append(character)
+                    hasCurrent = true
+                }
+            }
+        }
+
+        guard !escaping else { return .failure(.danglingEscape) }
+        switch quote {
+        case .single: return .failure(.unclosedSingleQuote)
+        case .double: return .failure(.unclosedDoubleQuote)
+        case nil: break
+        }
+        if hasCurrent {
+            result.append(current)
+        }
+        return .success(result)
+    }
+
+    /// The fallback for an empty name field: the kind itself, then `kind-2`,
+    /// `kind-3`, … skipping names already live on the Host. Kind identifiers
+    /// are lowercase ASCII, so the result always passes herden's name rule.
+    static func defaultAgentName(for kind: SupportedAgentKind, taken: Set<String>) -> String {
+        guard taken.contains(kind.rawValue) else { return kind.rawValue }
+        var suffix = 2
+        while taken.contains("\(kind.rawValue)-\(suffix)") { suffix += 1 }
+        return "\(kind.rawValue)-\(suffix)"
+    }
+
+    /// Normalizes smart punctuation that arrives through paste or a
+    /// third-party keyboard. The editor itself disables these substitutions;
+    /// this is a defensive parse-boundary fallback, never an edit-time write.
+    static func normalizeSmartPunctuation(_ text: String) -> String {
+        guard text.contains(where: Self.isSmartPunctuation) else { return text }
+        var result = ""
+        result.reserveCapacity(text.count + 2)
+        for character in text {
+            switch character {
+            case "\u{201C}", "\u{201D}":  // curly double quotes
+                result.append("\"")
+            case "\u{2018}", "\u{2019}":  // curly single quotes
+                result.append("'")
+            case "\u{2014}":  // em dash, iOS's replacement for "--"
+                result.append("--")
+            case "\u{2013}":  // en dash
+                result.append("-")
+            default:
+                result.append(character)
+            }
+        }
+        return result
+    }
+
+    private static func isSmartPunctuation(_ character: Character) -> Bool {
+        switch character {
+        case "\u{201C}", "\u{201D}", "\u{2018}", "\u{2019}", "\u{2014}", "\u{2013}":
+            true
+        default:
+            false
+        }
+    }
+
+    private static func nonEmptyTrimmed(_ value: String) -> String? {
+        let trimmed = value.trimmingCharacters(in: .whitespacesAndNewlines)
+        return trimmed.isEmpty ? nil : trimmed
+    }
+
+    private static func isControl(_ character: Character) -> Bool {
+        character.unicodeScalars.contains {
+            CharacterSet.controlCharacters.contains($0)
+        }
+    }
+
+    private static func discoveryMessage(for error: any Error) -> String {
+        switch error {
+        case TransportError.sshUnreachable:
+            "The Host is not connected."
+        case TransportError.timedOut:
+            "Agent detection timed out."
+        default:
+            "Detecting Agents failed: \(error)"
+        }
+    }
+
+    private static func message(for error: any Error) -> String {
+        switch error {
+        case TransportError.sshUnreachable:
+            "The Host is not connected."
+        case TransportError.timedOut:
+            "The Host did not answer in time."
+        case let apiError as HerdrAPIError where apiError.code == "not_git_worktree":
+            // The one dedicated worktree.create error code (#97); everything
+            // else collapses into worktree_create_failed with raw git stderr,
+            // which the passthrough below surfaces as-is.
+            "This workspace is not inside a Git repository, so no worktree can be created from it."
+        case let apiError as HerdrAPIError where apiError.code == "worktree_create_failed":
+            "Creating the worktree failed: \(apiError.message)"
+        case let apiError as HerdrAPIError:
+            "herden rejected the command: \(apiError.message)"
+        default:
+            "Starting the agent failed: \(error)"
+        }
+    }
+}
+
+extension Result {
+    fileprivate var isSuccess: Bool {
+        if case .success = self { return true }
+        return false
+    }
+}

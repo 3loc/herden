@@ -6,7 +6,7 @@ repo_root="$(cd "$(dirname "$0")/.." && pwd)"
 runner="$repo_root/scripts/run-with-timeout.py"
 gate_script="$repo_root/scripts/run-ci-ios-tests.sh"
 workflow="$repo_root/.github/workflows/ci.yml"
-work="$(mktemp -d "${TMPDIR:-/tmp}/heeler-timeout-test.XXXXXX")"
+work="$(mktemp -d "${TMPDIR:-/tmp}/herden-timeout-test.XXXXXX")"
 trap 'rm -rf "$work"' EXIT
 
 [[ -x "$runner" ]] || {
@@ -36,7 +36,7 @@ printf 'partial xcresult' > "$work/evidence/result.txt"
 # before the watchdog fires, and 0.1s lost that race on loaded machines.
 # The `$$`/`$1` below belong to the child shell, deliberately unexpanded.
 # shellcheck disable=SC2016
-HEELER_TIMEOUT_DISABLE_SAMPLE=1 "$runner" \
+HERDEN_TIMEOUT_DISABLE_SAMPLE=1 "$runner" \
     --timeout-seconds 1 \
     --label stalled-test \
     --diagnostics-dir "$work/timeout" \
@@ -150,7 +150,7 @@ if grep -E '^[[:space:]]*run_xcodebuild "Build for testing"' -A 8 "$gate_script"
 fi
 awk '
     /if \[\[ "\$ci_lane" == "package" \]\]; then/ { in_pkg = 1 }
-    in_pkg && /HeelerSSH package build/ { saw_build_label = 1 }
+    in_pkg && /HerdenSSH package build/ { saw_build_label = 1 }
     in_pkg && /build-for-testing/ { build = NR }
     in_pkg && /simctl bootstatus/ { boot = NR }
     in_pkg && /test-without-building/ { test_action = NR }
@@ -182,7 +182,7 @@ awk '
     echo "app lane must reuse a cached clonedSourcePackagesDirPath" >&2
     exit 1
 }
-if grep -E '^[[:space:]]*run_xcodebuild "HeelerSSH package' -A 12 "$gate_script" \
+if grep -E '^[[:space:]]*run_xcodebuild "HerdenSSH package' -A 12 "$gate_script" \
     | grep -q -- '-clonedSourcePackagesDirPath'; then
     echo "package lane must not take the app SourcePackages cache path" >&2
     exit 1

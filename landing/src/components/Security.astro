@@ -5,16 +5,16 @@ const guarantees = [
     body: 'An Ed25519 Device Key is generated on device during QR pairing; the private key stays in the Keychain, and the Pairing Code pins the host key fingerprint.',
   },
   {
-    title: 'End-to-end encrypted notifications',
-    body: 'APNs pushes fire when an Agent goes Blocked or Done and deep-link into its terminal. The relay sees the device token, source IP, request timing, and ciphertext — but cannot read the notification.',
+    title: 'Direct transport',
+    body: 'Terminal output, prompts, files, and credentials travel directly between the iPhone and the Host over SSH. Herden has no account service or application backend.',
   },
   {
     title: 'Verified at both hops',
     body: `Behind a Jump Host, host keys are verified independently at each hop. The recommended deployment keeps the reverse-forwarded port on the VPS loopback interface instead of publishing the Mac's SSH port.`,
   },
   {
-    title: 'No new surface area',
-    body: `No herdr server changes and no extra packages. The Host's SSH server must permit stream-local forwarding, which is the OpenSSH default; onboarding says so when it is turned off.`,
+    title: 'Small Host footprint',
+    body: `The 3LOC Herdr build includes the Herden pairing command. The Host's SSH server must permit stream-local forwarding, which is the OpenSSH default; onboarding says so when it is turned off.`,
   },
 ];
 ---
@@ -22,7 +22,7 @@ const guarantees = [
 <section id="security" class="section">
   <div class="container">
     <div class="eyebrow">Security</div>
-    <h2 class="section-title title">Keys stay on device. The relay reads only ciphertext.</h2>
+    <h2 class="section-title title">Keys stay on device. Sessions stay on your network.</h2>
     <ul class="grid">
       {
         guarantees.map((item) => (

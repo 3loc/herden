@@ -3,9 +3,9 @@ import { Image } from 'astro:assets';
 import logo from '../assets/logo.png';
 
 const links = [
-  { href: 'https://github.com/ZingerLittleBee/Heeler', label: 'GitHub' },
-  { href: 'https://herdr.dev', label: 'herdr' },
-  { href: 'https://github.com/ZingerLittleBee/Heeler/blob/main/PRIVACY.md', label: 'Privacy' },
+  { href: 'https://github.com/3loc/herden', label: 'GitHub' },
+  { href: 'https://github.com/herdrdev/herdr', label: 'runtime upstream' },
+  { href: 'https://github.com/3loc/herden/blob/main/PRIVACY.md', label: 'Privacy' },
 ];
 ---
 
@@ -13,7 +13,7 @@ const links = [
   <div class="container layout">
     <div class="brand">
       <Image class="mark" src={logo} alt="" width={18} height={18} densities={[2, 3]} loading="eager" />
-      <span class="tagline">Heeler — an agent console for herdr</span>
+      <span class="tagline">Herden — your coding agents, in your pocket</span>
     </div>
     <div class="links">
       {links.map((link) => <a class="link" href={link.href}>{link.label}</a>)}

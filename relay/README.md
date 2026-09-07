@@ -1,4 +1,4 @@
-# herdr Push Relay
+# Herden Push Relay
 
 The developer-hosted, stateless forwarder for Agent Notifications (ADR 0008)
 and per-Host Live Activity updates (`docs/agents/live-activity-contract.md`).
@@ -12,8 +12,9 @@ It is a dumb pipe on purpose:
   credential and in-flight device tokens, source IPs, APNs environment,
   collapse identifiers, request metadata, and ciphertext. It still cannot
   decrypt notification content because it never receives Notification Keys.
-- **Production origin**: the official app and plugin default to
-  `https://heeler-apns.bybee.dev`. Both still accept a custom relay base URL
+- **Production origin**: the 3loc app and plugin default to
+  `https://herden-apns.austrheim.ca7.fm`. It is reachable only through the
+  3loc Headscale tailnet. Both still accept a custom relay base URL
   for self-built apps whose APNs credentials are authorized for their bundle
   ID.
 - **What crosses it**: the request carries the device token, APNs environment,
@@ -23,9 +24,8 @@ It is a dumb pipe on purpose:
   source IP, request timing, frequency, and size. It never decrypts the
   envelope.
 
-Runs as a Cloudflare Worker-style fetch handler with zero runtime
-dependencies (WebCrypto + fetch), which is also why the tests run under
-plain Node.
+Runs as a dependency-free Node service using WebCrypto, fetch, and the built-in
+HTTP server.
 
 ## API
 
@@ -88,8 +88,8 @@ applies.
 Relay-origin errors always use the `error` key; relayed APNs verdicts always
 use `reason`, so callers can tell the two apart on overlapping status codes.
 
-Rate limits live in per-isolate memory (the relay has no database by
-design), so they are best-effort per worker instance — enough to blunt
+Rate limits live in process memory (the relay has no database by design), so
+they are best-effort per process — enough to blunt
 quota-burning abuse, not a billing-grade quota.
 
 ## Configuration
@@ -113,29 +113,16 @@ npm test
 ```
 
 Node's built-in test runner, no dependencies. The boundary suite drives the
-fetch handler exactly as the platform would and stubs APNs at the network
+fetch handler and standalone HTTP server and stubs APNs at the network
 edge (the outbound `fetch`); unit suites cover the JWT cache clock and the
 rate-limit windows.
 
 ## Deploy
 
-The production Worker is deployed at `https://heeler-apns.bybee.dev`. Its
-custom domain is declared in `wrangler.toml`, keeping deploys on the canonical
-origin and disabling the fallback `workers.dev` route. The retired
-`herdr-apns.bybee.dev` still routes to the same Worker while deployed plugins
-migrate off it; see the comment on that route in `wrangler.toml`.
+The 3loc production service is deployed on nidavellir by the fleet repository,
+which owns its workload, Infisical-backed secret, Traefik router, split DNS,
+Headscale policy, and smoke tests. This repository never contains the `.p8`
+and has no homelab deployment credential.
 
-1. In the Apple Developer portal, create an APNs auth key (`.p8`) for the
-   team that signs the app; note the key id and team id.
-2. `npx wrangler deploy` from this directory (a Cloudflare account is the
-   only prerequisite; the worker has no build step).
-3. Set the vars: `APNS_TEAM_ID`, `APNS_KEY_ID`, `APNS_TOPIC` (either
-   uncomment them in `wrangler.toml` or set them in the dashboard).
-4. `npx wrangler secret put APNS_KEY_P8` and paste the `.p8` PEM contents.
-5. Smoke-test with a sandbox token:
-   `curl -s -X POST https://heeler-apns.bybee.dev/push -d '{"token":"<hex>","env":"sandbox","envelope":"{}","collapse":"smoke"}'`
-   — expect an APNs verdict (`200` or a relayed `400 BadDeviceToken`), not
-   `relay_misconfigured`.
-
-For local development `npx wrangler dev` works with the same vars in a
-`.dev.vars` file (gitignored — the `.p8` stays out of the repo).
+For local development, export the four required APNs variables and run
+`npm start`. `GET /health` does not require credentials.

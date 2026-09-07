@@ -1,13 +1,13 @@
-# Task runner for Heeler. Typical flows:
+# Task runner for Herden. Typical flows:
 #   make install                 # build Debug and run it on the connected iPhone
 #   make bump && make testflight # interim TestFlight build, no version cut
 #   make publish                 # cut a release: see docs/guides/releasing.md
 
-PROJECT := Heeler.xcodeproj
-SCHEME  := Heeler
-ARCHIVE := build/Heeler.xcarchive
+PROJECT := Herden.xcodeproj
+SCHEME  := Herden
+ARCHIVE := build/Herden.xcarchive
 DERIVED := build/DerivedData
-APP_ID  := com.fansvine.founderterminal
+APP_ID  := com.3loc.herden
 SIM     ?= iPhone 17
 IOS_WATCH_DEBOUNCE ?= 1s
 
@@ -19,11 +19,19 @@ DEVICE ?= $(shell xcrun devicectl list devices 2>/dev/null | awk '/physical[a-z]
 help: ## Show available targets
 	@awk -F':.*## ' '/^[a-z-]+:.*## / { printf "  make %-20s %s\n", $$1, $$2 }' $(MAKEFILE_LIST)
 
-ssh-artifacts: ## Rebuild the pinned HeelerSSH XCFrameworks
-	Packages/HeelerSSH/Scripts/build-native.sh
+.PHONY: host-install host-check
 
-verify-ssh-artifacts: ## Verify HeelerSSH artifact hashes, slices, and policy
-	Packages/HeelerSSH/Scripts/verify-native.sh
+host-install: ## Build and install the native Host on this Linux or macOS machine
+	sh scripts/install-host-source.sh
+
+host-check: ## Check Host source-build prerequisites without installing anything
+	sh scripts/install-host-source.sh --check
+
+ssh-artifacts: ## Rebuild the pinned HerdenSSH XCFrameworks
+	Packages/HerdenSSH/Scripts/build-native.sh
+
+verify-ssh-artifacts: ## Verify HerdenSSH artifact hashes, slices, and policy
+	Packages/HerdenSSH/Scripts/verify-native.sh
 
 generate: ## Regenerate the Xcode project from project.yml (XcodeGen)
 	xcodegen generate
@@ -33,26 +41,26 @@ build: ## Build Debug for a physical device without installing
 		-destination 'generic/platform=iOS' -derivedDataPath $(DERIVED) \
 		-allowProvisioningUpdates build
 
-test: ## Run the app and HeelerSSH unit test suites on a simulator
+test: ## Run the app and HerdenSSH unit test suites on a simulator
 	xcodebuild -project $(PROJECT) -scheme $(SCHEME) \
 		-destination 'platform=iOS Simulator,name=iPhone 17' test
-	scripts/run-heelerssh-package-tests.sh 'platform=iOS Simulator,name=iPhone 17'
+	scripts/run-herdenssh-package-tests.sh 'platform=iOS Simulator,name=iPhone 17'
 
 check-device:
 	@test -n "$(DEVICE)" || { echo "No physical device found; pass DEVICE=<devicectl uuid>"; exit 1; }
 
 install: check-device build ## Build Debug, install on the iPhone, and relaunch it
 	xcrun devicectl device install app --device $(DEVICE) \
-		$(DERIVED)/Build/Products/Debug-iphoneos/Heeler.app
+		$(DERIVED)/Build/Products/Debug-iphoneos/Herden.app
 	xcrun devicectl device process launch --terminate-existing --device $(DEVICE) $(APP_ID)
 
 watch-ios-device: ## Watch iOS code and install to a connected iPhone/iPad
 	@command -v watchexec >/dev/null || { echo "watchexec not found. Install with: brew install watchexec"; exit 1; }
 	watchexec \
 		--watch Sources \
-		--watch Packages/HeelerSSH/Sources \
-		--watch Packages/HeelerSSH/NativeSupport \
-		--watch Packages/HeelerSSH/Package.swift \
+		--watch Packages/HerdenSSH/Sources \
+		--watch Packages/HerdenSSH/NativeSupport \
+		--watch Packages/HerdenSSH/Package.swift \
 		--watch project.yml \
 		--exts swift,h,modulemap,yml,plist,xcprivacy,entitlements,resolved,json,png,ttf \
 		--debounce "$(IOS_WATCH_DEBOUNCE)" \
@@ -64,7 +72,7 @@ sim: ## Build Debug and run it on the simulator (override with SIM=<name>)
 		-destination 'platform=iOS Simulator,name=$(SIM)' -derivedDataPath $(DERIVED) build
 	xcrun simctl boot '$(SIM)' 2>/dev/null || true
 	open -a Simulator
-	xcrun simctl install booted $(DERIVED)/Build/Products/Debug-iphonesimulator/Heeler.app
+	xcrun simctl install booted $(DERIVED)/Build/Products/Debug-iphonesimulator/Herden.app
 	xcrun simctl launch --terminate-running-process booted $(APP_ID)
 
 archive: ## Archive a Release build for distribution

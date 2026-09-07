@@ -1,0 +1,235 @@
+import Foundation
+
+/// One row of the Console (#8): an Agent joined with its Host identity and
+/// workspace context. The list is flat across Hosts; the workspace is a
+/// context tag only, never a grouping level.
+struct ConsoleAgent: Identifiable, Sendable, Equatable {
+    /// Pane addresses are unique per herden session, not across Hosts; the
+    /// row identity pairs them.
+    struct ID: Hashable, Sendable {
+        let hostID: Host.ID
+        let paneID: String
+    }
+
+    let hostID: Host.ID
+    let hostName: String
+    /// SSH account name, used only for conservative presentation of standard
+    /// macOS/Linux home paths as `~`. The actual remote path stays unchanged.
+    let hostUsername: String?
+    var agent: Agent
+    /// Workspace label from the session snapshot; nil when the snapshot did
+    /// not carry the workspace.
+    let workspaceLabel: String?
+    /// Snapshot git metadata when the workspace reported any. Presence does
+    /// not mean this is removable: the main checkout is reported with
+    /// `isLinkedWorktree == false` too.
+    let repositoryCheckout: RepositoryCheckout?
+    /// Trailing terminal output (`pane.read`, ANSI stripped), fetched after
+    /// snapshots and status changes; nil until the first read lands.
+    var lastOutputSnippet: String?
+
+    var id: ID { ID(hostID: hostID, paneID: agent.paneID) }
+
+    init(
+        hostID: Host.ID,
+        hostName: String,
+        agent: Agent,
+        workspaceLabel: String?,
+        repositoryCheckout: RepositoryCheckout?,
+        lastOutputSnippet: String? = nil,
+        hostUsername: String? = nil
+    ) {
+        self.hostID = hostID
+        self.hostName = hostName
+        self.hostUsername = hostUsername
+        self.agent = agent
+        self.workspaceLabel = workspaceLabel
+        self.repositoryCheckout = repositoryCheckout
+        self.lastOutputSnippet = lastOutputSnippet
+    }
+
+    var repoName: String? { repositoryCheckout?.repoName }
+
+    var checkoutPath: String? { repositoryCheckout?.checkoutPath }
+
+    /// Console badge and destructive-action eligibility come only from the
+    /// latest session snapshot's explicit linkage bit.
+    var isLinkedWorktree: Bool { repositoryCheckout?.isLinkedWorktree == true }
+
+    var workspaceContext: String? {
+        switch (workspaceLabel, repoName) {
+        case (nil, nil): nil
+        case (let label?, nil): label
+        case (nil, let repo?): repo
+        case (let label?, let repo?): label == repo ? label : "\(label) · \(repo)"
+        }
+    }
+
+    /// The keyboard switcher's chip label. The project leads, as it does on
+    /// the card, but without the card's `label · repo` pairing: a chip has
+    /// room for one word, and a console full of `claude` is told apart by
+    /// where each one is working.
+    var switcherLabel: String {
+        workspaceLabel ?? repoName ?? agent.displayName
+    }
+
+    /// The directory the skills probe treats as the agent's project root:
+    /// the worktree checkout when the workspace has one, else the agent's
+    /// launch cwd. Deliberately not the live foreground cwd — agents load
+    /// project skills from where they started.
+    var skillsProjectRoot: String? {
+        if let checkoutPath, !checkoutPath.isEmpty { return checkoutPath }
+        return agent.cwd.isEmpty ? nil : agent.cwd
+    }
+}
+
+/// The snapshot's exact git checkout identity for one workspace. Workspace
+/// ids are reusable slots, so destructive actions match this tuple too.
+struct RepositoryCheckout: Sendable, Equatable, Hashable {
+    let repoKey: String
+    let repoName: String
+    let repoRoot: String
+    let checkoutPath: String
+    let isLinkedWorktree: Bool
+
+    init(
+        repoKey: String,
+        repoName: String,
+        repoRoot: String,
+        checkoutPath: String,
+        isLinkedWorktree: Bool
+    ) {
+        self.repoKey = repoKey
+        self.repoName = repoName
+        self.repoRoot = repoRoot
+        self.checkoutPath = checkoutPath
+        self.isLinkedWorktree = isLinkedWorktree
+    }
+
+    init(_ info: WorkspaceWorktreeInfo) {
+        self.init(
+            repoKey: info.repoKey,
+            repoName: info.repoName,
+            repoRoot: info.repoRoot,
+            checkoutPath: info.checkoutPath,
+            isLinkedWorktree: info.isLinkedWorktree)
+    }
+}
+
+/// A workspace known for a Host from its latest session snapshot, offered as
+/// a target in the new-agent flow (#12). Identity is herden's opaque
+/// `workspace_id`; the label is what the picker shows.
+struct ConsoleWorkspace: Identifiable, Hashable, Sendable {
+    let id: String
+    let label: String
+    /// A concrete directory reported by one Pane in this Workspace. It is
+    /// used only to create an ordinary shell tab; nil keeps Open Space honest.
+    let cwd: String?
+
+    init(id: String, label: String, cwd: String? = nil) {
+        self.id = id
+        self.label = label
+        self.cwd = cwd
+    }
+}
+
+/// A Host-qualified Workspace presented as a user-facing Space on Herden's
+/// home screen. Workspace ids are opaque and only become unique with Host id.
+struct ConsoleSpace: Identifiable, Hashable, Sendable {
+    struct ID: Hashable, Sendable {
+        let hostID: Host.ID
+        let workspaceID: String
+    }
+
+    let hostID: Host.ID
+    let hostName: String
+    let workspace: ConsoleWorkspace
+    let agentCount: Int
+
+    var id: ID { ID(hostID: hostID, workspaceID: workspace.id) }
+
+    static func project(
+        hosts: [Host],
+        workspacesByHost: [Host.ID: [ConsoleWorkspace]],
+        agents: [ConsoleAgent],
+        filteredHostID: Host.ID? = nil
+    ) -> [ConsoleSpace] {
+        let agentCounts = Dictionary(grouping: agents) {
+            ID(hostID: $0.hostID, workspaceID: $0.agent.workspaceID)
+        }.mapValues(\.count)
+
+        return hosts
+            .filter { filteredHostID == nil || $0.id == filteredHostID }
+            .flatMap { host in
+                (workspacesByHost[host.id] ?? []).map { workspace in
+                    let id = ID(hostID: host.id, workspaceID: workspace.id)
+                    return ConsoleSpace(
+                        hostID: host.id,
+                        hostName: host.displayName,
+                        workspace: workspace,
+                        agentCount: agentCounts[id] ?? 0)
+                }
+            }
+            .sorted {
+                let labelOrder = $0.workspace.label.localizedCaseInsensitiveCompare(
+                    $1.workspace.label)
+                if labelOrder != .orderedSame { return labelOrder == .orderedAscending }
+                if $0.hostName != $1.hostName { return $0.hostName < $1.hostName }
+                return $0.workspace.id < $1.workspace.id
+            }
+    }
+}
+
+extension AgentStatus {
+    /// Console sort bucket: Blocked > Done > Working > Idle. The order tracks
+    /// how much of the user's attention each status is asking for — Blocked
+    /// has stopped and is waiting on an answer, Done has a result to read,
+    /// Working needs nothing, Idle least of all. Unknown and any status this
+    /// build does not recognize (herden's API has no stability guarantee)
+    /// share the bottom bucket — a status we cannot interpret is not
+    /// actionable, so it must not outrank one we can.
+    var consoleSortBucket: Int {
+        switch self {
+        case .blocked: 0
+        case .done: 1
+        case .working: 2
+        case .idle: 3
+        default: 4
+        }
+    }
+}
+
+extension [ConsoleAgent] {
+    /// The Console order: pinned agents first by pin rank (0 = most recently
+    /// pinned), then the unpinned remainder by status bucket and stable
+    /// Host/workspace/pane keys so rows never jitter between equal statuses.
+    func consoleSorted(
+        pinRank: (ConsoleAgent) -> Int? = { _ in nil }
+    ) -> [ConsoleAgent] {
+        sorted { lhs, rhs in
+            let lhsRank = pinRank(lhs)
+            let rhsRank = pinRank(rhs)
+            switch (lhsRank, rhsRank) {
+            case (let lhsRank?, let rhsRank?):
+                if lhsRank != rhsRank { return lhsRank < rhsRank }
+            case (_?, nil):
+                return true
+            case (nil, _?):
+                return false
+            case (nil, nil):
+                break
+            }
+            let lhsBucket = lhs.agent.status.consoleSortBucket
+            let rhsBucket = rhs.agent.status.consoleSortBucket
+            if lhsBucket != rhsBucket { return lhsBucket < rhsBucket }
+            if lhs.hostName != rhs.hostName { return lhs.hostName < rhs.hostName }
+            if lhs.hostID != rhs.hostID {
+                return lhs.hostID.uuidString < rhs.hostID.uuidString
+            }
+            let lhsWorkspace = lhs.workspaceLabel ?? ""
+            let rhsWorkspace = rhs.workspaceLabel ?? ""
+            if lhsWorkspace != rhsWorkspace { return lhsWorkspace < rhsWorkspace }
+            return lhs.agent.paneID < rhs.agent.paneID
+        }
+    }
+}

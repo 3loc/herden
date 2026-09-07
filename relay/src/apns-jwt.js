@@ -5,8 +5,8 @@
 // for ~50 minutes (per worker instance; APNs accepts concurrent tokens from
 // the same key, so several isolates each holding one is fine).
 //
-// WebCrypto only — no Node built-ins — so the module runs unchanged on
-// Cloudflare Workers and under Node's test runner.
+// WebCrypto only, so the module stays small and runs unchanged under Node's
+// server and test runner.
 
 export const JWT_MAX_AGE_MS = 50 * 60 * 1000;
 

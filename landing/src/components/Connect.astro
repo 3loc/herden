@@ -2,11 +2,11 @@
 const facts = [
   {
     title: 'RPC + events',
-    body: 'An OpenSSH direct-streamlocal channel straight onto <span class="mono">herdr.sock</span> per request, plus one long-lived channel for <span class="mono">events.subscribe</span>.',
+    body: 'An OpenSSH direct-streamlocal channel straight onto <span class="mono">herden.sock</span> per request, plus one long-lived channel for <span class="mono">events.subscribe</span>.',
   },
   {
     title: 'Interactive terminal',
-    body: 'The Agent detail screen requests an SSH PTY and execs <span class="mono">herdr agent attach &lt;pane&gt; --takeover</span>, rendered through a host-managed libghostty session with Metal output.',
+    body: 'The Agent detail screen requests an SSH PTY and execs <span class="mono">herden agent attach &lt;pane&gt; --takeover</span>, rendered through a host-managed libghostty session with Metal output.',
   },
   {
     title: 'Jump Host',
@@ -15,18 +15,16 @@ const facts = [
 ];
 
 const path = [
-  { node: 'Heeler.app', note: 'iPhone' },
+  { node: 'Herden.app', note: 'iPhone' },
   { node: 'jump host', note: 'optional · VPS loopback' },
   { node: 'sshd', note: 'stream-local forwarding' },
-  { node: 'herdr.sock', note: 'ndjson rpc + events' },
+  { node: 'herden.sock', note: 'ndjson rpc + events' },
   { node: 'agent pane', note: 'pty · takeover' },
 ];
 
 // Written as markup so the pre keeps its exact line breaks and token colours.
 const pairingCommands = [
-  '<span class="tk-comment"># on the machine running herdr</span>',
-  '<span class="tk-fn">herdr</span> plugin install ZingerLittleBee/Heeler/plugin <span class="tk-string">--ref main --yes</span>',
-  '<span class="tk-fn">herdr</span> plugin action invoke heeler.pair',
+  '<span class="tk-fn">herden</span> pair',
 ].join('\n');
 ---
 
@@ -35,7 +33,7 @@ const pairingCommands = [
     <div>
       <div class="eyebrow">How it connects</div>
       <h2 class="section-title">Plain SSH. No server changes.</h2>
-      <p class="section-lede">The app speaks herdr's JSON API — newline-delimited JSON over a Unix socket — through SSH. SSH access plus a running herdr server is the whole prerequisite.</p>
+      <p class="section-lede">The app speaks the Herden Host API, newline-delimited JSON over a Unix socket, through SSH. SSH access and the Herden runtime are the whole prerequisite.</p>
       <ul class="facts">
         {
           facts.map((fact) => (
@@ -75,7 +73,8 @@ const pairingCommands = [
         <pre set:html={pairingCommands}></pre>
       </div>
 
-      <p class="aside-note">The <span class="mono">pair</span> action opens a Pairing Code QR. Scan it and the machine is added as a Host — addresses, host key fingerprint, and SSH key enrollment all handled by the code. Nothing to type.</p>
+      <p class="aside-note"><span class="mono">herden pair</span> prints a two-minute Pairing Code directly in your terminal. Scan it and the machine is added with its addresses, pinned Host key, and single-use SSH enrollment.</p>
+      <p class="aside-note">Pairing is built into Herden. There is no separate pairing plugin or backend account to configure.</p>
     </div>
   </div>
 </section>

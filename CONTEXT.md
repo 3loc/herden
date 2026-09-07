@@ -1,11 +1,13 @@
-# Heeler
+# Herden
 
-A native iOS agent console for herdr. One context: the app. Terms owned by herdr keep herdr's meaning; this glossary pins how we use them client-side.
+A unified coding-agent product: the Herden Host runtime plus its native iOS
+console. This glossary pins the language shared by both sides.
 
 ## Language
 
 **Host**:
-A remote machine reachable over SSH that runs a herdr server. The unit a user adds, names, and authenticates against.
+A remote machine reachable over SSH that runs the Herden Host. The unit a user
+adds, names, and authenticates against.
 _Avoid_: server, machine, connection
 
 **Jump Host**:
@@ -24,7 +26,10 @@ The full new-device ceremony: scan a Pairing Code, connect with its Bootstrap Ke
 _Avoid_: scan to connect, binding
 
 **Pairing Code**:
-The versioned pairing payload (candidate addresses, host key fingerprint, Bootstrap Key, expiry) produced by the pairing plugin. The QR image is just its rendering.
+The versioned pairing payload (candidate addresses, host key fingerprint,
+Bootstrap Key, expiry) produced by `herden pair`. The QR image is just its
+rendering. Its `HERDR-PAIR:1` prefix is a compatibility identifier, not a
+product name.
 _Avoid_: QR code, invite
 
 **Bootstrap Key**:
@@ -36,7 +41,8 @@ The server-side step of Pairing: the forced command appends the Device Key's pub
 _Avoid_: install key, authorization
 
 **Agent**:
-A coding agent process (claude, codex, ...) running inside a herdr pane, as reported by herdr's detection. The primary object of the app.
+A coding agent process (claude, codex, ...) running inside a Herden Host pane,
+as reported by the Host's detection. The primary object of the app.
 _Avoid_: bot, task, session
 
 **Staged Image**:
@@ -72,6 +78,11 @@ _Avoid_: window, tile
 herdr's unit that groups tabs and panes around one working directory. New
 Agent can start in an existing Workspace, a new Worktree of one, or a new
 Workspace opened at a remote directory. The id is an opaque string.
+Herden labels Workspace rows as **Spaces** on its home screen, where they are
+listed above the Agents they contain. Creating a Space defaults to the Host's
+home directory and opens its root shell; an explicit directory remains optional.
+Tapping an existing Space opens a reusable ordinary shell tab in that Workspace.
+Starting an Agent is a separate, secondary action.
 _Avoid_: project, folder, window
 
 **Worktree**:
@@ -84,7 +95,12 @@ survives. Snapshot worktree metadata also describes the main checkout; only
 _Avoid_: sandbox, branch copy, checkout folder
 
 **Console**:
-The native dashboard surface: Agents across Hosts as either a flat status-sorted list or a by-Host grouped list with collapsible sections, plus the Agent detail screen.
+The Spaces and Agents picker and the terminal selected from it. The picker
+uses one flat list with Spaces above Agents, an optional Host filter, and Add
+and Settings menus. Swipe right across terminal output to return; swipe left
+across the picker to reopen the last Agent or Space. Horizontal gestures that
+begin in the prompt move its cursor instead. The bottom Agent strip remains
+available for direct switching.
 _Avoid_: dashboard, home
 
 **Pin**:
@@ -133,7 +149,7 @@ _Avoid_: recent link, visible link, link history
 
 **Shell Terminal**:
 The full interactive terminal on an ordinary shell Pane, opened by Agent
-detail's Open Terminal action. Heeler creates a fresh herdr tab in the Agent's
+detail's Open Terminal action. Herden creates a fresh herdr tab in the Agent's
 launch directory and attaches the returned terminal id through herdr's direct
 terminal attach with takeover. libghostty renders it, and direct keyboard
 input and PTY resize go straight to the remote terminal — no Composer, no
@@ -144,18 +160,20 @@ _Avoid_: Attach (that's the Agent-specific display surface), shell console,
 terminal pane view
 
 **Direct Input**:
-The opt-in Agent-detail mode that hides the Composer card and routes the
+Herden's default Agent-detail mode that hides the Composer card and routes the
 system keyboard plus a compact app-owned shortcut row (Esc, Tab, Shift-Tab,
 Enter) into the live Attach PTY. The draft stays in `AgentComposerStore`
-untouched. Mode preference is app-wide, default off. Distinct from Shell
+untouched. Mode preference is app-wide; the legacy injectable model retains its
+Composer fallback for compatibility tests, while the production app defaults
+to Direct Input. Distinct from Shell
 Terminal (ordinary shell, no Agent semantics) and from Terminal Keyboard (the
 iOS/tools swap under Composer).
 _Avoid_: Keys mode, terminal mode, raw input, Attach mode
 
 **Terminal Keyboard**:
 The two keyboard modes below Composer, swapped in place at one shared measured
-height. The standard iOS keyboard edits the draft with composition,
-autocorrection, dictation, and language switching. The tools keyboard replaces
+height. The standard iOS keyboard edits the draft with composition, correction-free
+lowercase input, dictation, and language switching. The tools keyboard replaces
 it with a tabbed pad: Agent controls send key sequences directly to the pane,
 while Skills, Snippets, and terminal appearance edit the draft or the terminal
 and never touch the pane. Direct Input reuses the same measured footprint for

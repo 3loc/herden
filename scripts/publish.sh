@@ -9,8 +9,9 @@
 # Publish mode: local build. The archive is signed with the developer's Apple
 # credentials and uploaded to App Store Connect, neither of which exists on a
 # CI runner, so a tag-triggered workflow cannot produce the artifact. The
-# GitHub release therefore carries the notes and the tag only; the build ships
-# through TestFlight.
+# GitHub release is created with the notes and tag; the tag-triggered Host
+# workflow then attaches signed-by-checksum Linux/macOS binaries and the update
+# manifest, while the iOS build ships through TestFlight.
 #
 # Options arrive as environment variables because make consumes flags of its
 # own (--dry-run is make's -n) and rejects unknown long options, so a flag
@@ -22,7 +23,9 @@ cd "$(dirname "${BASH_SOURCE[0]}")/.."
 
 CHANGELOG="CHANGELOG.md"
 PROJECT_YML="project.yml"
-XCODEPROJ="Heeler.xcodeproj"
+XCODEPROJ="Herden.xcodeproj"
+RUNTIME_MANIFEST="runtime/Cargo.toml"
+RUNTIME_LOCK="runtime/Cargo.lock"
 DEFAULT_BRANCH="main"
 REMOTE="origin"
 
@@ -45,7 +48,8 @@ on_exit() {
     case "$stage" in
         mutating)
             printf '\npublish: failed before anything was pushed. Undo the local edits with:\n'
-            printf '  git checkout -- %s %s %s\n' "$CHANGELOG" "$PROJECT_YML" "$XCODEPROJ"
+            printf '  git checkout -- %s %s %s %s %s\n' \
+                "$CHANGELOG" "$PROJECT_YML" "$XCODEPROJ" "$RUNTIME_MANIFEST" "$RUNTIME_LOCK"
             ;;
         tagged)
             printf '\npublish: %s is already pushed — do NOT re-run publish.\n' "$tag"
@@ -152,6 +156,7 @@ printf '\nPublish %s  (%s)\n\n' "$tag" "$bump_reason"
 row "$CHANGELOG" "[Unreleased] -> [$version] - $today, new empty [Unreleased]"
 row "$PROJECT_YML" "MARKETING_VERSION $current_marketing -> $version ($marketing_lines targets, in lockstep)"
 row "$PROJECT_YML" "CURRENT_PROJECT_VERSION $current_build -> $next_build (App Store Connect rejects reused build numbers)"
+row "$RUNTIME_MANIFEST" "Host runtime version -> $version"
 row "$XCODEPROJ" 'regenerate via `xcodegen generate`'
 echo
 row "build" "make archive  (Release, signed locally)"
@@ -183,7 +188,7 @@ fi
 
 stage="mutating"
 
-notes_file="$(mktemp -t heeler-release-notes)"
+notes_file="$(mktemp -t herden-release-notes)"
 printf '%s\n' "$notes" >"$notes_file"
 
 awk -v ver="$version" -v today="$today" '
@@ -202,10 +207,14 @@ sed -i '' \
     -e "s/^\( *MARKETING_VERSION: \)\".*\"/\1\"$version\"/" \
     -e "s/^\( *CURRENT_PROJECT_VERSION: \)\".*\"/\1\"$next_build\"/" \
     "$PROJECT_YML"
+sed -i '' -e "s/^version = \".*\"/version = \"$version\"/" "$RUNTIME_MANIFEST"
+sed -i '' "/^name = \"herden\"$/,/^\[\[package\]\]$/ s/^version = \".*\"/version = \"$version\"/" "$RUNTIME_LOCK"
 [ "$(grep -c "^ *MARKETING_VERSION: \"$version\"$" "$PROJECT_YML")" = "$marketing_lines" ] \
     || die "MARKETING_VERSION was not rewritten in all $marketing_lines targets"
 [ "$(grep -c "^ *CURRENT_PROJECT_VERSION: \"$next_build\"$" "$PROJECT_YML")" = "$build_lines" ] \
     || die "CURRENT_PROJECT_VERSION was not rewritten in all $build_lines targets"
+[ "$(awk -F'\"' '/^version = / { print $2; exit }' "$RUNTIME_MANIFEST")" = "$version" ] \
+    || die "Host runtime version was not rewritten"
 
 echo "==> Regenerating $XCODEPROJ"
 xcodegen generate
@@ -217,7 +226,7 @@ make upload
 # --- Ship --------------------------------------------------------------------
 
 echo "==> Committing and tagging"
-git add "$CHANGELOG" "$PROJECT_YML" "$XCODEPROJ"
+git add "$CHANGELOG" "$PROJECT_YML" "$XCODEPROJ" "$RUNTIME_MANIFEST" "$RUNTIME_LOCK"
 git commit -m "chore: release $tag"
 
 # Straight to the default branch on purpose: the commit is mechanical, was

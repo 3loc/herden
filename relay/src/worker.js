@@ -1,4 +1,4 @@
-// herdr Push Relay (ADR 0008): a stateless forwarder from Hosts to APNs.
+// Herden Push Relay (ADR 0008): a stateless forwarder from Hosts to APNs.
 //
 // One endpoint, POST /push. Bodies without `kind` are the original alert
 // path (plugin notify hook): device token, APNs environment, encrypted
@@ -46,7 +46,7 @@ const COUNT_MAX = 999;
 
 // The extension rewrites title and body after decrypting; this generic text
 // is what iOS shows if that fails, so it must never look alarming.
-const FALLBACK_ALERT = { title: "Heeler", body: "Agent update" };
+const FALLBACK_ALERT = { title: "Herden", body: "Agent update" };
 
 const encoder = new TextEncoder();
 
@@ -243,7 +243,7 @@ function rateLimited(verdict) {
 /**
  * Build a relay instance: the fetch handler plus its per-instance JWT cache
  * and rate-limit windows. Exported so tests get a fresh instance each; the
- * default export below is the one Cloudflare runs.
+ * default export below is consumed by the standalone HTTP server.
  */
 export function createRelay() {
   const signer = createApnsSigner();
@@ -258,6 +258,9 @@ export function createRelay() {
      */
     async fetch(request, env) {
       const url = new URL(request.url);
+      if (url.pathname === "/health" && request.method === "GET") {
+        return json(200, { status: "ok" });
+      }
       if (url.pathname !== "/push") {
         return json(404, { error: "not_found" });
       }

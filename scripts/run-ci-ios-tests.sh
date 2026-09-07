@@ -15,7 +15,7 @@
 # unprivileged sshd can only authenticate the account it already runs as, whose
 # password CI does not know. The two real-password tests therefore need a
 # disposable account and one root-owned sshd, provisioned only when passwordless
-# sudo is available. Merge CI has it and demands it (HEELER_CI_MANDATORY=1);
+# sudo is available. Merge CI has it and demands it (HERDEN_CI_MANDATORY=1);
 # a developer laptop without it still runs twelve of the thirteen mandatory
 # behaviours, and the script says loudly which one it left out.
 
@@ -23,11 +23,11 @@ set -euo pipefail
 
 repo_root="$(cd "$(dirname "$0")/.." && pwd)"
 
-ci_lane="${HEELER_CI_LANE:-app}"
+ci_lane="${HERDEN_CI_LANE:-app}"
 case "$ci_lane" in
     app | package) ;;
     *)
-        echo "HEELER_CI_LANE must be app or package, got: $ci_lane" >&2
+        echo "HERDEN_CI_LANE must be app or package, got: $ci_lane" >&2
         exit 2
         ;;
 esac
@@ -56,7 +56,7 @@ port_block_base_default=55222
 # How many disjoint blocks the machine hands out before it refuses to guess.
 port_block_count=8
 # Pin a block explicitly, for a caller that would rather not negotiate.
-port_block_base_override="${HEELER_CI_PORT_BASE:-}"
+port_block_base_override="${HERDEN_CI_PORT_BASE:-}"
 
 # Cross-run coordination lives here: one owned lock per port block, Simulator,
 # or account-allocation critical section. A short-lived atomic claim guard
@@ -64,7 +64,7 @@ port_block_base_override="${HEELER_CI_PORT_BASE:-}"
 # Ports still decide whether a block is usable; these locks only let a run say
 # what it holds, and let the next run tell "someone is working" apart from
 # "something crashed".
-lock_root=/tmp/heeler-ci-locks
+lock_root=/tmp/herden-ci-locks
 run_lock_dir=""
 device_lock_dir=""
 account_lock_dir=""
@@ -76,18 +76,18 @@ lock_owner_start="$(ps -o lstart= -p "$$" | sed 's/^ *//; s/ *$//')"
 # AF_UNIX paths cap at 104 bytes on macOS and the fixture nests herdr sockets
 # several directories deep, so anchor at /tmp: the per-user TMPDIR alone is
 # already 69 characters and overflows the limit.
-fixture_dir="$(mktemp -d /tmp/heeler-ci.XXXXXX)"
+fixture_dir="$(mktemp -d /tmp/herden-ci.XXXXXX)"
 app_derived_data_path="$fixture_dir/AppDerivedData"
 package_derived_data_path="$fixture_dir/PackageDerivedData"
 # Stable SourcePackages tree for the app lane. Hosted CI restores this via
 # actions/cache so libghostty's XCFramework is not re-fetched every run.
 # Package-lane builds have no remote SwiftPM deps and leave this unused.
-source_packages_dir="${HEELER_CI_SOURCE_PACKAGES_DIR:-$repo_root/.ci/source-packages}"
+source_packages_dir="${HERDEN_CI_SOURCE_PACKAGES_DIR:-$repo_root/.ci/source-packages}"
 diagnostic_run_id="${GITHUB_RUN_ID:-local-$$}"
 diagnostic_attempt="${GITHUB_RUN_ATTEMPT:-1}"
-diagnostic_root="${RUNNER_TEMP:-/tmp}/heeler-ci-diagnostics-$diagnostic_run_id-$diagnostic_attempt"
-xcodebuild_build_timeout_seconds="${HEELER_XCODEBUILD_BUILD_TIMEOUT_SECONDS:-900}"
-xcodebuild_test_timeout_seconds="${HEELER_XCODEBUILD_TEST_TIMEOUT_SECONDS:-600}"
+diagnostic_root="${RUNNER_TEMP:-/tmp}/herden-ci-diagnostics-$diagnostic_run_id-$diagnostic_attempt"
+xcodebuild_build_timeout_seconds="${HERDEN_XCODEBUILD_BUILD_TIMEOUT_SECONDS:-900}"
+xcodebuild_test_timeout_seconds="${HERDEN_XCODEBUILD_TEST_TIMEOUT_SECONDS:-600}"
 fixture_username="$(id -un)"
 fixture_home="$fixture_dir/home"
 modern_pid=""
@@ -121,7 +121,7 @@ password_log_printed=0
 
 # Merge CI must run the complete mandatory matrix; a laptop need not.
 mandatory_matrix=0
-case "${HEELER_CI_MANDATORY:-${CI:-}}" in
+case "${HERDEN_CI_MANDATORY:-${CI:-}}" in
     1 | true | TRUE) mandatory_matrix=1 ;;
 esac
 
@@ -149,7 +149,7 @@ run_xcodebuild() {
     fi
     # Keep remote checkouts outside the disposable DerivedData path so a
     # restored CI cache survives fixture cleanup. Local path packages such as
-    # HeelerSSH are unaffected.
+    # HerdenSSH are unaffected.
     if [[ "$ci_lane" == "app" ]]; then
         mkdir -p "$source_packages_dir"
         set -- "$@" -clonedSourcePackagesDirPath "$source_packages_dir"
@@ -423,7 +423,7 @@ cleanup() {
     # our device as taken. Dropping them after the fixtures are already down,
     # and after the simulator environment has been cleared, is the safe
     # ordering -- the device must not look free while it still holds our
-    # HEELER_SSH_E2E_* variables.
+    # HERDEN_SSH_E2E_* variables.
     if [[ -n "$active_claim_guard" ]]; then
         if [[ -n "$active_resource_lock" && -d "$active_resource_lock" ]] \
             && [[ "$(cat "$active_resource_lock/token" 2>/dev/null)" \
@@ -442,28 +442,28 @@ trap cleanup EXIT INT TERM
 
 # Clears the fixture environment from both the Simulator and this shell. The
 # shell half matters: the Simulator test process inherits it, so unsetting only
-# the launchd values leaves HEELER_SSH_E2E_REQUIRED visible and the
+# the launchd values leaves HERDEN_SSH_E2E_REQUIRED visible and the
 # fixture-backed suites fail instead of skipping once the fixture is gone.
 clear_simulator_environment() {
     local variable
     local pid
     local unsetenv_pids=()
     for variable in \
-        HEELER_SSH_E2E_REQUIRED \
-        HEELER_SSH_E2E_HOST \
-        HEELER_SSH_E2E_PORT \
-        HEELER_SSH_E2E_PQ_PORT \
-        HEELER_SSH_E2E_USERNAME \
-        HEELER_SSH_E2E_DEVICE_KEY_SEED \
-        HEELER_SSH_E2E_WEAK_PORT \
-        HEELER_SSH_E2E_WEAK_CONTROL_PORT \
-        HEELER_SSH_E2E_LEGACY_PORT \
-        HEELER_SSH_E2E_RESTRICTED_PORT \
-        HEELER_SSH_E2E_STALL_PORT \
-        HEELER_SSH_E2E_STREAMLOCAL_SOCKET \
-        HEELER_SSH_E2E_CONFIG \
-        HEELER_SSH_JUMP_E2E_CONFIG \
-        HEELER_PAIRING_E2E_CONFIG; do
+        HERDEN_SSH_E2E_REQUIRED \
+        HERDEN_SSH_E2E_HOST \
+        HERDEN_SSH_E2E_PORT \
+        HERDEN_SSH_E2E_PQ_PORT \
+        HERDEN_SSH_E2E_USERNAME \
+        HERDEN_SSH_E2E_DEVICE_KEY_SEED \
+        HERDEN_SSH_E2E_WEAK_PORT \
+        HERDEN_SSH_E2E_WEAK_CONTROL_PORT \
+        HERDEN_SSH_E2E_LEGACY_PORT \
+        HERDEN_SSH_E2E_RESTRICTED_PORT \
+        HERDEN_SSH_E2E_STALL_PORT \
+        HERDEN_SSH_E2E_STREAMLOCAL_SOCKET \
+        HERDEN_SSH_E2E_CONFIG \
+        HERDEN_SSH_JUMP_E2E_CONFIG \
+        HERDEN_PAIRING_E2E_CONFIG; do
         # launchctl takes one variable per call and each `simctl spawn` costs
         # seconds; run the round trips concurrently and collect them below.
         if [[ -n "$simulator_udid" ]]; then
@@ -592,13 +592,13 @@ start_password_sshd() {
 password_ssh_preflight() {
     local status
 
-    export HEELER_PASSWORD_SSH_PREFLIGHT_PASSWORD="$password_secret"
+    export HERDEN_PASSWORD_SSH_PREFLIGHT_PASSWORD="$password_secret"
     if /usr/bin/expect <<'EXPECT'
 set timeout 5
 log_user 0
 
-set password $env(HEELER_PASSWORD_SSH_PREFLIGHT_PASSWORD)
-unset env(HEELER_PASSWORD_SSH_PREFLIGHT_PASSWORD)
+set password $env(HERDEN_PASSWORD_SSH_PREFLIGHT_PASSWORD)
+unset env(HERDEN_PASSWORD_SSH_PREFLIGHT_PASSWORD)
 
 spawn /usr/bin/ssh \
     -F /dev/null \
@@ -614,10 +614,10 @@ spawn /usr/bin/ssh \
     -o UserKnownHostsFile=/dev/null \
     -o GlobalKnownHostsFile=/dev/null \
     -o LogLevel=ERROR \
-    -p $env(HEELER_PASSWORD_SSH_PREFLIGHT_PORT) \
-    -l $env(HEELER_PASSWORD_SSH_PREFLIGHT_USERNAME) \
+    -p $env(HERDEN_PASSWORD_SSH_PREFLIGHT_PORT) \
+    -l $env(HERDEN_PASSWORD_SSH_PREFLIGHT_USERNAME) \
     127.0.0.1 \
-    /bin/echo HEELER_PASSWORD_SSH_PREFLIGHT_OK
+    /bin/echo HERDEN_PASSWORD_SSH_PREFLIGHT_OK
 
 expect {
     -re {(?i)password:[[:space:]]*$} {
@@ -629,7 +629,7 @@ expect {
 
 set saw_sentinel 0
 expect {
-    -exact {HEELER_PASSWORD_SSH_PREFLIGHT_OK} {
+    -exact {HERDEN_PASSWORD_SSH_PREFLIGHT_OK} {
         set saw_sentinel 1
         exp_continue
     }
@@ -649,7 +649,7 @@ EXPECT
     else
         status=$?
     fi
-    unset HEELER_PASSWORD_SSH_PREFLIGHT_PASSWORD
+    unset HERDEN_PASSWORD_SSH_PREFLIGHT_PASSWORD
     return "$status"
 }
 
@@ -659,24 +659,24 @@ EXPECT
 create_password_user() (
     local status
 
-    export HEELER_SYSADMINCTL_PASSWORD="$password_secret"
-    export HEELER_SYSADMINCTL_USERNAME="$password_username"
-    export HEELER_SYSADMINCTL_UID="$password_uid"
-    export HEELER_SYSADMINCTL_HOME="$password_home"
+    export HERDEN_SYSADMINCTL_PASSWORD="$password_secret"
+    export HERDEN_SYSADMINCTL_USERNAME="$password_username"
+    export HERDEN_SYSADMINCTL_UID="$password_uid"
+    export HERDEN_SYSADMINCTL_HOME="$password_home"
     if /usr/bin/expect <<'EXPECT'
 set timeout 30
 log_user 0
 
-set password $env(HEELER_SYSADMINCTL_PASSWORD)
-unset env(HEELER_SYSADMINCTL_PASSWORD)
+set password $env(HERDEN_SYSADMINCTL_PASSWORD)
+unset env(HERDEN_SYSADMINCTL_PASSWORD)
 
 spawn /usr/bin/sudo -n /usr/sbin/sysadminctl \
-    -addUser $env(HEELER_SYSADMINCTL_USERNAME) \
-    -fullName {Heeler SSH CI} \
-    -UID $env(HEELER_SYSADMINCTL_UID) \
+    -addUser $env(HERDEN_SYSADMINCTL_USERNAME) \
+    -fullName {Herden SSH CI} \
+    -UID $env(HERDEN_SYSADMINCTL_UID) \
     -GID 20 \
     -shell /bin/zsh \
-    -home $env(HEELER_SYSADMINCTL_HOME) \
+    -home $env(HERDEN_SYSADMINCTL_HOME) \
     -password -
 
 set sent_password 0
@@ -721,10 +721,10 @@ EXPECT
     else
         status=$?
     fi
-    unset HEELER_SYSADMINCTL_PASSWORD
-    unset HEELER_SYSADMINCTL_USERNAME
-    unset HEELER_SYSADMINCTL_UID
-    unset HEELER_SYSADMINCTL_HOME
+    unset HERDEN_SYSADMINCTL_PASSWORD
+    unset HERDEN_SYSADMINCTL_USERNAME
+    unset HERDEN_SYSADMINCTL_UID
+    unset HERDEN_SYSADMINCTL_HOME
     return "$status"
 )
 
@@ -896,7 +896,7 @@ claim_port_block() {
     echo "    port_block_count in this script." >&2
     echo "  - an ORPHAN above outlived its run. Confirm it is yours, then" >&2
     echo "    kill it by pid. This script never kills what it did not start." >&2
-    echo "  - to pin a block yourself: HEELER_CI_PORT_BASE=<base>" >&2
+    echo "  - to pin a block yourself: HERDEN_CI_PORT_BASE=<base>" >&2
     exit 1
 }
 
@@ -908,7 +908,7 @@ printf 'Claimed fixture port block %s-%s\n' \
 # setup as well as build-for-testing. Ports alone are not enough for two runs
 # to coexist: the fixture reaches the tests through `simctl launchctl setenv`,
 # which is per-device state. Two runs sharing one device overwrite each other's
-# HEELER_SSH_E2E_* and one of them tests the other's fixture -- silently,
+# HERDEN_SSH_E2E_* and one of them tests the other's fixture -- silently,
 # unlike a port clash.
 #
 # Candidates come back last-first, preserving the previous choice of the last
@@ -964,7 +964,7 @@ claim_simulator() {
     return 1
 }
 
-requested_simulator_udid="${HEELER_CI_SIMULATOR_UDID:-}"
+requested_simulator_udid="${HERDEN_CI_SIMULATOR_UDID:-}"
 simulator_udid=""
 if [[ -n "$requested_simulator_udid" ]]; then
     if claim_simulator "$requested_simulator_udid"; then
@@ -973,7 +973,7 @@ if [[ -n "$requested_simulator_udid" ]]; then
         printf 'Requested simulator %s is claimed by live run pid %s.\n' \
             "$requested_simulator_udid" \
             "$(simulator_held_by "$requested_simulator_udid" || printf 'unknown')" >&2
-        echo "Choose a different HEELER_CI_SIMULATOR_UDID or wait for that run." >&2
+        echo "Choose a different HERDEN_CI_SIMULATOR_UDID or wait for that run." >&2
         exit 1
     fi
 else
@@ -994,7 +994,7 @@ if [[ -z "$simulator_udid" ]]; then
     echo "A run needs a device of its own: the fixture is delivered through" >&2
     echo "per-device launchctl environment, which two runs would overwrite." >&2
     echo "Create another iPhone 17 with 'xcrun simctl create', or pin one" >&2
-    echo "explicitly with HEELER_CI_SIMULATOR_UDID=<udid>." >&2
+    echo "explicitly with HERDEN_CI_SIMULATOR_UDID=<udid>." >&2
     exit 1
 fi
 printf 'Claimed simulator %s\n' "$simulator_udid" >&2
@@ -1018,9 +1018,9 @@ fi
 
 chmod 755 "$fixture_dir"
 mkdir -p \
-    "$fixture_home/.config/herdr/sessions/fixture" \
+    "$fixture_home/.config/herden/sessions/fixture" \
     "$fixture_home/.codex/skills/fixture" \
-    "$fixture_home/.heeler-ci" \
+    "$fixture_home/.herden-ci" \
     "$fixture_dir/bin"
 printf '%s\n' \
     '---' \
@@ -1053,15 +1053,15 @@ printf '%s\n' \
     '    printf "GOT:%s\\n" "$line"' \
     '    stty size' \
     'done' \
-    > "$fixture_home/.heeler-ci/fake-attach"
-chmod 755 "$fixture_home/.heeler-ci/fake-attach"
+    > "$fixture_home/.herden-ci/fake-attach"
+chmod 755 "$fixture_home/.herden-ci/fake-attach"
 
-# The cold-start wake runs `herdr remote-client-bridge` on the Host. The fixture
-# has no herdr server, and a real one must never be reached, so stand in for the
+# The cold-start wake runs `herden remote-client-bridge` on the Host. The fixture
+# has no Herden server, and a real one must never be reached, so stand in for the
 # binary with a stub that succeeds and does nothing. Without it the combined
 # cause tests see command-not-found instead of a wake that simply did not help.
-printf '%s\n' '#!/bin/sh' 'exit 0' > "$fixture_dir/bin/herdr"
-chmod 755 "$fixture_dir/bin/herdr"
+printf '%s\n' '#!/bin/sh' 'exit 0' > "$fixture_dir/bin/herden"
+chmod 755 "$fixture_dir/bin/herden"
 
 # The acceptance Host must have no socat. The forced session PATH below is the
 # only PATH the product ever sees on this Host, so assert socat is absent from
@@ -1082,7 +1082,7 @@ ssh-keygen -q -t ed25519 -N '' -f "$fixture_dir/host_jump_target_ed25519"
 
 # A throwaway Device Key per run. The suites receive its seed in the fixture
 # configuration, so no key committed to this repository ever authorizes a login.
-ssh-keygen -q -t ed25519 -N '' -C heeler-ci-device-key -f "$fixture_dir/device_key"
+ssh-keygen -q -t ed25519 -N '' -C herden-ci-device-key -f "$fixture_dir/device_key"
 device_key_seed="$(/usr/bin/python3 \
     scripts/fixtures/openssh-ed25519-seed.py "$fixture_dir/device_key")"
 cp "$fixture_dir/device_key.pub" "$fixture_dir/authorized_keys"
@@ -1252,14 +1252,14 @@ write_pairing_config \
     "$fixture_dir/host_jump_target_ed25519" \
     "$fixture_dir/sshd-pairing-mismatched.pid" > "$pairing_mismatched_config"
 
-streamlocal_socket="$fixture_home/.config/herdr/herdr.sock"
-streamlocal_stale_socket="$fixture_home/.heeler-ci/stale.sock"
-streamlocal_wake_failure_socket="$fixture_home/.heeler-ci/stale-wake-failure.sock"
-streamlocal_missing_socket="$fixture_home/.heeler-ci/missing.sock"
-streamlocal_count_file="$fixture_home/.heeler-ci/streamlocal-count"
+streamlocal_socket="$fixture_home/.config/herden/herden.sock"
+streamlocal_stale_socket="$fixture_home/.herden-ci/stale.sock"
+streamlocal_wake_failure_socket="$fixture_home/.herden-ci/stale-wake-failure.sock"
+streamlocal_missing_socket="$fixture_home/.herden-ci/missing.sock"
+streamlocal_count_file="$fixture_home/.herden-ci/streamlocal-count"
 ln -s \
     "$streamlocal_socket" \
-    "$fixture_home/.config/herdr/sessions/fixture/herdr.sock"
+    "$fixture_home/.config/herden/sessions/fixture/herden.sock"
 /usr/bin/python3 scripts/fixtures/fake-herdr-streamlocal.py \
     --socket "$streamlocal_socket" \
     --stale-socket "$streamlocal_stale_socket" \
@@ -1314,7 +1314,7 @@ pairing_mismatched_pid=$started_sshd_pid
 # unprivileged: only root can verify an account password, and an unprivileged
 # sshd can only authenticate the account it already runs as.
 if [[ "$ci_lane" == "app" ]] && sudo -n true >/dev/null 2>&1; then
-    password_username="heelerssh${RANDOM}"
+    password_username="herdenssh${RANDOM}"
     password_secret="$(uuidgen)-$(uuidgen)"
     password_home="$fixture_dir/password-home"
     account_lock_dir="$lock_root/password-account-allocation"
@@ -1360,8 +1360,8 @@ if [[ "$ci_lane" == "app" ]] && sudo -n true >/dev/null 2>&1; then
         > "$password_config"
     password_fixture_available=1
     # Fail on host account authentication before compilation can hide it.
-    export HEELER_PASSWORD_SSH_PREFLIGHT_PORT="$password_port"
-    export HEELER_PASSWORD_SSH_PREFLIGHT_USERNAME="$password_username"
+    export HERDEN_PASSWORD_SSH_PREFLIGHT_PORT="$password_port"
+    export HERDEN_PASSWORD_SSH_PREFLIGHT_USERNAME="$password_username"
     preflight_status=0
     start_password_sshd || exit 1
     password_ssh_preflight || preflight_status=$?
@@ -1371,8 +1371,8 @@ if [[ "$ci_lane" == "app" ]] && sudo -n true >/dev/null 2>&1; then
     if [[ "$stop_status" == "0" ]]; then
         password_pid=""
     fi
-    unset HEELER_PASSWORD_SSH_PREFLIGHT_PORT
-    unset HEELER_PASSWORD_SSH_PREFLIGHT_USERNAME
+    unset HERDEN_PASSWORD_SSH_PREFLIGHT_PORT
+    unset HERDEN_PASSWORD_SSH_PREFLIGHT_USERNAME
     if [[ "$preflight_status" != "0" || "$stop_status" != "0" ]]; then
         cat "$password_log" >&2
         password_log_printed=1
@@ -1461,20 +1461,20 @@ if ! fixture_is_listening; then
     exit 1
 fi
 
-# `HEELER_SSH_E2E_REQUIRED=1` is the contract that turns a missing fixture into
-# a failure instead of a green skip: see Tests/HeelerTests/Support/RealSSHFixture.
-export HEELER_SSH_E2E_REQUIRED=1
-export HEELER_SSH_E2E_HOST=127.0.0.1
-export HEELER_SSH_E2E_PORT="$modern_port"
-export HEELER_SSH_E2E_PQ_PORT="$post_quantum_port"
-export HEELER_SSH_E2E_LEGACY_PORT="$legacy_port"
-export HEELER_SSH_E2E_RESTRICTED_PORT="$restricted_port"
-export HEELER_SSH_E2E_STALL_PORT="$stall_port"
-export HEELER_SSH_E2E_USERNAME="$fixture_username"
-export HEELER_SSH_E2E_DEVICE_KEY_SEED="$device_key_seed"
-export HEELER_SSH_E2E_STREAMLOCAL_SOCKET="$streamlocal_socket"
-export HEELER_SSH_E2E_WEAK_PORT="$weak_network_port"
-export HEELER_SSH_E2E_WEAK_CONTROL_PORT="$weak_network_control_port"
+# `HERDEN_SSH_E2E_REQUIRED=1` is the contract that turns a missing fixture into
+# a failure instead of a green skip: see Tests/HerdenTests/Support/RealSSHFixture.
+export HERDEN_SSH_E2E_REQUIRED=1
+export HERDEN_SSH_E2E_HOST=127.0.0.1
+export HERDEN_SSH_E2E_PORT="$modern_port"
+export HERDEN_SSH_E2E_PQ_PORT="$post_quantum_port"
+export HERDEN_SSH_E2E_LEGACY_PORT="$legacy_port"
+export HERDEN_SSH_E2E_RESTRICTED_PORT="$restricted_port"
+export HERDEN_SSH_E2E_STALL_PORT="$stall_port"
+export HERDEN_SSH_E2E_USERNAME="$fixture_username"
+export HERDEN_SSH_E2E_DEVICE_KEY_SEED="$device_key_seed"
+export HERDEN_SSH_E2E_STREAMLOCAL_SOCKET="$streamlocal_socket"
+export HERDEN_SSH_E2E_WEAK_PORT="$weak_network_port"
+export HERDEN_SSH_E2E_WEAK_CONTROL_PORT="$weak_network_control_port"
 
 password_fixture_json=null
 if [[ "$password_fixture_available" == "1" ]]; then
@@ -1549,7 +1549,7 @@ pinned_lane_logs=()
 
 # Swift Testing filters exit zero having run nothing, so every mandatory suite
 # asserts its executed count. `run_suite` also refuses any skip: with
-# HEELER_SSH_E2E_REQUIRED set a fixture-backed suite must fail rather than skip,
+# HERDEN_SSH_E2E_REQUIRED set a fixture-backed suite must fail rather than skip,
 # so a skip here means a condition that can still hide missing coverage.
 run_suite() {
     local lane=$1
@@ -1568,7 +1568,7 @@ run_suite() {
         exit 1
     fi
     for suite in "$@"; do
-        selectors+=("-only-testing:HeelerTests/$suite")
+        selectors+=("-only-testing:HerdenTests/$suite")
     done
 
     if [[ "$expected_suites" != "1" ]]; then
@@ -1576,8 +1576,8 @@ run_suite() {
     fi
     run_xcodebuild "$lane" "$xcodebuild_test_timeout_seconds" \
         test-without-building \
-        -project Heeler.xcodeproj \
-        -scheme Heeler \
+        -project Herden.xcodeproj \
+        -scheme Herden \
         -derivedDataPath "$app_derived_data_path" \
         -destination "$simulator_destination" \
         -collect-test-diagnostics never \
@@ -1690,7 +1690,7 @@ assert_full_lane_coverage() {
 
 if [[ "$ci_lane" == "app" ]]; then
 # The direct-streamlocal suite asserts that a stale socket is still stale.
-# HeelerSSHTransportBehaviorE2ETests relinks that socket, so it must run after.
+# HerdenSSHTransportBehaviorE2ETests relinks that socket, so it must run after.
 # Swift Testing counts a skipped test in the run total, so only the permitted
 # skip count changes when the privileged password fixture is absent.
 session_skip_count=0
@@ -1705,8 +1705,8 @@ echo "==> Fixture provisioning finished at t+${SECONDS}s"
 # measured at roughly half a minute per xcodebuild invocation on CI.
 run_xcodebuild "Build for testing" "$xcodebuild_build_timeout_seconds" \
     build-for-testing \
-    -project Heeler.xcodeproj \
-    -scheme Heeler \
+    -project Herden.xcodeproj \
+    -scheme Herden \
     -derivedDataPath "$app_derived_data_path" \
     -destination "$simulator_destination" \
     -collect-test-diagnostics never
@@ -1719,19 +1719,19 @@ echo "==> Simulator boot wait after the build overlap: $((SECONDS - boot_wait_st
 # static analysis cannot follow; unset again by clear_simulator_environment.
 # shellcheck disable=SC2034
 {
-    HEELER_SSH_E2E_CONFIG="$fixture_configuration_base64"
-    HEELER_SSH_JUMP_E2E_CONFIG="$jump_fixture_configuration_base64"
-    HEELER_PAIRING_E2E_CONFIG="$pairing_fixture_configuration_base64"
+    HERDEN_SSH_E2E_CONFIG="$fixture_configuration_base64"
+    HERDEN_SSH_JUMP_E2E_CONFIG="$jump_fixture_configuration_base64"
+    HERDEN_PAIRING_E2E_CONFIG="$pairing_fixture_configuration_base64"
 }
 push_simulator_environment \
-    HEELER_SSH_E2E_CONFIG \
-    HEELER_SSH_JUMP_E2E_CONFIG \
-    HEELER_PAIRING_E2E_CONFIG
+    HERDEN_SSH_E2E_CONFIG \
+    HERDEN_SSH_JUMP_E2E_CONFIG \
+    HERDEN_PAIRING_E2E_CONFIG
 if [[ "$password_fixture_available" == "1" ]]; then
     start_password_sshd || exit 1
 fi
-run_suite HeelerSSHSessionE2ETests 13 1 "$session_skip_count" \
-    HeelerSSHSessionE2ETests
+run_suite HerdenSSHSessionE2ETests 13 1 "$session_skip_count" \
+    HerdenSSHSessionE2ETests
 if [[ "$password_fixture_available" == "1" ]]; then
     if stop_privileged_sshd "$password_pid" "$password_pid_file"; then
         password_pid=""
@@ -1739,12 +1739,12 @@ if [[ "$password_fixture_available" == "1" ]]; then
         exit 1
     fi
 fi
-run_suite HeelerSSHDirectStreamLocalE2ETests 9 1 0 \
-    HeelerSSHDirectStreamLocalE2ETests
+run_suite HerdenSSHDirectStreamLocalE2ETests 9 1 0 \
+    HerdenSSHDirectStreamLocalE2ETests
 run_suite SharedFixtureE2ETests 94 6 0 \
-    HeelerSSHPTYE2ETests \
-    HeelerSSHJumpHostGateE2ETests \
-    HeelerSSHTransportBehaviorE2ETests \
+    HerdenSSHPTYE2ETests \
+    HerdenSSHJumpHostGateE2ETests \
+    HerdenSSHTransportBehaviorE2ETests \
     ImageStagingE2ETests \
     WeakNetworkE2ETests \
     PairingCeremonyE2ETests
@@ -1752,9 +1752,9 @@ run_suite SharedFixtureE2ETests 94 6 0 \
 # Named behaviour assertions still identify their owning suite. Point those
 # logical names at the one serialized lane log rather than duplicating it.
 for suite in \
-    HeelerSSHPTYE2ETests \
-    HeelerSSHJumpHostGateE2ETests \
-    HeelerSSHTransportBehaviorE2ETests \
+    HerdenSSHPTYE2ETests \
+    HerdenSSHJumpHostGateE2ETests \
+    HerdenSSHTransportBehaviorE2ETests \
     ImageStagingE2ETests \
     WeakNetworkE2ETests \
     PairingCeremonyE2ETests; do
@@ -1762,94 +1762,94 @@ for suite in \
 done
 
 if [[ "$password_fixture_available" == "1" ]]; then
-    assert_behavior "real Password" HeelerSSHSessionE2ETests \
+    assert_behavior "real Password" HerdenSSHSessionE2ETests \
         '"password authentication and exec round trip through real sshd"'
 fi
-assert_behavior "Device Key" HeelerSSHSessionE2ETests \
+assert_behavior "Device Key" HerdenSSHSessionE2ETests \
     '"authorized Device Key authenticates and executes through real sshd"'
 assert_behavior "Bootstrap Key" PairingCeremonyE2ETests \
     'fullCeremonyEnrollsTheDeviceKeyAndVerifies()'
-assert_behavior "two-hop trust" HeelerSSHJumpHostGateE2ETests \
+assert_behavior "two-hop trust" HerdenSSHJumpHostGateE2ETests \
     '"TOFU records both endpoints once and identifies either mismatch"'
 # Trust at both hops is not the product. This is: connect the jump, forward to
 # the target, authenticate it, exchange a real ping, and tear the two sessions
 # down in order. Folded into the trust assertion it was invisible to rename.
-assert_behavior "Jump Host product path" HeelerSSHJumpHostGateE2ETests \
+assert_behavior "Jump Host product path" HerdenSSHJumpHostGateE2ETests \
     '"protocol 17 ping traverses independent SSH hops"'
-assert_behavior "Events" HeelerSSHTransportBehaviorE2ETests \
+assert_behavior "Events" HerdenSSHTransportBehaviorE2ETests \
     '"direct Host Events preserve framing, concurrency, and slot reuse"'
-assert_behavior "PTY" HeelerSSHPTYE2ETests \
+assert_behavior "PTY" HerdenSSHPTYE2ETests \
     '"PTY exec preserves raw IO, merged output, geometry, and exit status"'
-assert_behavior "resize" HeelerSSHTransportBehaviorE2ETests \
+assert_behavior "resize" HerdenSSHTransportBehaviorE2ETests \
     '"direct Host Attach preserves PTY IO, resize, end, and reuse"'
-assert_behavior "shell terminal creation" HeelerSSHTransportBehaviorE2ETests \
+assert_behavior "shell terminal creation" HerdenSSHTransportBehaviorE2ETests \
     '"shell terminal creation sends one exact tab create request"'
 assert_behavior "direct Host shell terminal Attach" \
-    HeelerSSHTransportBehaviorE2ETests \
+    HerdenSSHTransportBehaviorE2ETests \
     '"direct Host ordinary terminal Attach preserves PTY behavior"'
 assert_behavior "Jump Host shell terminal Attach" \
-    HeelerSSHTransportBehaviorE2ETests \
+    HerdenSSHTransportBehaviorE2ETests \
     '"Jump Host ordinary terminal Attach preserves PTY behavior"'
-assert_behavior "RPC does not stall Attach" HeelerSSHTransportBehaviorE2ETests \
+assert_behavior "RPC does not stall Attach" HerdenSSHTransportBehaviorE2ETests \
     '"direct Host RPC does not stall Attach"'
 assert_behavior "RPC does not stall Attach on a Jump Host" \
-    HeelerSSHTransportBehaviorE2ETests \
+    HerdenSSHTransportBehaviorE2ETests \
     '"Jump Host RPC does not stall Attach"'
 # These writes can return healthy response envelopes even when a serializer
 # silently drops a field. Keep every distinct wire contract named (#165).
-assert_behavior "agent rename params" HeelerSSHTransportBehaviorE2ETests \
+assert_behavior "agent rename params" HerdenSSHTransportBehaviorE2ETests \
     '"agent rename sends its custom name and target exactly"'
-assert_behavior "agent rename clear omission" HeelerSSHTransportBehaviorE2ETests \
+assert_behavior "agent rename clear omission" HerdenSSHTransportBehaviorE2ETests \
     '"agent rename omits name when clearing a custom name"'
-assert_behavior "workspace rename params" HeelerSSHTransportBehaviorE2ETests \
+assert_behavior "workspace rename params" HerdenSSHTransportBehaviorE2ETests \
     '"workspace rename sends its label and workspace id exactly"'
-assert_behavior "pane read params and result" HeelerSSHTransportBehaviorE2ETests \
+assert_behavior "pane read params and result" HerdenSSHTransportBehaviorE2ETests \
     '"pane read sends exact params and round trips the result"'
-assert_behavior "worktree remove params" HeelerSSHTransportBehaviorE2ETests \
+assert_behavior "worktree remove params" HerdenSSHTransportBehaviorE2ETests \
     '"confirmed worktree removal crosses the real wire dispatch seam"'
 assert_behavior "worktree remove stale authorization writes nothing" \
-    HeelerSSHTransportBehaviorE2ETests \
+    HerdenSSHTransportBehaviorE2ETests \
     '"stale worktree authorization writes no request bytes"'
-assert_behavior "herdr API rejection" HeelerSSHTransportBehaviorE2ETests \
+assert_behavior "herdr API rejection" HerdenSSHTransportBehaviorE2ETests \
     '"a herdr error envelope surfaces as a typed API rejection"'
-assert_behavior "session API rejection mapping" HeelerSSHTransportBehaviorE2ETests \
+assert_behavior "session API rejection mapping" HerdenSSHTransportBehaviorE2ETests \
     '"the session maps a herdr rejection to apiRejected"'
 # herdr 0.7.5's `agent_pane_busy` window, which 0.8.0 no longer opens: nothing
 # live exercises this any more, so a named assertion is the only thing standing
 # between a refactor and silently dropping a documented server behaviour (#128).
-assert_behavior "agent_pane_busy retry" HeelerSSHTransportBehaviorE2ETests \
+assert_behavior "agent_pane_busy retry" HerdenSSHTransportBehaviorE2ETests \
     '"agent start waits out a fresh pane'"'"'s booting shell"'
 # Each compensation cleans up different Host state; a count alone cannot tell
 # which of them a change removed. New Workspace (#230) also names the
 # create-then-start shape and the ambiguous-failure preserve rule, because
 # those are the two ways that path can silently drift without changing the
 # suite total.
-assert_behavior "failed launch closes its pane" HeelerSSHTransportBehaviorE2ETests \
+assert_behavior "failed launch closes its pane" HerdenSSHTransportBehaviorE2ETests \
     '"a refused agent start closes the pane it created"'
 assert_behavior "failed launch removes its worktree" \
-    HeelerSSHTransportBehaviorE2ETests \
+    HerdenSSHTransportBehaviorE2ETests \
     '"a refused worktree agent start removes the worktree it created"'
 assert_behavior "new-workspace launch skips tab.create" \
-    HeelerSSHTransportBehaviorE2ETests \
+    HerdenSSHTransportBehaviorE2ETests \
     '"a new-workspace agent start creates the workspace then starts in its root pane"'
 assert_behavior "failed launch closes its workspace" \
-    HeelerSSHTransportBehaviorE2ETests \
+    HerdenSSHTransportBehaviorE2ETests \
     '"a refused new-workspace agent start closes the workspace it created"'
 assert_behavior "ambiguous launch preserves its workspace" \
-    HeelerSSHTransportBehaviorE2ETests \
+    HerdenSSHTransportBehaviorE2ETests \
     '"an ambiguous new-workspace agent start does not close the workspace"'
 assert_behavior "SFTP" ImageStagingE2ETests \
     'directStagingStreamsPrivateFileAndAtomicallyRenamesThePart()'
-assert_behavior "forwarding denial" HeelerSSHDirectStreamLocalE2ETests \
+assert_behavior "forwarding denial" HerdenSSHDirectStreamLocalE2ETests \
     '"global forwarding denial reports the honest combined cause"'
-assert_behavior "key-policy forwarding denial" HeelerSSHDirectStreamLocalE2ETests \
+assert_behavior "key-policy forwarding denial" HerdenSSHDirectStreamLocalE2ETests \
     '"authorized_keys forwarding denial reports the honest combined cause"'
 assert_behavior "forwarding denial surviving a failed wake" \
-    HeelerSSHDirectStreamLocalE2ETests \
+    HerdenSSHDirectStreamLocalE2ETests \
     '"a failed wake does not narrow a forwarding denial"'
-assert_behavior "cancellation" HeelerSSHDirectStreamLocalE2ETests \
+assert_behavior "cancellation" HerdenSSHDirectStreamLocalE2ETests \
     '"cancellation closes only its channel and preserves connection reuse"'
-assert_behavior "teardown" HeelerSSHSessionE2ETests \
+assert_behavior "teardown" HerdenSSHSessionE2ETests \
     '"clean channel close leaves the connection reusable"'
 
 # The weak-network half of the stress criterion. Each of these runs the named
@@ -1885,10 +1885,10 @@ if [[ "$ci_lane" == "package" ]]; then
 # Same overlap as the app lane: compilation needs the destination to exist,
 # not to be booted, so remaining simulator boot runs under the build.
 (
-    cd Packages/HeelerSSH
-    run_xcodebuild "HeelerSSH package build" "$xcodebuild_build_timeout_seconds" \
+    cd Packages/HerdenSSH
+    run_xcodebuild "HerdenSSH package build" "$xcodebuild_build_timeout_seconds" \
         build-for-testing \
-        -scheme HeelerSSH \
+        -scheme HerdenSSH \
         -derivedDataPath "$package_derived_data_path" \
         -destination "$simulator_destination" \
         -collect-test-diagnostics never
@@ -1898,23 +1898,23 @@ xcrun simctl bootstatus "$simulator_udid" -b
 echo "==> Simulator boot wait after the build overlap: $((SECONDS - boot_wait_started))s"
 
 push_simulator_environment \
-    HEELER_SSH_E2E_REQUIRED \
-    HEELER_SSH_E2E_HOST \
-    HEELER_SSH_E2E_PORT \
-    HEELER_SSH_E2E_PQ_PORT \
-    HEELER_SSH_E2E_RESTRICTED_PORT \
-    HEELER_SSH_E2E_USERNAME \
-    HEELER_SSH_E2E_DEVICE_KEY_SEED \
-    HEELER_SSH_E2E_WEAK_PORT \
-    HEELER_SSH_E2E_WEAK_CONTROL_PORT \
-    HEELER_SSH_E2E_STREAMLOCAL_SOCKET
+    HERDEN_SSH_E2E_REQUIRED \
+    HERDEN_SSH_E2E_HOST \
+    HERDEN_SSH_E2E_PORT \
+    HERDEN_SSH_E2E_PQ_PORT \
+    HERDEN_SSH_E2E_RESTRICTED_PORT \
+    HERDEN_SSH_E2E_USERNAME \
+    HERDEN_SSH_E2E_DEVICE_KEY_SEED \
+    HERDEN_SSH_E2E_WEAK_PORT \
+    HERDEN_SSH_E2E_WEAK_CONTROL_PORT \
+    HERDEN_SSH_E2E_STREAMLOCAL_SOCKET
 
 package_e2e_log="$fixture_dir/package-e2e.log"
 (
-    cd Packages/HeelerSSH
-    run_xcodebuild "HeelerSSH package E2E" "$xcodebuild_test_timeout_seconds" \
+    cd Packages/HerdenSSH
+    run_xcodebuild "HerdenSSH package E2E" "$xcodebuild_test_timeout_seconds" \
         test-without-building \
-        -scheme HeelerSSH \
+        -scheme HerdenSSH \
         -derivedDataPath "$package_derived_data_path" \
         -destination "$simulator_destination" \
         -collect-test-diagnostics never
@@ -2017,7 +2017,7 @@ if grep -q 'Suite "Session driver resource e2e" skipped' "$package_e2e_log" \
     || ! grep -q \
         'Test "a bridge write to a closed peer reports peerClosed" passed' \
         "$package_e2e_log"; then
-    echo "The mandatory HeelerSSH package suites did not execute all forty-nine tests" >&2
+    echo "The mandatory HerdenSSH package suites did not execute all forty-nine tests" >&2
     exit 1
 fi
 exit 0
@@ -2025,19 +2025,19 @@ fi
 
 # The full lane runs with no fixture configured, so every fixture-backed suite
 # must skip — hence the clear above. The gate is still in force, though, and
-# `HEELER_SSH_E2E_REQUIRED=0` says exactly that: driven by the gate, nothing
+# `HERDEN_SSH_E2E_REQUIRED=0` says exactly that: driven by the gate, nothing
 # configured. Suites whose only remaining route is a machine-owned resource
 # (PairingCeremonyE2ETests would otherwise re-target the developer's own sshd
 # and rewrite their real authorized_keys) refuse it and skip; see
 # RealSSHFixture.isUnderMergeGate. cleanup() unsets it again on exit.
-export HEELER_SSH_E2E_REQUIRED=0
-xcrun simctl spawn "$simulator_udid" launchctl setenv HEELER_SSH_E2E_REQUIRED 0
+export HERDEN_SSH_E2E_REQUIRED=0
+xcrun simctl spawn "$simulator_udid" launchctl setenv HERDEN_SSH_E2E_REQUIRED 0
 
 full_lane_log="$fixture_dir/full-lane.log"
 run_xcodebuild "Full app test lane" "$xcodebuild_test_timeout_seconds" \
     test-without-building \
-    -project Heeler.xcodeproj \
-    -scheme Heeler \
+    -project Herden.xcodeproj \
+    -scheme Herden \
     -derivedDataPath "$app_derived_data_path" \
     -destination "$simulator_destination" \
     -collect-test-diagnostics never \

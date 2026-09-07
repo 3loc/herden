@@ -43,7 +43,7 @@ opened as an activity envelope, and vice versa.
 Decrypted plaintext (canonical form):
 
 ```json
-{"agents": [{"kind": "claude", "name": "reviewer", "pane": "wV:p1", "status": "blocked", "title": "...", "workspace": "Heeler"}],
+{"agents": [{"kind": "claude", "name": "reviewer", "pane": "wV:p1", "status": "blocked", "title": "...", "workspace": "Herden"}],
  "host": "mbp", "v": 1}
 ```
 
@@ -164,5 +164,5 @@ reproduced byte-for-byte by the seal side and opened by the open side;
 `invalid` vectors must fail with the given typed error. Includes the
 cross-AAD case proving domain separation. Pin-order cases also carry
 `inventory`, `pinned_pane_ids`, and `counts` so both suites pin the
-shared sort rule. Consumed by both the Node suite and HeelerTests;
+shared sort rule. Consumed by both the Node suite and HerdenTests;
 regenerate only via an independent raw-crypto script.

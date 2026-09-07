@@ -1,14 +1,14 @@
 <div align="center">
 
-<img src="docs/images/logo.png" width="96" alt="Heeler logo" />
+<img src="docs/images/logo.png" width="96" alt="Herden logo" />
 
-# Heeler
+# Herden
 
 **[herdr](https://herdr.dev) 的原生 iOS 伴侣应用 —— herdr 是一个 agent 优先的终端运行时。**
 
-[![CI](https://github.com/ZingerLittleBee/Heeler/actions/workflows/ci.yml/badge.svg)](https://github.com/ZingerLittleBee/Heeler/actions/workflows/ci.yml)
+[![CI](https://github.com/3loc/herden/actions/workflows/ci.yml/badge.svg)](https://github.com/3loc/herden/actions/workflows/ci.yml)
 [![License: AGPL v3](https://img.shields.io/badge/License-AGPL_v3-blue.svg)](LICENSE)
-[![GitHub stars](https://img.shields.io/github/stars/ZingerLittleBee/Heeler?style=flat)](https://github.com/ZingerLittleBee/Heeler/stargazers)
+[![GitHub stars](https://img.shields.io/github/stars/3loc/herden?style=flat)](https://github.com/3loc/herden/stargazers)
 [![Swift](https://img.shields.io/badge/Swift-6-F05138?logo=swift&logoColor=white)](https://www.swift.org)
 [![iOS](https://img.shields.io/badge/iOS-18%2B-000000?logo=apple&logoColor=white)](https://developer.apple.com/ios/)
 [![TestFlight](https://img.shields.io/badge/TestFlight-beta-0D96F6?logo=apple&logoColor=white)](https://testflight.apple.com/join/aXSxRn4r)
@@ -21,17 +21,13 @@
 
 ---
 
-Heeler 是一个 **agent 控制台**：把所有机器上正在运行的 coding agent 汇成一个原生仪表盘，按「谁需要你」排序。打开一个 Agent 即可阅读并操控它的实时终端，在原生 Composer 里用完整的 iOS 键盘起草，一次 Send 投递完整消息 —— 全程只走普通 SSH。
+Herden 是一个 **agent 控制台**：把所有机器上正在运行的 coding agent 汇成一个原生仪表盘，按「谁需要你」排序。打开一个 Agent 即可阅读并操控它的实时终端，在原生 Composer 里用完整的 iOS 键盘起草，一次 Send 投递完整消息 —— 全程只走普通 SSH。
 
 ## 截图
 
-| Agent Console | 实时终端 | Composer + 工具键盘 |
-| --- | --- | --- |
-| <img src="docs/images/console-iphone.png" width="240" alt="iPhone 上的 Agent Console" /> | <img src="docs/images/live-terminal-iphone.png" width="240" alt="iPhone 上使用 Direct Input 的 Agent 实时终端" /> | <img src="docs/images/agent-iphone.png" width="240" alt="iPhone 上带工具键盘的 Agent 终端" /> |
-
-| Terminal | Skills | 实时活动 |
-| --- | --- | --- |
-| <img src="docs/images/terminal-iphone.png" width="240" alt="iPhone 上带 Text / Keys 的普通 Terminal" /> | <img src="docs/images/skills-iphone.png" width="240" alt="iPhone 上 Composer 的 Skills 建议" /> | <img src="docs/images/live-activity-iphone.png" width="240" alt="iPhone 锁屏上实时跟踪 Agent 的实时活动" /> |
+| Agent 控制 | Composer | Terminal | 实时活动 |
+| --- | --- | --- | --- |
+| <img src="docs/images/agent-iphone.png" width="220" alt="iPhone 上带工具键盘的 Agent 终端" /> | <img src="docs/images/composer-iphone.png" width="220" alt="iPhone 上的 Agent 终端与 Composer" /> | <img src="docs/images/terminal-iphone.png" width="220" alt="iPhone 上带 Text / Keys 的普通 Terminal" /> | <img src="docs/images/live-activity-iphone.png" width="220" alt="iPhone 锁屏上实时跟踪 Agent 的实时活动" /> |
 
 ## 功能
 
@@ -59,7 +55,7 @@ Heeler 是一个 **agent 控制台**：把所有机器上正在运行的 coding 
 
 ## 连接原理
 
-Heeler 通过 SSH 使用 herdr 的 JSON API：每个请求经 direct-streamlocal
+Herden 通过 SSH 使用 herdr 的 JSON API：每个请求经 direct-streamlocal
 通道直连 `herdr.sock`，一条长连接承载事件流，交互终端则在 SSH PTY 上运行
 `herdr agent attach --takeover`。前提只有 SSH 访问和一个运行中的
 herdr —— 不改服务器、不装额外软件包。SSH 服务器需允许 stream-local 转发
@@ -76,8 +72,7 @@ herdr —— 不改服务器、不装额外软件包。SSH 服务器需允许 st
 —— macOS 上是 **系统设置 > 通用 > 共享 > 远程登录**）：
 
 ```bash
-herdr plugin install ZingerLittleBee/Heeler/plugin --ref main --yes
-herdr plugin action invoke heeler.pair
+herdr pair
 ```
 
 用应用扫描弹出的 Pairing Code 二维码，机器即被添加为 Host —— 地址、
@@ -87,7 +82,7 @@ host key 指纹和 SSH 密钥注册全部由配对码承载。在应用里为该
 ## 技术栈
 
 - SwiftUI，iOS 18+，当前仅 iPhone（iPad 在计划中）
-- 仓库内 `Packages/HeelerSSH`（libssh2 + OpenSSL）负责 SSH
+- 仓库内 `Packages/HerdenSSH`（libssh2 + OpenSSL）负责 SSH
 - [libghostty-spm](https://github.com/lakr233/libghostty-spm) 负责终端仿真与 Metal 渲染
 
 选型缘由见 `docs/adr/`（传输层的故事尤其不直观）。

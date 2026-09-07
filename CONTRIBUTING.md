@@ -1,4 +1,4 @@
-# Contributing to Heeler
+# Contributing to Herden
 
 Issues and PRs are welcome. Bug reports from real setups are especially
 valuable — much of this app is shaped by what breaks in daily use, and a
@@ -20,26 +20,25 @@ Read these before changing anything non-trivial:
   deliberately structured for them.
 
 The repo carries four deliverables: the iOS app (`Sources/`,
-`Packages/HeelerSSH`), the herdr plugin that renders Pairing Codes and posts
+`Packages/HerdenSSH`), the herdr plugin that renders Pairing Codes and posts
 notifications (`plugin/`, dependency-free Node), the stateless Push Relay
 (`relay/`, dependency-free Node), and the marketing site (`landing/`,
 Astro).
 
 ## Building and testing
 
-Everything goes through `make` — run `make help` for the list. The Xcode
-project is generated from `project.yml` (XcodeGen; `brew install xcodegen`),
-and every `make` build target regenerates it. CI builds the *committed*
-`Heeler.xcodeproj`, so commit the regenerated project alongside any
-`project.yml` change.
+Everything goes through `make`; run `make help` for the list. The Xcode
+project is generated from `project.yml` (XcodeGen; `brew install xcodegen`).
+Run `make generate` after changing the YAML. CI builds the *committed*
+`Herden.xcodeproj`, so commit the regenerated project alongside the change.
 
-- `make test` — the full app suite plus the `Packages/HeelerSSH` package
-  suites (those run through `scripts/run-heelerssh-package-tests.sh`, not
+- `make test` — the full app suite plus the `Packages/HerdenSSH` package
+  suites (those run through `scripts/run-herdenssh-package-tests.sh`, not
   `-only-testing`).
 - One suite:
-  `xcodebuild test -project Heeler.xcodeproj -scheme Heeler -destination
+  `xcodebuild test -project Herden.xcodeproj -scheme Herden -destination
   'platform=iOS Simulator,name=iPhone 17'
-  -only-testing:HeelerTests/<SuiteTypeName>`
+  -only-testing:HerdenTests/<SuiteTypeName>`
 - `npm test` inside `plugin/` or `relay/` for the Node deliverables
   (Node >= 20, no install step).
 
@@ -49,7 +48,7 @@ instances to run them for you.
 
 Two artifact families are generated or shared — never hand-edit them:
 
-- `Sources/Heeler/Transport/Generated/` comes from
+- `Sources/Herden/Transport/Generated/` comes from
   `scripts/generate-wire-types.py --schema scripts/herdr-schema.json`; CI
   fails on drift.
 - `plugin/test-vectors/` is consumed by both the Swift and Node suites, and
@@ -76,5 +75,5 @@ prefer a private report over a public issue.
 
 ## License
 
-Heeler is licensed under AGPL-3.0 ([LICENSE](LICENSE)); contributions land
+Herden is licensed under AGPL-3.0 ([LICENSE](LICENSE)); contributions land
 under the same license.

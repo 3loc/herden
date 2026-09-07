@@ -1,4 +1,4 @@
-name: Heeler
+name: Herden
 options:
   bundleIdPrefix: com.3loc
   deploymentTarget:
@@ -17,8 +17,8 @@ settings:
 packages:
   # Repository-local package owning the libssh2/OpenSSL implementation and
   # checked-in native artifacts. The one SSH backend (ADR 0011).
-  HeelerSSH:
-    path: Packages/HeelerSSH
+  HerdenSSH:
+    path: Packages/HerdenSSH
   # Pin the reviewed 1.4.0 source commit because upstream removed its release
   # tag. This keeps the same prebuilt libghostty checksum without taking the
   # much larger, unaudited 1.5.1 source and binary update.
@@ -27,41 +27,39 @@ packages:
     revision: "356f730bec03281fc7b83666a129b0246137ea26"
 
 targets:
-  Heeler:
+  Herden:
     type: application
     platform: iOS
     sources:
-      - path: Sources/Heeler
+      - path: Sources/Herden
         excludes:
           # Bundled as a folder reference below so notice files stay under
           # Notices/ in the app bundle rather than flattening to the root.
           - Resources/Notices
       # Notification code shared with the service extension: envelope
       # decryption, Notification Key store, alert renderer (ADR 0008).
-      - Sources/HeelerNotificationCore
+      - Sources/HerdenNotificationCore
       # Shared notification and activity models remain app-local. Herden does
-      # not ship Heeler's push service or widget extensions.
-      - Sources/HeelerActivityCore
-      - Sources/HeelerWidgets/AgentLiveActivityWidget.swift
-      - Sources/HeelerWidgets/AgentActivityDecryptor.swift
+      # not ship Herden's push service or widget extensions.
+      - Sources/HerdenActivityCore
+      - Sources/HerdenWidgets/AgentLiveActivityWidget.swift
+      - Sources/HerdenWidgets/AgentActivityDecryptor.swift
       # Audited third-party notices + inventory.json (#161). Folder reference
       # preserves the Notices/ subdirectory the catalogue resolves against.
-      - path: Sources/Heeler/Resources/Notices
+      - path: Sources/Herden/Resources/Notices
         type: folder
         buildPhase: resources
     entitlements:
-      path: Sources/Heeler/Heeler.entitlements
+      path: Sources/Herden/Herden.entitlements
       properties:
-        # Already present in Ted's personal-team development profile. Herden
-        # keeps local Keychain state here but ships no push/widget extensions.
+        # Shared by the app and Share Extension. Automatic signing provisions
+        # this identifier for Ted's 3LOC Apple team.
         com.apple.security.application-groups:
-          - group.com.fansvine.founderterminal
+          - group.com.3loc.herden
     settings:
       base:
         GENERATE_INFOPLIST_FILE: YES
-        # Replaces the retired Founder Terminal app and uses its existing
-        # personal-team development profile on Ted's Mac Studio.
-        PRODUCT_BUNDLE_IDENTIFIER: com.fansvine.founderterminal
+        PRODUCT_BUNDLE_IDENTIFIER: com.3loc.herden
         INFOPLIST_KEY_CFBundleDisplayName: Herden
         MARKETING_VERSION: "0.1.5"
         CURRENT_PROJECT_VERSION: "17"
@@ -70,7 +68,7 @@ targets:
         INFOPLIST_KEY_NSMicrophoneUsageDescription: "Herden uses the microphone for on-device terminal dictation."
         INFOPLIST_KEY_NSSpeechRecognitionUsageDescription: "Herden converts speech to terminal text on this iPhone."
         # Only exempt encryption is used (standard SSH algorithms via the
-        # HeelerSSH package's libssh2/OpenSSL, OS-provided CryptoKit);
+        # HerdenSSH package's libssh2/OpenSSL, OS-provided CryptoKit);
         # declaring it here keeps every TestFlight upload from stalling on the
         # Missing Compliance prompt.
         INFOPLIST_KEY_ITSAppUsesNonExemptEncryption: NO
@@ -80,16 +78,58 @@ targets:
         INFOPLIST_KEY_UIApplicationSceneManifest_Generation: YES
         INFOPLIST_KEY_UISupportedInterfaceOrientations: "UIInterfaceOrientationPortrait UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight"
     dependencies:
-      - package: HeelerSSH
+      - target: HerdenShareExtension
+        embed: true
+      - package: HerdenSSH
       - package: GhosttyTerminal
       - package: GhosttyTerminal
         product: GhosttyTheme
 
-  HeelerTests:
+  HerdenShareExtension:
+    type: app-extension
+    platform: iOS
+    sources:
+      - Sources/HerdenShareExtension
+      - Sources/Herden/Attachments/AttachmentStaging.swift
+      - Sources/Herden/Files
+      - Sources/Herden/Images/ImagePreparer.swift
+      - Sources/Herden/Skills/AgentSkill.swift
+      - Sources/Herden/Skills/SkillFrontmatter.swift
+      - Sources/Herden/Skills/SkillProbe.swift
+      - Sources/Herden/Transport
+      - Sources/Herden/Console/ConsoleAgent.swift
+      - Sources/Herden/Console/WorktreeRemoval.swift
+      - Sources/Herden/Hosts/Host.swift
+      - Sources/Herden/Hosts/HostCredentialsProvider.swift
+      - Sources/Herden/Hosts/HostStore.swift
+      - Sources/Herden/Hosts/TransportConnector.swift
+      - Sources/Herden/Notifications/NotificationRegistrationError.swift
+      - Sources/Herden/Support/SharedAppStorage.swift
+      - Sources/HerdenActivityCore/TerminalTitleGlyphs.swift
+      - Sources/Herden/Terminal/TerminalTextSafety.swift
+    entitlements:
+      path: Sources/HerdenShareExtension/HerdenShareExtension.entitlements
+      properties:
+        com.apple.security.application-groups:
+          - group.com.3loc.herden
+    settings:
+      base:
+        INFOPLIST_FILE: Sources/HerdenShareExtension/Info.plist
+        PRODUCT_BUNDLE_IDENTIFIER: com.3loc.herden.share
+        PRODUCT_NAME: HerdenShareExtension
+        MARKETING_VERSION: "0.1.5"
+        CURRENT_PROJECT_VERSION: "17"
+        TARGETED_DEVICE_FAMILY: "1"
+        APPLICATION_EXTENSION_API_ONLY: YES
+        SKIP_INSTALL: YES
+    dependencies:
+      - package: HerdenSSH
+
+  HerdenTests:
     type: bundle.unit-test
     platform: iOS
     sources:
-      - Tests/HeelerTests
+      - Tests/HerdenTests
       # Shared Pairing Code vectors (ADR 0007): the same file the Node plugin
       # tests consume, bundled so the Swift tests cannot drift from it.
       - path: plugin/test-vectors/pairing-code-v1.json
@@ -105,25 +145,25 @@ targets:
         GENERATE_INFOPLIST_FILE: YES
         PRODUCT_BUNDLE_IDENTIFIER: com.3loc.herden.tests
     dependencies:
-      - target: Heeler
-      - package: HeelerSSH
+      - target: Herden
+      - package: HerdenSSH
       - package: GhosttyTerminal
 
 schemes:
-  Heeler:
+  Herden:
     build:
       targets:
-        Heeler: all
+        Herden: all
     test:
       targets:
-        - HeelerTests
+        - HerdenTests
       # The only variable the app test process needs from the invoking shell.
       # The fixture itself arrives through the Simulator's launchd environment
-      # as HEELER_SSH_E2E_CONFIG / HEELER_SSH_JUMP_E2E_CONFIG /
-      # HEELER_PAIRING_E2E_CONFIG, which must stay off this list: an entry here
+      # as HERDEN_SSH_E2E_CONFIG / HERDEN_SSH_JUMP_E2E_CONFIG /
+      # HERDEN_PAIRING_E2E_CONFIG, which must stay off this list: an entry here
       # is forwarded unconditionally, substituting an empty string when the
       # shell has not exported it, and would shadow the launchd value.
       environmentVariables:
-        HEELER_SSH_E2E_REQUIRED: $(HEELER_SSH_E2E_REQUIRED)
+        HERDEN_SSH_E2E_REQUIRED: $(HERDEN_SSH_E2E_REQUIRED)
     run:
       config: Debug

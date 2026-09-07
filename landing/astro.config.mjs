@@ -1,13 +1,13 @@
 // @ts-check
 import { defineConfig } from 'astro/config';
 
-// Static output only: the page is zero-JS and ships as files that a Cloudflare
-// Worker serves straight from `dist/` (see wrangler.toml).
+// Static output only: the page is zero-JS and is served inside the 3loc
+// tailnet by nidavellir's web workload behind Traefik.
 export default defineConfig({
-  site: 'https://heeler.bybee.dev',
+  site: 'https://herden.austrheim.ca7.fm',
   build: {
     // Emit `/404.html` rather than `/404/index.html` so Workers' asset router
-    // picks it up as the not-found page.
+    // serves it as the not-found page.
     format: 'file',
   },
 });
