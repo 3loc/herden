@@ -3,8 +3,10 @@ set -eu
 
 repository="3loc/herden"
 binary="herden"
+host_version="0.8.2"
+host_tag="host-v${host_version}"
 install_dir="${HERDEN_INSTALL_DIR:-$HOME/.local/bin}"
-api_url="https://api.github.com/repos/${repository}/releases/latest"
+api_url="https://api.github.com/repos/${repository}/releases/tags/${host_tag}"
 
 log() { printf '  \033[32m>\033[0m %s\n' "$1"; }
 warn() { printf '  \033[33m!\033[0m %s\n' "$1" >&2; }
@@ -43,7 +45,7 @@ main() {
         *) fail "unsupported CPU architecture: $(uname -m)" ;;
     esac
 
-    log "finding the latest Herden release"
+    log "finding Herden Host ${host_version}"
     release_json="$(curl -fsSL --retry 3 --connect-timeout 10 --max-time 30 "$api_url")" \
         || fail "no downloadable Herden release is available. Build this checkout with make host-install; see docs/guides/install-host.md at github.com/3loc/herden"
     tag="$(printf '%s\n' "$release_json" | awk -F '"' '/"tag_name"[[:space:]]*:/ {print $4; exit}')"

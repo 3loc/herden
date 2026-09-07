@@ -3,7 +3,7 @@ name: Herden Host release
 on:
   push:
     tags:
-      - "v*"
+      - "host-v*"
 
 permissions:
   contents: write
@@ -46,7 +46,7 @@ jobs:
         shell: bash
         run: |
           version=$(awk -F '"' '/^version = / { print $2; exit }' Cargo.toml)
-          test "v${version}" = "$GITHUB_REF_NAME"
+          test "host-v${version}" = "$GITHUB_REF_NAME"
 
       - uses: dtolnay/rust-toolchain@stable
         with:
@@ -120,7 +120,7 @@ jobs:
           import re
 
           tag = os.environ["RELEASE_TAG"]
-          version = tag.removeprefix("v")
+          version = tag.removeprefix("host-v")
           protocol_source = pathlib.Path("runtime/src/protocol/wire.rs").read_text()
           endpoint_source = pathlib.Path("runtime/src/protocol/endpoint.rs").read_text()
           protocol = int(re.search(r"PROTOCOL_VERSION: u32 = (\d+)", protocol_source).group(1))
@@ -149,12 +149,10 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          for attempt in $(seq 1 30); do
-            if gh release view "$GITHUB_REF_NAME" --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
-              gh release upload "$GITHUB_REF_NAME" artifacts/* --clobber --repo "$GITHUB_REPOSITORY"
-              exit 0
-            fi
-            sleep 10
-          done
-          echo "release $GITHUB_REF_NAME was not created within five minutes" >&2
-          exit 1
+          if ! gh release view "$GITHUB_REF_NAME" --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
+            gh release create "$GITHUB_REF_NAME" \
+              --repo "$GITHUB_REPOSITORY" \
+              --title "Herden Host ${GITHUB_REF_NAME#host-v}" \
+              --notes "Native Herden Host binaries for Linux and macOS."
+          fi
+          gh release upload "$GITHUB_REF_NAME" artifacts/* --clobber --repo "$GITHUB_REPOSITORY"
