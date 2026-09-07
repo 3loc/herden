@@ -47,7 +47,17 @@ BIN
 esac
 SH
 
-chmod 0755 "$fixture/bin/uname" "$fixture/bin/curl"
+cat > "$fixture/bin/git" <<'SH'
+#!/bin/sh
+exit 0
+SH
+
+cat > "$fixture/bin/npm" <<'SH'
+#!/bin/sh
+exit 0
+SH
+
+chmod 0755 "$fixture/bin/uname" "$fixture/bin/curl" "$fixture/bin/git" "$fixture/bin/npm"
 export HOME="$fixture/home"
 export PATH="$fixture/bin:/usr/bin:/bin"
 export HERDEN_INSTALL_DIR="$fixture/install"
