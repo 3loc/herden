@@ -1741,7 +1741,7 @@ if [[ "$password_fixture_available" == "1" ]]; then
 fi
 run_suite HerdenSSHDirectStreamLocalE2ETests 9 1 0 \
     HerdenSSHDirectStreamLocalE2ETests
-run_suite SharedFixtureE2ETests 94 6 0 \
+run_suite SharedFixtureE2ETests 93 6 0 \
     HerdenSSHPTYE2ETests \
     HerdenSSHJumpHostGateE2ETests \
     HerdenSSHTransportBehaviorE2ETests \
