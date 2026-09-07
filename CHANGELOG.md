@@ -23,6 +23,11 @@ Entries reference the issue that motivated them.
 - Dictation streams partial corrections but strips all line breaks; it can
   never submit a terminal prompt.
 
+### Fixed
+
+- Long dictation sessions preserve earlier text when on-device speech
+  recognition rolls its partial transcript forward.
+
 ## [0.1.5] - 2026-09-04
 
 ### Added

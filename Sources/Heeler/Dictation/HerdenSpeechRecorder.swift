@@ -214,17 +214,40 @@ enum HerdenSpeechFailure: LocalizedError, Equatable {
 /// Keeps partial-result corrections honest: when Speech revises a previous
 /// word, send enough DEL bytes to replace only the changed suffix.
 struct HerdenDictationInputState: Equatable {
+    /// Speech recognition is free to revise its latest hypothesis, but a long
+    /// session can also discard the beginning and start reporting only a
+    /// recent window. Keep large, old prefixes committed so that a recognizer
+    /// rollover can never turn into a destructive run of DEL bytes.
+    private static let maximumCorrectionCharacters = 48
+    private static let maximumOverlapCharacters = 128
+
+    private var committedTranscript = ""
+    private var recognitionTranscript = ""
     private var terminalTranscript = ""
     private(set) var isActive = false
 
     mutating func begin() {
+        committedTranscript = ""
+        recognitionTranscript = ""
         terminalTranscript = ""
         isActive = true
     }
 
     mutating func apply(_ transcript: String, locale: Locale) -> Data {
         guard isActive else { return Data() }
-        let command = Self.singleLine(transcript).lowercased(with: locale)
+        let recognized = Self.singleLine(transcript).lowercased(with: locale)
+        guard !recognized.isEmpty else { return Data() }
+
+        let sharedPrefixCount = Self.sharedPrefixCount(
+            recognitionTranscript,
+            recognized)
+        let correctionCount = recognitionTranscript.count - sharedPrefixCount
+        if correctionCount > Self.maximumCorrectionCharacters {
+            commitRecognitionWindow(beforeStarting: recognized)
+        }
+
+        recognitionTranscript = recognized
+        let command = committedTranscript + recognitionTranscript
         let edit = Self.terminalEdit(from: terminalTranscript, to: command)
         terminalTranscript = command
         // Defense in depth at the PTY boundary: dictation may edit the line,
@@ -233,16 +256,57 @@ struct HerdenDictationInputState: Equatable {
     }
 
     mutating func end() {
+        committedTranscript = ""
+        recognitionTranscript = ""
         terminalTranscript = ""
         isActive = false
+    }
+
+    private mutating func commitRecognitionWindow(beforeStarting next: String) {
+        let overlapCount = Self.sharedOverlapCount(
+            suffixOf: recognitionTranscript,
+            prefixOf: next)
+        if overlapCount > 0 {
+            committedTranscript += String(recognitionTranscript.dropLast(overlapCount))
+        } else {
+            committedTranscript += recognitionTranscript
+            if !committedTranscript.hasSuffix(" "), !next.hasPrefix(" ") {
+                committedTranscript.append(" ")
+            }
+        }
+    }
+
+    private static func sharedPrefixCount(_ left: String, _ right: String) -> Int {
+        zip(left, right).prefix { $0 == $1 }.count
+    }
+
+    private static func sharedOverlapCount(suffixOf old: String, prefixOf new: String) -> Int {
+        let oldCharacters = Array(old)
+        let newCharacters = Array(new)
+        let maximum = min(
+            oldCharacters.count,
+            newCharacters.count,
+            maximumOverlapCharacters)
+        guard maximum > 0 else { return 0 }
+
+        for count in stride(from: maximum, through: 1, by: -1) {
+            let startsAtWordBoundary = count == oldCharacters.count
+                || oldCharacters[oldCharacters.count - count - 1].isWhitespace
+            let endsAtWordBoundary = count == newCharacters.count
+                || newCharacters[count].isWhitespace
+            if startsAtWordBoundary,
+               endsAtWordBoundary,
+               oldCharacters.suffix(count).elementsEqual(newCharacters.prefix(count)) {
+                return count
+            }
+        }
+        return 0
     }
 
     static func terminalEdit(from old: String, to new: String) -> String {
         let oldCharacters = Array(old)
         let newCharacters = Array(new)
-        let sharedCount = zip(oldCharacters, newCharacters)
-            .prefix { $0 == $1 }
-            .count
+        let sharedCount = sharedPrefixCount(old, new)
         let deletes = String(repeating: "\u{7f}", count: oldCharacters.count - sharedCount)
         return deletes + String(newCharacters.dropFirst(sharedCount))
     }
