@@ -7,7 +7,7 @@ PROJECT := Heeler.xcodeproj
 SCHEME  := Heeler
 ARCHIVE := build/Heeler.xcarchive
 DERIVED := build/DerivedData
-APP_ID  := com.3loc.herden
+APP_ID  := com.fansvine.founderterminal
 SIM     ?= iPhone 17
 IOS_WATCH_DEBOUNCE ?= 1s
 

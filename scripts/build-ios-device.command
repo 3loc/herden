@@ -10,7 +10,7 @@ repo_root="${0:A:h:h}"
 derived_data="${HERDEN_DERIVED_DATA:-/tmp/herden-ios-device-derived}"
 build_log="${HERDEN_BUILD_LOG:-/tmp/herden-ios-device-build.log}"
 build_status="${HERDEN_BUILD_STATUS:-/tmp/herden-ios-device-build.status}"
-development_team="${HERDEN_DEVELOPMENT_TEAM:-3594Z46F6X}"
+development_team="${HERDEN_DEVELOPMENT_TEAM:-TRLCTG7S86}"
 
 finish() {
     result=$?
