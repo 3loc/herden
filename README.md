@@ -127,6 +127,13 @@ dictation, product identity, and small terminal cursor hook. Internal target
 names remain `Heeler` on purpose; renaming the module would turn every upstream
 merge into noise.
 
+The committed Xcode project builds directly with `make build`, `make test`, or
+`make install`; XcodeGen is not a build-server dependency. Run `make generate`
+only after intentionally editing `project.yml`. If a remote shell on a Mac
+cannot see the Apple account stored in its logged-in desktop session, launch
+`scripts/build-ios-device.command` with `open` and install the resulting app
+from `/tmp/herden-ios-device-derived`.
+
 ## Contributing
 
 Issues and PRs are welcome — see [CONTRIBUTING.md](CONTRIBUTING.md) for
@@ -134,5 +141,5 @@ layout, build/test, and conventions.
 
 ## Status
 
-Private working fork, built and installed from Ted's Mac Studio. It is not
+Working fork, built and installed from Ted's Mac Studio. It is not
 affiliated with the herdr project or represented as the upstream Heeler app.
