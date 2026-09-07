@@ -49,6 +49,13 @@ targets:
       - path: Sources/Heeler/Resources/Notices
         type: folder
         buildPhase: resources
+    entitlements:
+      path: Sources/Heeler/Heeler.entitlements
+      properties:
+        # Already present in Ted's personal-team development profile. Herden
+        # keeps local Keychain state here but ships no push/widget extensions.
+        com.apple.security.application-groups:
+          - group.com.fansvine.founderterminal
     settings:
       base:
         GENERATE_INFOPLIST_FILE: YES

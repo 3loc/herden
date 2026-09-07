@@ -35,7 +35,7 @@ struct NotificationKeyStore: Sendable {
     /// The app-group id doubling as the Keychain access group (iOS accepts
     /// app groups in `kSecAttrAccessGroup` without the team prefix), granted
     /// to the app and the service extension by their entitlements.
-    static let sharedAccessGroup = "group.com.3loc.herden.shared"
+    static let sharedAccessGroup = "group.com.fansvine.founderterminal"
 
     private static let service = "com.3loc.herden.notifications"
     private static let keyBytes = 32
