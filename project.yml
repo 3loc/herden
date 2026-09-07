@@ -11,7 +11,7 @@ settings:
     # Swift 6 language mode implies complete strict concurrency checking.
     SWIFT_VERSION: "6.0"
     SWIFT_STRICT_CONCURRENCY: complete
-    DEVELOPMENT_TEAM: 3594Z46F6X
+    DEVELOPMENT_TEAM: TRLCTG7S86
     CODE_SIGN_STYLE: Automatic
 
 packages:
@@ -39,11 +39,9 @@ targets:
       # Notification code shared with the service extension: envelope
       # decryption, Notification Key store, alert renderer (ADR 0008).
       - Sources/HeelerNotificationCore
-      # Live Activity attributes + details envelope (shared with HeelerWidgets).
+      # Shared notification and activity models remain app-local. Herden does
+      # not ship Heeler's push service or widget extensions.
       - Sources/HeelerActivityCore
-      # Widget views double-included so Xcode can host their #Preview gallery
-      # in the app target (plain previews are unsupported inside app-extension
-      # targets); the @main WidgetBundle stays extension-only.
       - Sources/HeelerWidgets/AgentLiveActivityWidget.swift
       - Sources/HeelerWidgets/AgentActivityDecryptor.swift
       # Audited third-party notices + inventory.json (#161). Folder reference
@@ -54,18 +52,16 @@ targets:
     entitlements:
       path: Sources/Heeler/Heeler.entitlements
       properties:
-        # Development here covers Debug/local device builds (sandbox APNs);
-        # App Store / TestFlight re-signing flips it to production, so the
-        # APNs environment follows the build configuration (#71).
-        aps-environment: development
-        # Shared with the Notification Service Extension; doubles as the
-        # Keychain access group holding the Notification Keys.
+        # Already present in Ted's personal-team development profile. Herden
+        # keeps local Keychain state here but ships no push/widget extensions.
         com.apple.security.application-groups:
-          - group.com.3loc.herden.shared
+          - group.com.fansvine.founderterminal
     settings:
       base:
         GENERATE_INFOPLIST_FILE: YES
-        PRODUCT_BUNDLE_IDENTIFIER: com.3loc.herden
+        # Replaces the retired Founder Terminal app and uses its existing
+        # personal-team development profile on Ted's Mac Studio.
+        PRODUCT_BUNDLE_IDENTIFIER: com.fansvine.founderterminal
         INFOPLIST_KEY_CFBundleDisplayName: Herden
         MARKETING_VERSION: "0.1.5"
         CURRENT_PROJECT_VERSION: "17"
@@ -83,107 +79,11 @@ targets:
         INFOPLIST_KEY_UILaunchScreen_Generation: YES
         INFOPLIST_KEY_UIApplicationSceneManifest_Generation: YES
         INFOPLIST_KEY_UISupportedInterfaceOrientations: "UIInterfaceOrientationPortrait UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight"
-        # ActivityKit starts Live Activities from the app; HeelerWidgets renders them.
-        INFOPLIST_KEY_NSSupportsLiveActivities: YES
     dependencies:
       - package: HeelerSSH
       - package: GhosttyTerminal
       - package: GhosttyTerminal
         product: GhosttyTheme
-      - target: HeelerNotificationService
-      - target: HeelerWidgets
-
-  # Decrypts Agent Notifications before display (ADR 0008, #71). A thin
-  # shell: the logic lives in HeelerNotificationCore, tested from the app
-  # suite. The extension cannot link the app, so the shared sources (and the
-  # few app files they lean on) are compiled in directly.
-  HeelerNotificationService:
-    type: app-extension
-    platform: iOS
-    sources:
-      - Sources/HeelerNotificationService
-      - Sources/HeelerNotificationCore
-      - Sources/Heeler/Support/Base64URL.swift
-      - Sources/Heeler/Transport/SecretStore.swift
-      # For AgentStatus; Foundation-only by construction (JSONValue is the
-      # generated file's one in-repo dependency).
-      - Sources/Heeler/Transport/Generated/HerdrAPITypes.swift
-      - Sources/Heeler/Transport/JSONValue.swift
-    entitlements:
-      path: Sources/HeelerNotificationService/HeelerNotificationService.entitlements
-      properties:
-        com.apple.security.application-groups:
-          - group.com.3loc.herden.shared
-    info:
-      path: Sources/HeelerNotificationService/Info.plist
-      properties:
-        # An app extension's versions must match its containing app's, or
-        # App Store validation rejects the bundle. XcodeGen would otherwise
-        # hardcode its own 1.0/1 defaults here; point at the build settings
-        # so both bundles stay in lockstep.
-        CFBundleShortVersionString: $(MARKETING_VERSION)
-        CFBundleVersion: $(CURRENT_PROJECT_VERSION)
-        # App Store validation (code 90360) requires a display name on
-        # every embedded appex; never user-visible for this extension.
-        CFBundleDisplayName: Herden Notification Service
-        NSExtension:
-          NSExtensionPointIdentifier: com.apple.usernotifications.service
-          NSExtensionPrincipalClass: $(PRODUCT_MODULE_NAME).NotificationService
-    settings:
-      base:
-        PRODUCT_BUNDLE_IDENTIFIER: com.3loc.herden.NotificationService
-        MARKETING_VERSION: "0.1.5"
-        CURRENT_PROJECT_VERSION: "17"
-        # Match the containing app's iPhone-only device family.
-        TARGETED_DEVICE_FAMILY: "1"
-
-  # Lock-screen / Dynamic Island Live Activity (docs/agents/live-activity-contract.md).
-  # Thin WidgetKit shell: attributes, envelope open, and Notification Key
-  # selection live in HeelerActivityCore / HeelerNotificationCore, compiled
-  # in the same way as the notification service extension (the appex cannot
-  # link the app). @main is the WidgetBundle; there is no principal class.
-  HeelerWidgets:
-    type: app-extension
-    platform: iOS
-    sources:
-      - Sources/HeelerWidgets
-      - Sources/HeelerActivityCore
-      - Sources/HeelerNotificationCore
-      - Sources/Heeler/Support/Base64URL.swift
-      - Sources/Heeler/Transport/SecretStore.swift
-      # For AgentStatus; Foundation-only by construction (JSONValue is the
-      # generated file's one in-repo dependency). NotificationEnvelope in
-      # HeelerNotificationCore needs it.
-      - Sources/Heeler/Transport/Generated/HerdrAPITypes.swift
-      - Sources/Heeler/Transport/JSONValue.swift
-      # Shared with the app Console; single hex owner for status colors (#247).
-      - Sources/Heeler/Console/AgentStatusPalette.swift
-    entitlements:
-      path: Sources/HeelerWidgets/HeelerWidgets.entitlements
-      properties:
-        com.apple.security.application-groups:
-          - group.com.3loc.herden.shared
-    info:
-      path: Sources/HeelerWidgets/Info.plist
-      properties:
-        # An app extension's versions must match its containing app's, or
-        # App Store validation rejects the bundle. XcodeGen would otherwise
-        # hardcode its own 1.0/1 defaults here; point at the build settings
-        # so both bundles stay in lockstep.
-        CFBundleShortVersionString: $(MARKETING_VERSION)
-        CFBundleVersion: $(CURRENT_PROJECT_VERSION)
-        # App Store validation (code 90360) requires a display name on
-        # every embedded appex. Also the counts-only lock-screen fallback.
-        CFBundleDisplayName: Herden
-        NSExtension:
-          NSExtensionPointIdentifier: com.apple.widgetkit-extension
-    settings:
-      base:
-        PRODUCT_BUNDLE_IDENTIFIER: com.3loc.herden.Widgets
-        MARKETING_VERSION: "0.1.5"
-        CURRENT_PROJECT_VERSION: "17"
-        # Match the containing app's iPhone-only device family.
-        TARGETED_DEVICE_FAMILY: "1"
 
   HeelerTests:
     type: bundle.unit-test
