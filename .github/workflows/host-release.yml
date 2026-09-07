@@ -77,6 +77,10 @@ jobs:
           key: host-release-${{ matrix.target }}
 
       - name: Build Host runtime
+        env:
+          # Zig 0.15.2 cannot read Xcode 26's newer libSystem TBD target shape.
+          # The Command Line Tools SDK retains the compatible Darwin stubs.
+          DEVELOPER_DIR: ${{ runner.os == 'macOS' && '/Library/Developer/CommandLineTools' || '' }}
         run: cargo build --release --locked --target "${{ matrix.target }}"
 
       - name: Package and checksum
