@@ -406,7 +406,10 @@ suite("activity-hook: priority and suppression", () => {
 suite("activity-hook: debounce", () => {
   test("overlapping invocations produce one send", async () => {
     await startFakeRelay();
-    writeConfig();
+    // Give both child processes time to publish a claim even on a heavily
+    // loaded CI runner; this test is about latest-claim coalescing, not the
+    // production debounce duration.
+    writeConfig({ activity_debounce_ms: 1_000 });
     writeRegistration([device()]);
     writeHerdrStub([listedAgent()]);
 
