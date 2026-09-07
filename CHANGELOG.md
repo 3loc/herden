@@ -1,11 +1,27 @@
-# Changelog
+# Herden changelog
 
-All notable changes to Heeler are documented in this file.
+All notable Herden changes are documented in this file. Earlier entries are
+the inherited Heeler history and remain intact for attribution.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 Entries reference the issue that motivated them.
 
 ## [Unreleased]
+
+### Changed
+
+- Forked Heeler as Herden while preserving upstream history and mergeability.
+- Agent detail is terminal-only: the separate Composer is hidden and Direct
+  Input is the default.
+
+### Added
+
+- Added the Founder Terminal control deck, including Ctrl-B, Ctrl-C, vi keys,
+  keyboard toggle, Return, and a dedicated on-device Dictation button.
+- Terminal-line taps and the iOS keyboard trackpad can reposition the actual
+  PTY cursor for correcting dictated text.
+- Dictation streams partial corrections but strips all line breaks; it can
+  never submit a terminal prompt.
 
 ## [0.1.5] - 2026-09-04
 

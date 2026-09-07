@@ -1,53 +1,36 @@
 import SwiftUI
 import UIKit
 
-/// Cohesive seam between Agent detail and Direct Input chrome. Groups the
-/// live presentation gates from the interaction handlers so call sites pass
-/// one typed model instead of a flat fourteen-argument surface.
 @MainActor
 struct AgentDirectInputChromeContext {
     struct Presentation {
         let status: AgentStatus
         let hostTelemetry: HostTelemetryPresentation?
         let chromeColorScheme: ColorScheme
-        /// Ghostty first-responder / tools intent for the switcher toggle glyph.
         let isKeyboardUp: Bool
         let isToolsKeyboardPresented: Bool
     }
 
     struct Interactions {
-        /// Switcher `onSelect` is `AgentTerminalView.switchToAgent`, the sole
-        /// production owner of Direct Input keyboard-claim arming.
         let switcher: TerminalAgentSwitcher
         let actions: AgentComposerActions
         let toggleKeyboard: () -> Void
+        let dismissKeyboard: () -> Void
         let switchKeyboard: (() -> Void)?
         let sendQuickKey: (AgentQuickKey) -> Void
-        let showComposer: () -> Void
-        /// Routes More / Add actions that own the draft: restore Composer first.
-        let restoreComposerThen: (@escaping () -> Void) -> Void
+        let sendInput: (Data) -> Void
     }
 
     let presentation: Presentation
     let interactions: Interactions
 }
 
-/// Compact Agent-detail chrome for Direct Input: status, a persistent shortcut
-/// row, and the Agent switcher.
-/// Bottom-up order: system keyboard, switcher, shortcut row, status. The
-/// shortcut row sits immediately above the persistent Agent strip. App content
-/// rather than a keyboard accessory, so UIKit's candidate-row teardown cannot
-/// tear it down or leave a hollow gap.
+/// Herden writes directly into the attached PTY: there is no second composer
+/// or hidden draft whose contents can disagree with the terminal.
 struct AgentDirectInputChrome: View {
     let context: AgentDirectInputChromeContext
-    @Environment(\.horizontalSizeClass) private var horizontalSizeClass
-    @Environment(\.displayScale) private var displayScale
-
-    private static let shortcutKeys: [AgentQuickKey] = [
-        .escape, .tab, .shiftTab,
-        .up, .down, .left, .right,
-        .backspace, .shiftEnter,
-    ]
+    @StateObject private var speech = HerdenSpeechRecorder()
+    @State private var dictationInput = HerdenDictationInputState()
 
     private var presentation: AgentDirectInputChromeContext.Presentation {
         context.presentation
@@ -58,141 +41,178 @@ struct AgentDirectInputChrome: View {
     }
 
     var body: some View {
-        VStack(spacing: 0) {
-            VStack(alignment: .leading, spacing: 6) {
+        VStack(alignment: .leading, spacing: 6) {
+            HStack(spacing: 4) {
                 AgentDetailStatusChrome(
                     status: presentation.status,
                     hostTelemetry: presentation.hostTelemetry,
                     chromeColorScheme: presentation.chromeColorScheme)
-
-                // Immediately above the Agent list/switcher strip. Keyboard
-                // show/hide stays on the switcher row — not duplicated here.
-                shortcutRow
-
-                TerminalAgentSwitcherRow(
-                    switcher: interactions.switcher,
-                    isKeyboardUp: presentation.isKeyboardUp,
-                    toggleKeyboard: interactions.toggleKeyboard,
-                    isToolsKeyboardPresented: presentation.isToolsKeyboardPresented,
-                    switchKeyboard: interactions.switchKeyboard,
-                    modeControl: modeControl)
+                moreMenu
+                    .frame(width: 38, height: 30)
+                    .padding(.trailing, 8)
             }
-            .padding(.vertical, 8)
+
+            if case let .unavailable(message) = speech.state {
+                speechFailure(message)
+            }
+
+            terminalControlDeck
+
+            TerminalAgentSwitcherRow(
+                switcher: interactions.switcher,
+                isKeyboardUp: presentation.isKeyboardUp,
+                toggleKeyboard: interactions.toggleKeyboard,
+                isToolsKeyboardPresented: presentation.isToolsKeyboardPresented,
+                switchKeyboard: interactions.switchKeyboard,
+                modeControl: nil)
+        }
+        .padding(.vertical, 8)
+        .task { speech.prepareLocales() }
+        .onDisappear { finishDictation() }
+        .onChange(of: speech.transcript) { _, transcript in
+            let bytes = dictationInput.apply(transcript, locale: speech.selectedLocale)
+            if !bytes.isEmpty { interactions.sendInput(bytes) }
+        }
+        .onChange(of: speech.state) { _, state in
+            if state != .preparing, state != .recording { dictationInput.end() }
+        }
+        .onChange(of: presentation.isKeyboardUp) { _, isUp in
+            if isUp, dictationInput.isActive { finishDictation() }
         }
     }
 
-    private var modeControl: TerminalAgentSwitcherModeControl {
-        if horizontalSizeClass == .regular {
-            return .segmented(
-                selection: .direct,
-                select: { mode in
-                    if mode == .composer { interactions.showComposer() }
-                })
-        }
-        return .button(
-            systemImage: "square.and.pencil",
-            accessibilityLabel: AgentDirectInputPresentation.showComposerAccessibilityLabel,
-            accessibilityHint: AgentDirectInputPresentation.showComposerAccessibilityHint,
-            action: interactions.showComposer)
-    }
-
-    private var shortcutRow: some View {
-        HStack(spacing: 0) {
-            ScrollView(.horizontal, showsIndicators: false) {
-                HStack(spacing: 4) {
-                    ForEach(Self.shortcutKeys, id: \.self) { key in
-                        shortcutKeyButton(key)
-                    }
-                }
-                .padding(.leading, 8)
-                .padding(.trailing, 6)
+    private var terminalControlDeck: some View {
+        VStack(spacing: 6) {
+            HStack(spacing: 6) {
+                key("Esc", bytes: [0x1B], tone: .modifier)
+                key("Ctrl-B", bytes: [0x02], tone: .modifier)
+                key("Ctrl-C", bytes: [0x03], tone: .modifier)
+                key("⌫", accessibilityLabel: "Backspace", bytes: [0x7F], tone: .modifier)
             }
-
-            fixedShortcutButtons
+            HStack(spacing: 6) {
+                key("h", text: "h")
+                key("j", text: "j")
+                key("k", text: "k")
+                key("l", text: "l")
+                key("/", text: "/")
+                key("$", text: "$")
+            }
+            HStack(spacing: 6) {
+                key("i", text: "i")
+                key("a", text: "a")
+                key("v", text: "v")
+                deckButton(
+                    systemImage: presentation.isKeyboardUp
+                        ? "keyboard.chevron.compact.down" : "keyboard",
+                    accessibilityLabel: presentation.isKeyboardUp
+                        ? "Hide keyboard" : "Show keyboard",
+                    tone: .modifier,
+                    action: toggleKeyboard)
+                deckButton(
+                    systemImage: dictationInput.isActive ? "stop.fill" : "mic.fill",
+                    accessibilityLabel: dictationInput.isActive ? "Stop dictation" : "Dictate",
+                    tone: dictationInput.isActive ? .recording : .modifier,
+                    action: toggleDictation)
+                key("↵", accessibilityLabel: "Return", bytes: [0x0D], tone: .accent)
+            }
         }
-        .frame(height: 44)
-        .background(alignment: .top) {
-            Rectangle()
-                .fill(Color(uiColor: .separator))
-                .frame(height: 1 / max(displayScale, 1))
-        }
+        .padding(.horizontal, 8)
+        .padding(.vertical, 7)
         .background(Color(uiColor: .secondarySystemBackground))
+        .accessibilityIdentifier("terminal-control-deck")
     }
 
-    private var fixedShortcutButtons: some View {
-        HStack(spacing: 0) {
-            shortcutKeyButton(.enter)
-
-            moreMenu
-                .frame(width: 44, height: 44)
-        }
-        .padding(.leading, 4)
-        .background(Color(uiColor: .secondarySystemBackground))
-        .overlay(alignment: .leading) {
-            LinearGradient(
-                colors: [.clear, Color(uiColor: .separator).opacity(0.7)],
-                startPoint: .leading,
-                endPoint: .trailing)
-                .frame(width: 8)
-                .offset(x: -8)
-                .allowsHitTesting(false)
-                .accessibilityHidden(true)
-        }
-    }
-
-    private func shortcutKeyButton(_ key: AgentQuickKey) -> some View {
-        Button {
-            UIDevice.current.playInputClick()
-            interactions.sendQuickKey(key)
-        } label: {
-            shortcutKeyCap(minWidth: keyCapWidth(for: key)) {
-                shortcutKeyLabel(key)
-            }
-        }
-        .frame(height: 44)
-        .contentShape(.rect)
-        .buttonStyle(.plain)
-        .accessibilityLabel(key.accessibilityLabel)
-        .accessibilityHint("Sends this key directly to the Agent")
-    }
-
-    private func keyCapWidth(for key: AgentQuickKey) -> CGFloat {
-        switch key {
-        case .escape, .tab:
-            38
-        case .shiftTab:
-            46
-        case .shiftEnter:
-            54
-        case .enter:
-            42
-        case .left, .up, .down, .right:
-            30
-        case .backspace:
-            64
-        }
-    }
-
-    @ViewBuilder
-    private func shortcutKeyLabel(_ key: AgentQuickKey) -> some View {
-        if let systemImageName = key.systemImageName {
-            Image(systemName: systemImageName)
-                .font(.system(size: 12, weight: .semibold))
-        } else if let title = key.title {
-            Text(title)
-                .font(.caption.weight(.medium))
-        }
-    }
-
-    private func shortcutKeyCap<Content: View>(
-        minWidth: CGFloat,
-        @ViewBuilder content: () -> Content
+    private func key(
+        _ label: String,
+        accessibilityLabel: String? = nil,
+        text: String,
+        tone: TerminalDeckKeyTone = .standard
     ) -> some View {
-        content()
-            .frame(minWidth: minWidth, minHeight: 30)
-            .background(
-                Color(uiColor: .secondarySystemFill),
-                in: .rect(cornerRadius: 7))
+        deckButton(
+            label: label,
+            accessibilityLabel: accessibilityLabel ?? label,
+            tone: tone
+        ) { send(Data(text.utf8)) }
+    }
+
+    private func key(
+        _ label: String,
+        accessibilityLabel: String? = nil,
+        bytes: [UInt8],
+        tone: TerminalDeckKeyTone = .standard
+    ) -> some View {
+        deckButton(
+            label: label,
+            accessibilityLabel: accessibilityLabel ?? label,
+            tone: tone
+        ) { send(Data(bytes)) }
+    }
+
+    private func deckButton(
+        label: String? = nil,
+        systemImage: String? = nil,
+        accessibilityLabel: String,
+        tone: TerminalDeckKeyTone,
+        action: @escaping () -> Void
+    ) -> some View {
+        Button(action: action) {
+            Group {
+                if let label { Text(label) }
+                else if let systemImage { Image(systemName: systemImage) }
+            }
+            .font(.system(size: 13, weight: .semibold, design: .rounded))
+            .frame(maxWidth: .infinity, minHeight: 34)
+        }
+        .buttonStyle(TerminalDeckKeyButtonStyle(tone: tone))
+        .accessibilityLabel(accessibilityLabel)
+    }
+
+    private func send(_ data: Data) {
+        finishDictation()
+        UIDevice.current.playInputClick()
+        interactions.sendInput(data)
+    }
+
+    private func toggleKeyboard() {
+        finishDictation()
+        interactions.toggleKeyboard()
+    }
+
+    private func toggleDictation() {
+        if dictationInput.isActive {
+            finishDictation()
+            return
+        }
+        interactions.dismissKeyboard()
+        dictationInput.begin()
+        Task {
+            await speech.start()
+            if speech.state != .preparing, speech.state != .recording {
+                dictationInput.end()
+            }
+        }
+    }
+
+    private func finishDictation() {
+        speech.stop()
+        dictationInput.end()
+    }
+
+    private func speechFailure(_ message: String) -> some View {
+        HStack(spacing: 8) {
+            Image(systemName: "exclamationmark.triangle.fill")
+            Text(message).lineLimit(2)
+            Spacer(minLength: 0)
+            if speech.settingsRequired {
+                Button("Settings") {
+                    guard let url = URL(string: UIApplication.openSettingsURLString) else { return }
+                    UIApplication.shared.open(url)
+                }
+            }
+        }
+        .font(.caption)
+        .foregroundStyle(.orange)
+        .padding(.horizontal, 10)
     }
 
     private var moreMenu: some View {
@@ -200,17 +220,62 @@ struct AgentDirectInputChrome: View {
             AgentActionMenuContent(
                 actions: interactions.actions,
                 sections: AgentActionMenuPolicy.directInputMoreSections,
-                restoreComposerThen: interactions.restoreComposerThen)
+                includesDraftOwnedItems: false)
         } label: {
-            shortcutKeyCap(minWidth: 30) {
-                Image(systemName: "ellipsis")
-                    .font(.system(size: 12, weight: .semibold))
-            }
-            .frame(maxWidth: .infinity, maxHeight: .infinity)
-            .contentShape(.rect)
+            Image(systemName: "ellipsis")
+                .font(.system(size: 13, weight: .semibold))
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
+                .contentShape(.rect)
         }
         .buttonStyle(.plain)
         .accessibilityLabel("More")
         .accessibilityHint("Opens Agent actions")
+    }
+}
+
+private enum TerminalDeckKeyTone {
+    case standard
+    case modifier
+    case accent
+    case recording
+}
+
+private struct TerminalDeckKeyButtonStyle: ButtonStyle {
+    let tone: TerminalDeckKeyTone
+
+    func makeBody(configuration: Configuration) -> some View {
+        configuration.label
+            .foregroundStyle(foreground)
+            .background(background.opacity(configuration.isPressed ? 0.62 : 1))
+            .overlay {
+                RoundedRectangle(cornerRadius: 8)
+                    .strokeBorder(border, lineWidth: 1)
+            }
+            .clipShape(.rect(cornerRadius: 8))
+            .contentShape(.rect)
+    }
+
+    private var background: Color {
+        switch tone {
+        case .standard: Color(uiColor: .tertiarySystemBackground)
+        case .modifier: Color(uiColor: .secondarySystemFill)
+        case .accent: Color.accentColor
+        case .recording: Color.red
+        }
+    }
+
+    private var foreground: Color {
+        switch tone {
+        case .accent, .recording: .white
+        case .standard, .modifier: .primary
+        }
+    }
+
+    private var border: Color {
+        switch tone {
+        case .recording: .red
+        case .accent: Color.accentColor.opacity(0.75)
+        case .standard, .modifier: Color(uiColor: .separator).opacity(0.65)
+        }
     }
 }

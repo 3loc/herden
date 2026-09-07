@@ -7,7 +7,7 @@ PROJECT := Heeler.xcodeproj
 SCHEME  := Heeler
 ARCHIVE := build/Heeler.xcarchive
 DERIVED := build/DerivedData
-APP_ID  := dev.bybee.heeler
+APP_ID  := com.3loc.herden
 SIM     ?= iPhone 17
 IOS_WATCH_DEBOUNCE ?= 1s
 
@@ -28,12 +28,12 @@ verify-ssh-artifacts: ## Verify HeelerSSH artifact hashes, slices, and policy
 generate: ## Regenerate the Xcode project from project.yml (XcodeGen)
 	xcodegen generate
 
-build: generate ## Build Debug for a physical device without installing
+build: ## Build Debug for a physical device without installing
 	xcodebuild -project $(PROJECT) -scheme $(SCHEME) -configuration Debug \
 		-destination 'generic/platform=iOS' -derivedDataPath $(DERIVED) \
 		-allowProvisioningUpdates build
 
-test: generate ## Run the app and HeelerSSH unit test suites on a simulator
+test: ## Run the app and HeelerSSH unit test suites on a simulator
 	xcodebuild -project $(PROJECT) -scheme $(SCHEME) \
 		-destination 'platform=iOS Simulator,name=iPhone 17' test
 	scripts/run-heelerssh-package-tests.sh 'platform=iOS Simulator,name=iPhone 17'
@@ -59,7 +59,7 @@ watch-ios-device: ## Watch iOS code and install to a connected iPhone/iPad
 		--on-busy-update queue \
 		-- make install DEVICE="$(DEVICE)"
 
-sim: generate ## Build Debug and run it on the simulator (override with SIM=<name>)
+sim: ## Build Debug and run it on the simulator (override with SIM=<name>)
 	xcodebuild -project $(PROJECT) -scheme $(SCHEME) -configuration Debug \
 		-destination 'platform=iOS Simulator,name=$(SIM)' -derivedDataPath $(DERIVED) build
 	xcrun simctl boot '$(SIM)' 2>/dev/null || true
@@ -67,7 +67,7 @@ sim: generate ## Build Debug and run it on the simulator (override with SIM=<nam
 	xcrun simctl install booted $(DERIVED)/Build/Products/Debug-iphonesimulator/Heeler.app
 	xcrun simctl launch --terminate-running-process booted $(APP_ID)
 
-archive: generate ## Archive a Release build for distribution
+archive: ## Archive a Release build for distribution
 	xcodebuild -project $(PROJECT) -scheme $(SCHEME) -configuration Release \
 		-destination 'generic/platform=iOS' -archivePath $(ARCHIVE) \
 		-allowProvisioningUpdates archive

@@ -237,7 +237,7 @@ final class HostLiveActivityCoordinator {
             return
         }
         guard controller.areEnabled else {
-            reconcileNotes[hostID] = "idle — iOS has Live Activities disabled for Heeler"
+            reconcileNotes[hostID] = "idle — iOS has Live Activities disabled for Herden"
             return
         }
         do {
@@ -257,7 +257,7 @@ final class HostLiveActivityCoordinator {
     /// The gate that kept `computeDesired` from producing content, in the
     /// order the gates run — surfaced by the Settings diagnostic row.
     private func desireBlocker(for hostID: Host.ID) -> String {
-        if !controller.areEnabled { return "iOS has Live Activities disabled for Heeler" }
+        if !controller.areEnabled { return "iOS has Live Activities disabled for Herden" }
         if !preferences.isEnabled(for: hostID) { return "the per-Host toggle is off" }
         if deviceToken() == nil { return "no push device token yet" }
         if notificationKey(for: hostID) == nil { return "no Notification Key for this Host" }

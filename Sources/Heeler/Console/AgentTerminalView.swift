@@ -898,10 +898,10 @@ struct AgentTerminalView: View {
                     switcher: agentSwitcher,
                     actions: composerActions,
                     toggleKeyboard: toggleDirectKeyboard,
+                    dismissKeyboard: dismissDirectKeyboard,
                     switchKeyboard: directKeyboardSwitchAction,
                     sendQuickKey: sendAgentQuickKey,
-                    showComposer: { selectInputMode(.composer) },
-                    restoreComposerThen: restoreComposerThen)))
+                    sendInput: { data in keyboardControl.sendInput(data) })))
             .onAppear {
                 interactionProbe?.value?.directInputChromeDidAppear(
                     sendQuickKey: { key in sendAgentQuickKey(key) },
@@ -1177,6 +1177,15 @@ struct AgentTerminalView: View {
             directKeyboardIntent.setWantsKeyboard(true)
             keyboardControl.requestKeyboard()
         }
+    }
+
+    private func dismissDirectKeyboard() {
+        expectsDirectSystemKeyboard = false
+        usesDirectToolsKeyboard = false
+        directKeyboardIntent.setWantsKeyboard(false)
+        keyboardInset.resumeHeightCapture()
+        keyboardControl.setKeyboardMode(.text)
+        keyboardControl.dismissKeyboard()
     }
 
     private func switchDirectKeyboard() {

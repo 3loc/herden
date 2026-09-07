@@ -1,7 +1,7 @@
-# heeler
+# Herden pairing plugin
 
 A [herdr plugin](https://herdr.dev/docs/plugins/) that renders a **Pairing Code**
-QR so the Heeler app can add this machine as a Host by scanning it
+QR so the Herden app can add this machine as a Host by scanning it
 (ADR 0007). The `pair` action opens a popup pane: confirm which of the
 machine's addresses go into the code, then scan the QR with the app.
 
@@ -38,7 +38,7 @@ node --version    # 20 or newer
 Install the plugin from GitHub:
 
 ```bash
-herdr plugin install ZingerLittleBee/Heeler/plugin --ref main --yes
+herdr plugin install 3loc/herden/plugin --ref main --yes
 ```
 
 Herdr stores the plugin in its managed checkout and runs the manifest's
@@ -56,10 +56,10 @@ Open the Pairing Code popup:
 herdr plugin action invoke heeler.pair
 ```
 
-Scan the code in Heeler to add this machine as a Host, or press `c` on the
+Scan the code in Herden to add this machine as a Host, or press `c` on the
 QR screen to copy the Pairing Code and paste it in the app (macOS uses
 `pbcopy`; elsewhere the code is printed for manual selection). Then open the
-Heeler settings, enable Agent Notifications, grant the iOS notification
+Herden settings, enable Agent Notifications, grant the iOS notification
 permission, and enable Notifications for this Host. Leave **Custom Push
 Relay** empty to use the production endpoint at
 `https://heeler-apns.bybee.dev`.

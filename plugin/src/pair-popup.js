@@ -56,7 +56,7 @@ function fatal(message) {
 
 function renderChecklist(state, warning) {
   const lines = [
-    `${BOLD}Pair a Heeler device${RESET}`,
+    `${BOLD}Pair a Herden device${RESET}`,
     "",
     "Select the addresses the phone can reach this machine on:",
     "",
@@ -86,7 +86,7 @@ async function renderPairingCode(payload, { copied = false, printedCode = null }
   // viewport instead, so any overflow costs trailing text, never the QR.
   const hint = copied
     ? `${BOLD}copied${RESET} ${DIM}-- any other key close${RESET}`
-    : `${BOLD}Scan with Heeler${RESET} ${DIM}-- c: copy pairing code, any other key close${RESET}`;
+    : `${BOLD}Scan with Herden${RESET} ${DIM}-- c: copy pairing code, any other key close${RESET}`;
   const lines = [
     ...qr.trimEnd().split("\n"),
     hint,

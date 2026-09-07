@@ -1216,6 +1216,25 @@ struct TerminalAttachTests {
         #expect(terminal.tapAction(at: CGPoint(x: 195, y: 120)) == .report(raisesKeyboard: false))
     }
 
+    @MainActor
+    @Test func iOSSelectionMovementSendsRealTTYCursorKeys() async throws {
+        var sent: [Data] = []
+        let terminal = TerminalScreenView.makeConfiguredTerminal(
+            onSend: { sent.append($0) })
+        terminal.setLocalInputEnabled(true)
+
+        terminal.sendExternalInput(Data("hello".utf8))
+        await Task.yield()
+        let destination = try #require(
+            terminal.position(from: terminal.endOfDocument, offset: -2))
+        terminal.selectedTextRange = try #require(
+            terminal.textRange(from: destination, to: destination))
+        await Task.yield()
+
+        #expect(sent.first == Data("hello".utf8))
+        #expect(sent.last == Data("\u{1B}[D\u{1B}[D".utf8))
+    }
+
     /// Tapping to stop a flick is the oldest gesture on the platform. Now that
     /// a tap can raise the keyboard, that tap must be spent on the halt alone —
     /// otherwise stopping a scroll costs you the bottom half of the screen.
