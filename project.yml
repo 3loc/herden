@@ -42,6 +42,8 @@ targets:
       # Shared notification and activity models remain app-local. Herden does
       # not ship Heeler's push service or widget extensions.
       - Sources/HeelerActivityCore
+      - Sources/HeelerWidgets/AgentLiveActivityWidget.swift
+      - Sources/HeelerWidgets/AgentActivityDecryptor.swift
       # Audited third-party notices + inventory.json (#161). Folder reference
       # preserves the Notices/ subdirectory the catalogue resolves against.
       - path: Sources/Heeler/Resources/Notices
