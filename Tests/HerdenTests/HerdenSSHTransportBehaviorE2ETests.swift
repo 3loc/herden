@@ -1369,7 +1369,7 @@ struct HerdenSSHTransportBehaviorE2ETests {
 
         var iterator = stream.events.makeAsyncIterator()
         let unknown = try await iterator.next()
-        #expect(unknown?.kind == HerdrEventKind(name: "future_herden_event"))
+        #expect(unknown?.kind == HerdrEventKind(name: "future_herdr_event"))
         #expect(unknown?.data["value"] == .string("preserved"))
 
         let canonical = try await iterator.next()

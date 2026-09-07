@@ -236,7 +236,7 @@ struct ImageStagingE2ETests {
         #expect(try await transport.ping().protocolVersion == 17)
 
         let event = try await eventIterator.next()
-        #expect(event?.kind == HerdrEventKind(name: "future_herden_event"))
+        #expect(event?.kind == HerdrEventKind(name: "future_herdr_event"))
         attach.send(Data("probe-after-stage\n".utf8))
         var attachOutput = ""
         while !attachOutput.contains("GOT:probe-after-stage") {

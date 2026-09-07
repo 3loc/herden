@@ -88,7 +88,7 @@ struct WeakNetworkE2ETests {
         #expect(try Data(contentsOf: staged.fileURL) == prepared.bytes)
 
         let event = try await eventIterator.next()
-        #expect(event?.kind == HerdrEventKind(name: "future_herden_event"))
+        #expect(event?.kind == HerdrEventKind(name: "future_herdr_event"))
         attach.send(Data("probe-over-weak-link\n".utf8))
         var attachOutput = ""
         while !attachOutput.contains("GOT:probe-over-weak-link") {
