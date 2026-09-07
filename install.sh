@@ -1,12 +1,11 @@
 #!/bin/sh
 set -eu
 
-repository="3loc/herden"
 binary="herden"
 host_version="0.8.2"
 host_tag="host-v${host_version}"
 install_dir="${HERDEN_INSTALL_DIR:-$HOME/.local/bin}"
-api_url="https://api.github.com/repos/${repository}/releases/tags/${host_tag}"
+download_root="${HERDEN_DOWNLOAD_ROOT:-https://herden.austrheim.ca7.fm/downloads/${host_tag}}"
 
 log() { printf '  \033[32m>\033[0m %s\n' "$1"; }
 warn() { printf '  \033[33m!\033[0m %s\n' "$1" >&2; }
@@ -45,23 +44,16 @@ main() {
         *) fail "unsupported CPU architecture: $(uname -m)" ;;
     esac
 
-    log "finding Herden Host ${host_version}"
-    release_json="$(curl -fsSL --retry 3 --connect-timeout 10 --max-time 30 "$api_url")" \
-        || fail "no downloadable Herden release is available. Build this checkout with make host-install; see docs/guides/install-host.md at github.com/3loc/herden"
-    tag="$(printf '%s\n' "$release_json" | awk -F '"' '/"tag_name"[[:space:]]*:/ {print $4; exit}')"
-    [ -n "$tag" ] || fail "the latest GitHub release did not contain a tag"
-
     asset="herden-${platform}-${architecture}"
-    release_url="https://github.com/${repository}/releases/download/${tag}"
     temporary="$(mktemp -d)"
     trap 'rm -rf "$temporary"' EXIT HUP INT TERM
 
-    log "downloading ${asset} from ${tag}"
+    log "downloading ${asset} from ${host_tag}"
     curl -fsSL --retry 3 --connect-timeout 10 --max-time 180 \
-        "${release_url}/${asset}" -o "${temporary}/${binary}" \
+        "${download_root}/${asset}" -o "${temporary}/${binary}" \
         || fail "this release has no ${platform}/${architecture} Host binary"
     curl -fsSL --retry 3 --connect-timeout 10 --max-time 30 \
-        "${release_url}/${asset}.sha256" -o "${temporary}/${asset}.sha256" \
+        "${download_root}/${asset}.sha256" -o "${temporary}/${asset}.sha256" \
         || fail "this release has no checksum for ${asset}"
 
     expected="$(awk '{print tolower($1); exit}' "${temporary}/${asset}.sha256")"
@@ -78,11 +70,11 @@ main() {
     if [ "${HERDEN_INSTALL_NOTIFICATIONS:-0}" = "1" ]; then
         if command -v git >/dev/null 2>&1 && command -v npm >/dev/null 2>&1; then
             log "installing encrypted notification support"
-            "${install_dir}/${binary}" plugin install 3loc/herden/plugin --ref "$tag" --yes \
+            "${install_dir}/${binary}" plugin install 3loc/herden/plugin --ref "$host_tag" --yes \
                 || warn "notification support could not be installed; the Host runtime is ready"
         else
             warn "notifications need git and npm; install them, then run:"
-            warn "herden plugin install 3loc/herden/plugin --ref ${tag} --yes"
+            warn "herden plugin install 3loc/herden/plugin --ref ${host_tag} --yes"
         fi
     fi
 
