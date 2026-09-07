@@ -20,9 +20,9 @@ enum AgentInputMode: String, CaseIterable, Identifiable, Sendable {
     }
 }
 
-/// App-wide Agent detail input mode. Persists across navigation, reconnect,
-/// and Agent switches. Default remains Composer; unknown stored values fall
-/// back to Composer rather than inventing Direct Input.
+/// App-wide Agent detail input mode. Herden's production root supplies Direct
+/// Input as its default; retaining an injectable fallback keeps this upstream
+/// model and its focused tests reusable.
 @MainActor
 @Observable
 final class AgentInputModeSettings {
@@ -31,11 +31,14 @@ final class AgentInputModeSettings {
     private(set) var mode: AgentInputMode
     @ObservationIgnored private nonisolated(unsafe) let defaults: UserDefaults
 
-    init(defaults: UserDefaults = .standard) {
+    init(
+        defaults: UserDefaults = .standard,
+        defaultMode: AgentInputMode = .composer
+    ) {
         self.defaults = defaults
         mode =
             defaults.string(forKey: Self.defaultsKey)
-            .flatMap(AgentInputMode.init(rawValue:)) ?? .composer
+            .flatMap(AgentInputMode.init(rawValue:)) ?? defaultMode
     }
 
     var isDirect: Bool { mode == .direct }

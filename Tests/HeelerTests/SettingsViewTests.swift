@@ -9,7 +9,7 @@ struct SettingsViewTests {
 
         #expect(
             repositoryURL.absoluteString
-                == "https://github.com/ZingerLittleBee/Heeler")
+                == "https://github.com/3loc/herden")
     }
 
     @Test func acknowledgementsRouteIsOfferedUnderAboutByIdentity() throws {

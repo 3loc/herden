@@ -73,6 +73,12 @@ final class TerminalKeyboardControl {
         terminal?.sendQuickKey(key)
     }
 
+    /// Routes dictation and Herden's compact deck through Ghostty's one input
+    /// path so UIKit's editable-line model stays synchronized with the PTY.
+    func sendInput(_ data: Data) {
+        terminal?.sendExternalInput(data)
+    }
+
     /// Stops inertial remote scroll, matching `sendQuickKey`'s reliable-input
     /// side effect, for routes that do not go through Ghostty `sendInput`.
     func noteReliableInputBegan() {
@@ -705,8 +711,28 @@ final class HeelerTerminalView: UITerminalView, TerminalByteSink {
             let length = textInputStorage.utf16.count
             let location = min(max(range.location, 0), length)
             let end = min(max(range.location + range.length, location), length)
+            let oldLocation = textInputSelection.location
             textInputSelection = NSRange(location: location, length: end - location)
+            guard end == location, location != oldLocation else { return }
+            sendCursorMovement(by: location - oldLocation)
         }
+    }
+
+    /// Maps a finger position to the current editable terminal line. Because
+    /// the offset is relative to Ghostty's rendered caret, wrapped prompts are
+    /// handled without guessing where the TUI drew its input box.
+    override func closestPosition(to point: CGPoint) -> UITextPosition? {
+        guard let target = gridPointMapper.cell(at: point) else { return nil }
+        let caret = caretRect(for: endOfDocument)
+        guard let current = gridPointMapper.cell(
+            at: CGPoint(x: caret.midX, y: caret.midY))
+        else { return nil }
+        let cellDelta = (target.row - current.row) * terminalGridSize.columns
+            + target.column - current.column
+        let location = min(
+            max(textInputSelection.location + cellDelta, 0),
+            textInputStorage.utf16.count)
+        return TerminalInputTextPosition(index: location)
     }
 
     override func textRange(
@@ -1134,6 +1160,19 @@ final class HeelerTerminalView: UITerminalView, TerminalByteSink {
         reliableInputDidBegin()
         recordCommittedText(text)
         callbackBridge.paste(text, bracketed: usesBracketedPaste)
+    }
+
+    func sendExternalInput(_ data: Data) {
+        guard isLocalInputEnabled, !data.isEmpty else { return }
+        terminalSession.sendInput(data)
+    }
+
+    private func sendCursorMovement(by offset: Int) {
+        guard isLocalInputEnabled, offset != 0 else { return }
+        let key: TerminalControlKey = offset < 0 ? .left : .right
+        let sequence = key.bytes(applicationCursor: usesApplicationCursorKeys)
+        terminalSession.sendInput(
+            Data(Array(repeating: sequence, count: abs(offset)).joined()))
     }
 
     /// Soft-keyboard Return arrives here as `"\n"` (UIKeyInput). Direct Input
@@ -1653,7 +1692,14 @@ final class HeelerTerminalView: UITerminalView, TerminalByteSink {
             stopTouchScrollMomentum()
             touchScrollAccumulator.reset()
         case .report(let raisesKeyboard):
-            clickTouch(at: location)
+            if keyboardActivationRegion.contains(location),
+               let position = closestPosition(to: location),
+               let range = textRange(from: position, to: position)
+            {
+                selectedTextRange = range
+            } else {
+                clickTouch(at: location)
+            }
             if raisesKeyboard {
                 requestKeyboard()
             }

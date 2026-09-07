@@ -173,13 +173,16 @@ enum AgentActionMenuPolicy {
 struct AgentActionMenuContent: View {
     let actions: AgentComposerActions
     let sections: [AgentActionMenuSection]
+    /// Terminal-only surfaces omit actions that require a Composer draft.
+    var includesDraftOwnedItems = true
     /// When set, draft-owned items restore Composer before running (Direct Input).
     var restoreComposerThen: ((@escaping () -> Void) -> Void)? = nil
 
     var body: some View {
         ForEach(sections, id: \.self) { section in
             let visible = section.items.filter {
-                AgentActionMenuPolicy.isVisible($0, actions: actions)
+                (includesDraftOwnedItems || !$0.isDraftOwned)
+                    && AgentActionMenuPolicy.isVisible($0, actions: actions)
             }
             if !visible.isEmpty {
                 Section {

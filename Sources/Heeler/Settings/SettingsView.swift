@@ -39,7 +39,7 @@ struct SettingsView: View {
     let liveActivities: HostLiveActivityCoordinator
     @Environment(\.dismiss) private var dismiss
 
-    static let repositoryURL = URL(string: "https://github.com/ZingerLittleBee/Heeler")
+    static let repositoryURL = URL(string: "https://github.com/3loc/herden")
 
     /// Semantic identity of the About → Acknowledgements route.
     ///
