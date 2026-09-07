@@ -1,5 +1,11 @@
 # Xcode
 build/
+# The vendored Ghostty tree has source directories named `build`; they are
+# required inputs, not generated Xcode output.
+!runtime/vendor/libghostty-vt/src/build/
+!runtime/vendor/libghostty-vt/src/build/**
+!runtime/vendor/libghostty-vt/src/apprt/gtk/build/
+!runtime/vendor/libghostty-vt/src/apprt/gtk/build/**
 xcuserdata/
 *.xcuserstate
 DerivedData/
