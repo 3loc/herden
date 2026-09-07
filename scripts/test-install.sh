@@ -28,8 +28,8 @@ while [ "$#" -gt 0 ]; do
   esac
 done
 case "$url" in
-  */releases/latest)
-    printf '%s\n' '{"tag_name":"v9.8.7"}'
+  */releases/tags/host-v0.8.2)
+    printf '%s\n' '{"tag_name":"host-v0.8.2"}'
     ;;
   */herden-linux-x86_64)
     cat > "$output" <<'BIN'
@@ -62,7 +62,7 @@ test ! -e "$fixture/plugin.log"
 grep -Fq "\"$fixture/install/herden\" pair" "$fixture/install.out"
 
 HERDEN_INSTALL_NOTIFICATIONS=1 sh "$repo_root/install.sh" > "$fixture/optional.out" 2> "$fixture/optional.err"
-grep -Fqx 'plugin install 3loc/herden/plugin --ref v9.8.7 --yes' "$fixture/plugin.log"
+grep -Fqx 'plugin install 3loc/herden/plugin --ref host-v0.8.2 --yes' "$fixture/plugin.log"
 
 bad_install="$fixture/bad-install"
 mkdir -p "$bad_install"

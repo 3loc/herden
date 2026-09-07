@@ -6,10 +6,10 @@ import Testing
 
 @testable import Herden
 
-// The pairing ceremony (#65) against the real localhost sshd, with the real
-// plugin accept script (`plugin/src/pair-accept.js`) wired as the Bootstrap
-// Key's forced command — exactly what `pairing-session.js` mints, except the
-// line is composed here because the simulator cannot shell out to Node. The
+// The pairing ceremony (#65) against the real localhost sshd, with a protocol-
+// equivalent test double for the Host's `herden pair accept` command wired as
+// the Bootstrap Key's forced command. The runtime implementation has its own
+// Rust coverage; this suite verifies the iOS client over real SSH. The
 // suite temporarily rewrites the host user's real `~/.ssh/authorized_keys`
 // and restores it byte-exactly, hash-verified (acceptance criterion).
 @Suite(
@@ -481,9 +481,8 @@ struct PairingReachFailureTests {
 }
 
 /// Probes for the pairing e2e prerequisites on top of the shared local-SSH
-/// environment: a Node binary for the forced command and the plugin checkout
-/// (the accept script runs from the working tree, exactly as
-/// `herden plugin link` would run it). Overridable via HERDR_TEST_NODE.
+/// environment: Python 3 for the forced command and the checked-in Host
+/// protocol fixture.
 private struct PairingE2EEnvironment: Sendable {
     struct Base: Sendable {
         let host: String
@@ -494,7 +493,7 @@ private struct PairingE2EEnvironment: Sendable {
 
     let base: Base
     let mismatchedHostAddress: String?
-    let nodePath: String
+    let interpreterPath: String
     let acceptScriptPath: String
     let homePath: String
     let authorizedKeysPath: String
@@ -520,7 +519,7 @@ private struct PairingE2EEnvironment: Sendable {
                     username: configuration.username,
                     privateKey: privateKey),
                 mismatchedHostAddress: configuration.mismatchedHostAddress,
-                nodePath: configuration.nodePath,
+                interpreterPath: configuration.interpreterPath,
                 acceptScriptPath: configuration.acceptScriptPath,
                 homePath: configuration.homePath,
                 authorizedKeysPath: configuration.authorizedKeysPath,
@@ -537,14 +536,16 @@ private struct PairingE2EEnvironment: Sendable {
         // lane, exactly as every other fixture-backed suite does.
         guard !RealSSHFixture.isUnderMergeGate else { return nil }
         guard let local = LocalSSHTestEnvironment.current else { return nil }
-        let nodePath = environment["HERDR_TEST_NODE"] ?? "/opt/homebrew/bin/node"
-        guard FileManager.default.isExecutableFile(atPath: nodePath) else { return nil }
+        let interpreterPath = "/usr/bin/python3"
+        guard FileManager.default.isExecutableFile(atPath: interpreterPath) else { return nil }
 
         let repoRoot = URL(fileURLWithPath: #filePath)
             .deletingLastPathComponent()  // HerdenTests
             .deletingLastPathComponent()  // Tests
             .deletingLastPathComponent()  // repo root
-        let acceptScript = repoRoot.appendingPathComponent("plugin/src/pair-accept.js").path
+        let acceptScript = repoRoot.appendingPathComponent(
+            "scripts/fixtures/pair-accept.py"
+        ).path
         guard FileManager.default.fileExists(atPath: acceptScript) else { return nil }
 
         return PairingE2EEnvironment(
@@ -554,7 +555,7 @@ private struct PairingE2EEnvironment: Sendable {
                 username: local.username,
                 privateKey: local.privateKey),
             mismatchedHostAddress: nil,
-            nodePath: nodePath,
+            interpreterPath: interpreterPath,
             acceptScriptPath: acceptScript,
             homePath: "/Users/\(local.username)",
             authorizedKeysPath: "/Users/\(local.username)/.ssh/authorized_keys",
@@ -568,7 +569,7 @@ private struct PairingE2EEnvironment: Sendable {
         let mismatchedHostAddress: String?
         let username: String
         let deviceKeySeed: String
-        let nodePath: String
+        let interpreterPath: String
         let acceptScriptPath: String
         let homePath: String
         let authorizedKeysPath: String
@@ -578,10 +579,9 @@ private struct PairingE2EEnvironment: Sendable {
 }
 
 /// One staged server-side pairing: the restricted Bootstrap Key line whose
-/// forced command runs the real accept script, plus the pending state the
-/// plugin's `beginPairing` would have written. Field-for-field the format of
-/// `pairing-session.js`/`authorized-keys.js`; composed in Swift because the
-/// simulator cannot spawn Node itself.
+/// forced command runs the protocol fixture, plus the pending state that the
+/// Host creates. The line is composed in Swift because the simulator cannot
+/// invoke the Host CLI itself.
 private struct StagedPairing {
     enum ForcedCommand {
         case plugin
@@ -642,7 +642,7 @@ private struct StagedPairing {
             withIntermediateDirectories: true)
 
         for path in [
-            environment.nodePath,
+            environment.interpreterPath,
             environment.acceptScriptPath,
             environment.homePath,
             remoteStateDir.path,
@@ -659,7 +659,7 @@ private struct StagedPairing {
             // account's login shell parses this line and not every shell
             // accepts `VAR=value command`.
             command = "env HOME='\(environment.homePath)'"
-                + " '\(environment.nodePath)' '\(environment.acceptScriptPath)'"
+                + " '\(environment.interpreterPath)' '\(environment.acceptScriptPath)'"
                 + " --state-dir '\(remoteStateDir.path)' --pairing-id \(pairingId)"
         case .hang:
             command = try Self.writeForcedCommandScript(

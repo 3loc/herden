@@ -1518,21 +1518,21 @@ jump_fixture_configuration=$(printf \
 jump_fixture_configuration_base64=$(printf '%s' "$jump_fixture_configuration" | base64)
 pairing_fixture_configuration_base64=""
 if [[ "$ci_lane" == "app" ]]; then
-    if ! pairing_node_path="$(command -v node)"; then
-        echo "Node is required for the mandatory Pairing ceremony suite" >&2
+    if ! pairing_interpreter_path="$(command -v python3)"; then
+        echo "Python 3 is required for the mandatory Pairing ceremony suite" >&2
         exit 1
     fi
-    pairing_accept_script="$PWD/plugin/src/pair-accept.js"
+    pairing_accept_script="$PWD/scripts/fixtures/pair-accept.py"
     if [[ ! -f "$pairing_accept_script" ]]; then
         echo "Pairing accept entrypoint not found at $pairing_accept_script" >&2
         exit 1
     fi
     pairing_fixture_configuration=$(printf \
-        '{"host":"127.0.0.1","port":%s,"mismatchedHostAddress":"::1","username":"%s","deviceKeySeed":"%s","nodePath":"%s","acceptScriptPath":"%s","homePath":"%s","authorizedKeysPath":"%s","localStateRoot":"%s","remoteStateRoot":"%s"}' \
+        '{"host":"127.0.0.1","port":%s,"mismatchedHostAddress":"::1","username":"%s","deviceKeySeed":"%s","interpreterPath":"%s","acceptScriptPath":"%s","homePath":"%s","authorizedKeysPath":"%s","localStateRoot":"%s","remoteStateRoot":"%s"}' \
         "$pairing_port" \
         "$pairing_username" \
         "$device_key_seed" \
-        "$pairing_node_path" \
+        "$pairing_interpreter_path" \
         "$pairing_accept_script" \
         "$pairing_home" \
         "$pairing_authorized_keys" \
