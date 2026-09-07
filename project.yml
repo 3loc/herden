@@ -11,7 +11,7 @@ settings:
     # Swift 6 language mode implies complete strict concurrency checking.
     SWIFT_VERSION: "6.0"
     SWIFT_STRICT_CONCURRENCY: complete
-    DEVELOPMENT_TEAM: TRLCTG7S86
+    DEVELOPMENT_TEAM: 3594Z46F6X
     CODE_SIGN_STYLE: Automatic
 
 packages:
