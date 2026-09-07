@@ -28,9 +28,6 @@ while [ "$#" -gt 0 ]; do
   esac
 done
 case "$url" in
-  */releases/tags/host-v0.8.2)
-    printf '%s\n' '{"tag_name":"host-v0.8.2"}'
-    ;;
   */herden-linux-x86_64)
     cat > "$output" <<'BIN'
 #!/bin/sh
