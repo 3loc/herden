@@ -369,7 +369,7 @@ source 不匹配时,活动视图保持不变。set 和 clear 响应使用
 
 ## 插件 API
 
-插件 API 是面向可执行工作流工具的早期宿主面。插件是带 `herden-plugin.toml` 清单的包。清单声明可分享的动作、事件钩子、终端窗格入口点和链接处理器。动作和窗格仅限清单声明;运行时动作注册和运行时 argv 窗格创建不在 v1 范围内。
+插件 API 是面向可执行工作流工具的早期宿主面。插件是带 `herdr-plugin.toml` 清单的包。清单声明可分享的动作、事件钩子、终端窗格入口点和链接处理器。动作和窗格仅限清单声明;运行时动作注册和运行时 argv 窗格创建不在 v1 范围内。
 
 安装和链接的插件跨重启持久化。在 `plugin.link`、`plugin.unlink`、`plugin.enable` 和 `plugin.disable` 时,Herdr 在 `session.json` 旁写入一个 `plugins.json` 注册表文件。Herdr 不在运行时,`herdr plugin install` CLI 也写同一个注册表,然后启动时自动加载。启动时,Herdr 从原始路径重新读取每个清单;文件缺失或无法解析时,条目会带着 `warnings` 字段保留,`plugin.list` 会将其展示出来。
 
@@ -384,10 +384,10 @@ source 不匹配时,活动视图保持不变。set 和 clear 响应使用
 `plugin.link` 也接受可选的 `source` 元数据。CLI 从 GitHub 安装时使用它,让 `plugin.list` 能显示来源、请求的 ref、解析的 commit 和托管检出路径:
 
 ```json
-{"id":"req_plugin_link","method":"plugin.link","params":{"path":"/managed/plugin/herden-plugin.toml","enabled":true,"source":{"kind":"github","owner":"ogulcancelik","repo":"herden-plugin-examples","subdir":"worktree-bootstrap","requested_ref":"main","resolved_commit":"abc123","managed_path":"/data/plugins/github/<managed-checkout>","installed_unix_ms":1780000000000}}}
+{"id":"req_plugin_link","method":"plugin.link","params":{"path":"/managed/plugin/herdr-plugin.toml","enabled":true,"source":{"kind":"github","owner":"ogulcancelik","repo":"herdr-plugin-examples","subdir":"worktree-bootstrap","requested_ref":"main","resolved_commit":"abc123","managed_path":"/data/plugins/github/<managed-checkout>","installed_unix_ms":1780000000000}}}
 ```
 
-路径可以是包含 `herden-plugin.toml` 的插件目录,或直接指向清单的路径。清单结构如下:
+路径可以是包含 `herdr-plugin.toml` 的插件目录,或直接指向清单的路径。清单结构如下:
 
 ```toml
 id = "example.worktree-bootstrap"

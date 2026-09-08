@@ -15,7 +15,7 @@ Bash スクリプト、JavaScript アプリ、Lua スクリプト、Rust バイ�
 その既存の拡張面を、あらゆるワークフローを Herdr 本体に追加することなく、
 誰もが作成・インストール・共有できる再利用可能なワークフローに変えます。
 
-プラグインは SDK インテグレーションではありません。`herden-plugin.toml`
+プラグインは SDK インテグレーションではありません。`herdr-plugin.toml`
 マニフェストと、Herdr が起動できるコマンドを持つディレクトリです。Herdr は
 マニフェストを検証し、ランタイムコンテキストを注入し、宣言されたコマンドを起動し、
 ログを記録します。コマンドはさらに作業が必要なときに、CLI またはソケット経由で
@@ -42,7 +42,7 @@ Windows 名前付きパイプの両方でプラグインの移植性が保たれ
 安全に保てます。
 
 信頼できる作者とリポジトリからプラグインをインストールし、新しいプラグインが
-何をするのか先に目を通してください: `herden-plugin.toml` マニフェストと、実行される
+何をするのか先に目を通してください: `herdr-plugin.toml` マニフェストと、実行される
 スクリプトやバイナリです。`herdr plugin install` は対話的なターミナルでソースと
 実行されるコマンドのプレビューを表示するので、確定する前に確認できます。すでに
 信頼しているソースには `--yes` を使い、特定のリビジョンが欲しいときは `--ref` で
@@ -121,12 +121,12 @@ ASCII の英字、数字、コロン、アンダースコア、ハイフンが�
 
 ## 最初のプラグイン
 
-`herden-plugin.toml` と実行可能なスクリプトまたはプログラムをひとつ含む
+`herdr-plugin.toml` と実行可能なスクリプトまたはプログラムをひとつ含む
 ディレクトリから始めます:
 
 ```text
 my-plugin/
-  herden-plugin.toml
+  herdr-plugin.toml
   index.js
 ```
 
@@ -170,7 +170,7 @@ process.exit(result.status ?? 1);
 サンプルプラグインをインストールします:
 
 ```bash
-herdr plugin install ogulcancelik/herden-plugin-examples/agent-telegram-notify
+herdr plugin install ogulcancelik/herdr-plugin-examples/agent-telegram-notify
 herdr plugin config-dir examples.agent-telegram-notify
 herdr plugin list
 herdr plugin action list --plugin examples.agent-telegram-notify
@@ -205,7 +205,7 @@ herdr plugin log list --plugin example.layout
 `plugin update` はありません。管理プラグインを更新するには GitHub から
 再インストールしてください。
 
-サンプル集のリポジトリは `ogulcancelik/herden-plugin-examples` です。
+サンプル集のリポジトリは `ogulcancelik/herdr-plugin-examples` です。
 `agent-telegram-notify`、`github-link-preview`、`dev-layout-bootstrap` を含む
 独立したサンプルプラグインがサブディレクトリに入っています。これらはコピーする
 ためのサンプルであり、メンテナンスされる公式プラグインではありません。
@@ -216,7 +216,7 @@ herdr plugin log list --plugin example.layout
 登録する前に実行されます。ビルドコマンドが失敗するとインストールは中止され、
 プラグインは登録されません。`plugin link` はビルドコマンドを実行しません。
 ローカルの作者は自分で作業ツリーをビルドします。ビルドコマンドはファイルを生成して
-構いませんが、インストールプレビュー後に `herden-plugin.toml` を変更すると
+構いませんが、インストールプレビュー後に `herdr-plugin.toml` を変更すると
 インストールは中止されます。ビルド失敗時には、プラグイン id、ビルドのインデックス、
 作業ディレクトリ、コマンド、終了ステータスまたは spawn エラー、上限付きの
 stdout/stderr が、ツールの出力を解釈せずに表示されます。
@@ -333,7 +333,7 @@ v1 には Herdr が管理するプラグインストレージ API はありま�
 
 コミュニティ製プラグインは[マーケットプレイス](/plugins/)で探せます。これは
 GitHub トピック `herdr-plugin` が付いた公開 GitHub リポジトリの自動インデックスです。
-プラグインは普通の GitHub リポジトリのままです: `herden-plugin.toml` を含めて公開し、
+プラグインは普通の GitHub リポジトリのままです: `herdr-plugin.toml` を含めて公開し、
 `herdr plugin install owner/repo[/subdir]` を共有してください。
 
 プラグインを掲載するには、公開リポジトリに GitHub トピック `herdr-plugin` を

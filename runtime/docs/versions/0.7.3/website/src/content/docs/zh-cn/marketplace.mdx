@@ -25,7 +25,7 @@ GitHub 安装:
 herdr plugin install owner/repo[/subdir...]
 ```
 
-发布一个普通的公开 GitHub 仓库,在根目录或子目录放一个 `herden-plugin.toml`
+发布一个普通的公开 GitHub 仓库,在根目录或子目录放一个 `herdr-plugin.toml`
 清单,这条命令就能用了。清单和编写参考见[插件](/zh-cn/docs/plugins/)。
 
 ## 让你的插件被收录
@@ -40,5 +40,5 @@ herdr plugin install owner/repo[/subdir...]
 最后 push 时间,以及指回源码的链接。索引从 GitHub 的仓库搜索读取这些信息,
 所以保持仓库描述和主题标签的准确,是让条目有用的关键。
 
-索引目前还不会解析 `herden-plugin.toml`,所以插件 `id`、声明的 `platforms`、
+索引目前还不会解析 `herdr-plugin.toml`,所以插件 `id`、声明的 `platforms`、
 `min_herdr_version` 等清单字段在 v1 中不会展示。Fork 和已归档的仓库会被排除。

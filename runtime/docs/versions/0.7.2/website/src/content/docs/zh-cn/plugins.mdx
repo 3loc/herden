@@ -12,7 +12,7 @@ socket 访问。插件负责自己的实现语言、依赖、文件和持久状�
 智能体和稳定的 CLI/socket API。插件把这套已有的扩展面变成可复用的
 工作流,让大家可以构建、安装和分享,而不必把每种工作流都塞进 Herdr 本体。
 
-插件不是 SDK 集成。它是一个带 `herden-plugin.toml` 清单和 Herdr 可启动
+插件不是 SDK 集成。它是一个带 `herdr-plugin.toml` 清单和 Herdr 可启动
 命令的目录。Herdr 校验清单、注入运行时上下文、启动声明的命令并记录日志。
 命令在需要做更多工作时,通过 CLI 或 socket 回调 Herdr。
 
@@ -33,7 +33,7 @@ Windows 命名管道之间保持可移植。想自己发送原始 JSON 请求时
 和你给编辑器、shell 或编程智能体添加的任何扩展一样。这种开放性正是设计
 初衷,加上一点判断力就能保持安全。
 
-从你信任的作者和仓库安装插件,并先大致看看新插件做什么: `herden-plugin.toml`
+从你信任的作者和仓库安装插件,并先大致看看新插件做什么: `herdr-plugin.toml`
 清单,以及它运行的脚本或二进制。`herdr plugin install` 在交互式终端中会
 展示来源和将要运行的命令的预览,你可以在确认前审查。对已经信任的来源用
 `--yes`,想固定某个特定版本时用 `--ref`。
@@ -107,11 +107,11 @@ ASCII 字母、数字、冒号、下划线和连字符,但不能用点。每种 
 
 ## 第一个插件
 
-从一个包含 `herden-plugin.toml` 和一个可执行脚本或程序的目录开始:
+从一个包含 `herdr-plugin.toml` 和一个可执行脚本或程序的目录开始:
 
 ```text
 my-plugin/
-  herden-plugin.toml
+  herdr-plugin.toml
   index.js
 ```
 
@@ -154,7 +154,7 @@ PowerShell、Python、Rust、Go、Lua、Bun 或用户机器上可用的任何其
 安装一个示例插件:
 
 ```bash
-herdr plugin install ogulcancelik/herden-plugin-examples/agent-telegram-notify
+herdr plugin install ogulcancelik/herdr-plugin-examples/agent-telegram-notify
 herdr plugin config-dir examples.agent-telegram-notify
 herdr plugin list
 herdr plugin action list --plugin examples.agent-telegram-notify
@@ -185,7 +185,7 @@ unlink 或 uninstall 本地插件。`plugin install` 和 `plugin link` 会创建
 对本地开发很有用。v1 没有单独的 `plugin update`;要刷新托管插件,请从
 GitHub 重新安装。
 
-示例菜谱仓库是 `ogulcancelik/herden-plugin-examples`。它在子目录中包含
+示例菜谱仓库是 `ogulcancelik/herdr-plugin-examples`。它在子目录中包含
 多个独立示例插件,包括 `agent-telegram-notify`、`github-link-preview` 和
 `dev-layout-bootstrap`。这些是供复制的示例,不是持续维护的官方插件。
 
@@ -194,7 +194,7 @@ GitHub 重新安装。
 构建命令在 GitHub `plugin install` 过程中运行,时机在确认之后、Herdr
 注册插件之前。如果构建命令失败,安装中止,插件不会被注册。`plugin link`
 不运行构建命令;本地作者自己构建工作树。构建命令可以生成文件,但在
-安装预览之后修改 `herden-plugin.toml` 会导致安装中止。构建失败时会显示
+安装预览之后修改 `herdr-plugin.toml` 会导致安装中止。构建失败时会显示
 插件 id、构建序号、工作目录、命令、退出状态或 spawn 错误,以及截断后的
 stdout/stderr,不会解读工具输出。
 
@@ -278,7 +278,7 @@ v1 没有 Herdr 管理的插件存储 API。需要持久状态的插件应自己
 
 社区插件可以在[插件市场](/plugins/)中发现,它是打了 `herdr-plugin` 主题
 标签的公开 GitHub 仓库的自动索引。插件仍然是普通的 GitHub 仓库: 发布一个
-带 `herden-plugin.toml` 的仓库,然后分享
+带 `herdr-plugin.toml` 的仓库,然后分享
 `herdr plugin install owner/repo[/subdir]`。
 
 要让插件被收录,给它的公开仓库添加 GitHub 主题标签 `herdr-plugin`。索引

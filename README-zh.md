@@ -8,9 +8,6 @@
 
 [网站](https://herden.3loc.ltd) · [TestFlight 公测](https://testflight.apple.com/join/nSsEZBvv) · [安装 Host](#安装-host) · [配对 iPhone](#配对-iphone) · [Host 指南](docs/guides/install-host.md) · [构建 iOS 应用](docs/guides/build-ios.md)
 
-[![License: Apache 2.0](https://img.shields.io/badge/License-Apache_2.0-blue.svg)](LICENSE)
-[![GitHub stars](https://img.shields.io/github/stars/3loc/herden?style=flat)](https://github.com/3loc/herden/stargazers)
-
 [English](./README.md) | 简体中文
 
 </div>
@@ -65,12 +62,13 @@ GitHub 的 **Sync fork** 按钮。启用该工作流需要把仓库迁移成真�
 
 ```sh
 curl -fsSL https://herden.3loc.ltd/install.sh | sh
+export PATH="$HOME/.local/bin:$PATH"
 ```
 
 安装器会选择当前系统和 CPU 对应的 release binary，验证 SHA-256 后安装到
 `~/.local/bin`，并将许可证和归属声明安装到 `~/.local/share/doc/herden`。
 打开新的终端后运行 `herden`；如果 shell 暂时找不到该命令，请运行
-`"$HOME/.local/bin/herden"`。源码构建方式见
+`export PATH="$HOME/.local/bin:$PATH"` 后重试。源码构建方式见
 [Host 指南](docs/guides/install-host.md#build-from-source)。
 
 ## 配对 iPhone

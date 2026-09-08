@@ -16,7 +16,7 @@ existing extension surface into reusable workflows that people can build,
 install, and share without adding every workflow to Herdr itself.
 
 A plugin is not an SDK integration. It is a directory with a
-`herden-plugin.toml` manifest and commands Herdr can launch. Herdr validates the
+`herdr-plugin.toml` manifest and commands Herdr can launch. Herdr validates the
 manifest, injects runtime context, starts the declared commands, and records
 logs. The commands call back into Herdr through the CLI or socket when they need
 to do more work.
@@ -42,7 +42,7 @@ shell, or coding agent. That openness is the point, and a little judgment keeps
 it safe.
 
 Install plugins from authors and repositories you trust, and skim what a new one
-does first: the `herden-plugin.toml` manifest and the scripts or binaries it runs.
+does first: the `herdr-plugin.toml` manifest and the scripts or binaries it runs.
 `herdr plugin install` shows a preview of the source and the commands it will run
 in interactive terminals, so you can review before confirming. Use `--yes` for
 sources you already trust, and pin `--ref` when you want a specific revision.
@@ -119,12 +119,12 @@ language-specific behavior in your script or binary.
 
 ## First plugin
 
-Start with a directory that contains `herden-plugin.toml` and one executable
+Start with a directory that contains `herdr-plugin.toml` and one executable
 script or program:
 
 ```text
 my-plugin/
-  herden-plugin.toml
+  herdr-plugin.toml
   index.js
 ```
 
@@ -168,7 +168,7 @@ available on the user's machine.
 Install an example plugin:
 
 ```bash
-herdr plugin install ogulcancelik/herden-plugin-examples/agent-telegram-notify
+herdr plugin install ogulcancelik/herdr-plugin-examples/agent-telegram-notify
 herdr plugin config-dir examples.agent-telegram-notify
 herdr plugin list
 herdr plugin action list --plugin examples.agent-telegram-notify
@@ -202,7 +202,7 @@ id or the same `owner/repo[/subdir...]` shorthand used by install.
 useful for local development. There is no separate `plugin update` in v1;
 reinstall from GitHub to refresh a managed plugin.
 
-The example cookbook repo is `ogulcancelik/herden-plugin-examples`. It contains
+The example cookbook repo is `ogulcancelik/herdr-plugin-examples`. It contains
 separate example plugins in subdirectories, including `agent-telegram-notify`,
 `github-link-preview`, and `dev-layout-bootstrap`. These are examples to copy,
 not maintained official plugins.
@@ -213,7 +213,7 @@ Build commands run during GitHub `plugin install` after confirmation and before
 Herdr registers the plugin. If a build command fails, install aborts and the
 plugin is not registered. `plugin link` does not run build commands; local
 authors build their working tree themselves. Build commands may generate files,
-but changing `herden-plugin.toml` after the install preview aborts install. Build
+but changing `herdr-plugin.toml` after the install preview aborts install. Build
 failures show the plugin id, build index, working directory, command, exit
 status or spawn error, and capped stdout/stderr without interpreting tool output.
 
@@ -306,7 +306,7 @@ state should own their files or database.
 
 Community plugins are discoverable in the [marketplace](/plugins/), an automatic
 index of public GitHub repositories tagged with the topic `herdr-plugin`.
-Plugins stay ordinary GitHub repositories: publish one with `herden-plugin.toml`,
+Plugins stay ordinary GitHub repositories: publish one with `herdr-plugin.toml`,
 then share `herdr plugin install owner/repo[/subdir]`.
 
 To get a plugin listed, add the GitHub topic `herdr-plugin` to its public

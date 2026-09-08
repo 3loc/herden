@@ -291,7 +291,7 @@ herdr plugin enable <plugin_id>
 herdr plugin disable <plugin_id>
 ```
 
-`plugin install` accepts GitHub shorthand only, such as `ogulcancelik/herden-plugin-examples/worktree-bootstrap`. It uses `git`, shows a trust preview in interactive terminals, runs supported manifest build commands, and stores GitHub installs in a Herdr-managed directory. Use `--yes` for noninteractive installs. Reinstalling a GitHub-managed plugin replaces that managed checkout. Installing over a locally linked plugin is refused. Plugin manifests must declare `min_herdr_version`; install and link fail when the plugin requires a newer Herdr binary. `plugin list` is human-readable by default; pass `--json` for the raw API response.
+`plugin install` accepts GitHub shorthand only, such as `ogulcancelik/herdr-plugin-examples/worktree-bootstrap`. It uses `git`, shows a trust preview in interactive terminals, runs supported manifest build commands, and stores GitHub installs in a Herdr-managed directory. Use `--yes` for noninteractive installs. Reinstalling a GitHub-managed plugin replaces that managed checkout. Installing over a locally linked plugin is refused. Plugin manifests must declare `min_herdr_version`; install and link fail when the plugin requires a newer Herdr binary. `plugin list` is human-readable by default; pass `--json` for the raw API response.
 
 Local development:
 
@@ -300,7 +300,7 @@ herdr plugin link <path> [--disabled]
 herdr plugin unlink <plugin_id>
 ```
 
-`plugin link` accepts a plugin directory containing `herden-plugin.toml` or a direct manifest path. It is still the right command while authoring or testing a plugin from a local checkout. `plugin unlink` unregisters the plugin and leaves files alone. `plugin uninstall` unregisters a plugin and also removes Herdr-managed GitHub checkout files. For GitHub installs, uninstall accepts either the plugin id or the same `owner/repo[/subdir...]` shorthand used by install. Actions, event hooks, panes, and link handlers are declared in the manifest; runtime action registration is not part of v1.
+`plugin link` accepts a plugin directory containing `herdr-plugin.toml` or a direct manifest path. It is still the right command while authoring or testing a plugin from a local checkout. `plugin unlink` unregisters the plugin and leaves files alone. `plugin uninstall` unregisters a plugin and also removes Herdr-managed GitHub checkout files. For GitHub installs, uninstall accepts either the plugin id or the same `owner/repo[/subdir...]` shorthand used by install. Actions, event hooks, panes, and link handlers are declared in the manifest; runtime action registration is not part of v1.
 
 Config directory:
 

@@ -749,12 +749,12 @@ fn runtime_dir_owner_alive(runtime_dir: &Path) -> bool {
     process_exists(owner_pid)
 }
 
-fn current_checkout_root() -> &'static Path {
-    Path::new(env!("CARGO_MANIFEST_DIR"))
-}
-
 fn is_test_herden_binary(path: &Path) -> bool {
-    path.ends_with("target/debug/herden") && path.starts_with(current_checkout_root())
+    let expected = Path::new(env!("CARGO_BIN_EXE_herden"));
+    let actual = fs::canonicalize(path).unwrap_or_else(|_| path.to_path_buf());
+    let expected = fs::canonicalize(expected).unwrap_or_else(|_| expected.to_path_buf());
+
+    actual == expected
 }
 
 extern "C" fn run_atexit_cleanup() {
@@ -877,11 +877,11 @@ mod tests {
     }
 
     #[test]
-    fn test_binary_matcher_accepts_current_checkout_debug_binary() {
-        let binary = current_checkout_root().join("target/debug/herden");
+    fn test_binary_matcher_accepts_cargo_test_binary() {
+        let binary = Path::new(env!("CARGO_BIN_EXE_herden"));
         assert!(
-            is_test_herden_binary(&binary),
-            "current checkout debug binary should be considered test-owned"
+            is_test_herden_binary(binary),
+            "Cargo's test binary should be considered test-owned even when CARGO_TARGET_DIR is external"
         );
     }
 

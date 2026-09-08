@@ -783,7 +783,7 @@ actor HerdenSSHTransport: Transport {
     private func closeCreatedWorkspace(workspaceID: String) async throws {
         _ = try await request(
             method: "workspace.close",
-            params: WorkspaceTarget(workspaceID: workspaceID),
+            params: WorkspaceCloseParams(workspaceID: workspaceID),
             decoding: OkResponse.self)
     }
 

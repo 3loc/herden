@@ -369,7 +369,7 @@ Worktree commands also emit lifecycle events. `worktree.create` emits `workspace
 ## Plugin APIs
 
 The plugin API is an early host surface for executable workflow tools. A plugin
-is a package with a `herden-plugin.toml` manifest. The manifest declares
+is a package with a `herdr-plugin.toml` manifest. The manifest declares
 shareable actions, event hooks, terminal pane entrypoints, and link handlers.
 Actions and panes are manifest-only; runtime action registration and runtime
 argv pane creation are not part of v1.
@@ -393,10 +393,10 @@ Link a local plugin manifest:
 `plugin.link` also accepts optional `source` metadata. The CLI uses this when it installs from GitHub so `plugin.list` can show origin, requested ref, resolved commit, and managed checkout path:
 
 ```json
-{"id":"req_plugin_link","method":"plugin.link","params":{"path":"/managed/plugin/herden-plugin.toml","enabled":true,"source":{"kind":"github","owner":"ogulcancelik","repo":"herden-plugin-examples","subdir":"worktree-bootstrap","requested_ref":"main","resolved_commit":"abc123","managed_path":"/data/plugins/github/<managed-checkout>","installed_unix_ms":1780000000000}}}
+{"id":"req_plugin_link","method":"plugin.link","params":{"path":"/managed/plugin/herdr-plugin.toml","enabled":true,"source":{"kind":"github","owner":"ogulcancelik","repo":"herdr-plugin-examples","subdir":"worktree-bootstrap","requested_ref":"main","resolved_commit":"abc123","managed_path":"/data/plugins/github/<managed-checkout>","installed_unix_ms":1780000000000}}}
 ```
 
-The path can be a plugin directory containing `herden-plugin.toml` or a direct
+The path can be a plugin directory containing `herdr-plugin.toml` or a direct
 manifest path. The manifest shape is:
 
 ```toml

@@ -246,7 +246,7 @@ worktree コマンドはライフサイクルイベントも発行します。`w
 
 ## プラグイン API
 
-プラグイン API は、実行可能なワークフローツールのための初期のホスト面です。プラグインは `herden-plugin.toml` マニフェストを持つパッケージです。マニフェストは、共有可能なアクション、イベントフック、ターミナルペインのエントリーポイント、リンクハンドラーを宣言します。アクションとペインはマニフェスト専用です。ランタイムでのアクション登録とランタイムでの argv ペイン作成は v1 の範囲外です。
+プラグイン API は、実行可能なワークフローツールのための初期のホスト面です。プラグインは `herdr-plugin.toml` マニフェストを持つパッケージです。マニフェストは、共有可能なアクション、イベントフック、ターミナルペインのエントリーポイント、リンクハンドラーを宣言します。アクションとペインはマニフェスト専用です。ランタイムでのアクション登録とランタイムでの argv ペイン作成は v1 の範囲外です。
 
 インストールおよびリンクされたプラグインは再起動をまたいで永続化されます。Herdr は `plugin.link`、`plugin.unlink`、`plugin.enable`、`plugin.disable` の際に、`session.json` の隣に `plugins.json` レジストリファイルを書き込みます。`herdr plugin install` CLI も、Herdr が動作していないときに同じレジストリを書き込み、起動時に自動的に読み込まれます。起動時、Herdr は各マニフェストを元のパスから再読み込みします。ファイルが欠落しているかパースできない場合、エントリは `warnings` フィールド付きで保持され、`plugin.list` がそれを表面化します。
 
@@ -261,10 +261,10 @@ worktree コマンドはライフサイクルイベントも発行します。`w
 `plugin.link` は任意の `source` メタデータも受け付けます。CLI は GitHub からインストールするときにこれを使い、`plugin.list` が出自、要求された ref、解決されたコミット、管理チェックアウトのパスを表示できるようにします:
 
 ```json
-{"id":"req_plugin_link","method":"plugin.link","params":{"path":"/managed/plugin/herden-plugin.toml","enabled":true,"source":{"kind":"github","owner":"ogulcancelik","repo":"herden-plugin-examples","subdir":"worktree-bootstrap","requested_ref":"main","resolved_commit":"abc123","managed_path":"/data/plugins/github/<managed-checkout>","installed_unix_ms":1780000000000}}}
+{"id":"req_plugin_link","method":"plugin.link","params":{"path":"/managed/plugin/herdr-plugin.toml","enabled":true,"source":{"kind":"github","owner":"ogulcancelik","repo":"herdr-plugin-examples","subdir":"worktree-bootstrap","requested_ref":"main","resolved_commit":"abc123","managed_path":"/data/plugins/github/<managed-checkout>","installed_unix_ms":1780000000000}}}
 ```
 
-パスは `herden-plugin.toml` を含むプラグインディレクトリでも、マニフェストへの直接パスでも構いません。マニフェストの形式は次のとおりです:
+パスは `herdr-plugin.toml` を含むプラグインディレクトリでも、マニフェストへの直接パスでも構いません。マニフェストの形式は次のとおりです:
 
 ```toml
 id = "example.worktree-bootstrap"

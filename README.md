@@ -8,9 +8,6 @@
 
 [Website](https://herden.3loc.ltd) · [Download for iPhone](https://testflight.apple.com/join/nSsEZBvv) · [Quick start](#quick-start) · [Host guide](docs/guides/install-host.md) · [Build from source](docs/guides/build-ios.md)
 
-[![License: Apache 2.0](https://img.shields.io/badge/License-Apache_2.0-blue.svg)](LICENSE)
-[![GitHub stars](https://img.shields.io/github/stars/3loc/herden?style=flat)](https://github.com/3loc/herden/stargazers)
-
 </div>
 
 ## Quick start
@@ -30,6 +27,7 @@ On your Linux VM, Linux PC or Mac, open Terminal and paste:
 
 ```sh
 curl -fsSL https://herden.3loc.ltd/install.sh | sh
+export PATH="$HOME/.local/bin:$PATH"
 ```
 
 Wait until it says **Herden is ready**.
@@ -39,7 +37,7 @@ Wait until it says **Herden is ready**.
 In the same Terminal, paste:
 
 ```sh
-"$HOME/.local/bin/herden" pair
+herden pair
 ```
 
 Leave the QR code open. It expires after two minutes; run the command again if
@@ -139,33 +137,39 @@ The Host began from pristine herdr 0.8.2, not the separate customised
 
 Herden treats its two upstream projects differently:
 
-- **Heeler is a historical source, not a maintained upstream.** Herden keeps
-  Heeler's native iOS foundation and attribution, but does not plan to merge or
-  track later Heeler development.
+- **Heeler is observed, not merged wholesale.** Herden keeps Heeler's native
+  iOS foundation and exact history, reviews later Heeler changes, and ports
+  useful fixes into the current Herden architecture.
 - **herdr is the active upstream.** Herden intends to keep the Host close to
   herdr so routine upstream changes can be adopted with little or no conflict.
   Herden-specific Host changes should stay small, explicit and covered by tests.
 
 The repository is standalone on GitHub and places herdr under `runtime/`, so
-GitHub's **Sync fork** button is not available. Host updates are explicit,
-reviewed imports from the recorded upstream baseline.
+GitHub's **Sync fork** button is not available. The exact herdr history is
+retained through subtree merges: upstream's repository root maps only to
+`runtime/`, while the iOS app and Herden product files stay outside that merge.
+See [runtime/UPSTREAM.md](runtime/UPSTREAM.md) and the repo-local upstream skills
+under [`.agents/skills`](.agents/skills).
 
 ## Host installation details
 
-On a Linux or macOS Host, paste this one command into Terminal:
+On a Linux or macOS Host, paste this block into Terminal:
 
 ```sh
 curl -fsSL https://herden.3loc.ltd/install.sh | sh
+export PATH="$HOME/.local/bin:$PATH"
 ```
 
 Herden starts or reattaches to the persistent session in the current working
-directory. Open a new terminal, run `herden`, then install and sign in to Claude
+directory. Run `herden`, then install and sign in to Claude
 Code, Codex or another supported agent on that Host and run it inside Herden as
-usual. If your shell cannot find it yet, run `"$HOME/.local/bin/herden"`.
+usual.
 
 The installer selects the binary for the Host's OS and architecture, verifies
 its SHA-256 checksum, installs it to `~/.local/bin`, and installs its licence
-and attribution notice under `~/.local/share/doc/herden`. To compile instead,
+and attribution notice under `~/.local/share/doc/herden`. It configures PATH
+for future terminals; the export line makes `herden` available immediately in
+the current Terminal. To compile instead,
 see the [Host guide](docs/guides/install-host.md#build-from-source).
 
 ## Pairing details

@@ -1,0 +1,4 @@
+interface:
+  display_name: "Watch Heeler Upstream"
+  short_description: "Review Heeler changes worth porting to Herden"
+  default_prompt: "Use $herden-watch-heeler to review new Heeler changes and identify useful ports."

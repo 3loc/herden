@@ -361,9 +361,9 @@ import Testing
         #expect(labeled?["label"] as? String == "app")
     }
 
-    @Test func workspaceTargetEncodesSnakeCase() throws {
+    @Test func workspaceCloseParamsEncodeSnakeCaseAndOmitDefaultGroupIntent() throws {
         let fields = try JSONSerialization.jsonObject(
-            with: JSONEncoder().encode(WorkspaceTarget(workspaceID: "wN"))
+            with: JSONEncoder().encode(WorkspaceCloseParams(workspaceID: "wN"))
         ) as? [String: Any]
         #expect(fields?.keys.sorted() == ["workspace_id"])
         #expect(fields?["workspace_id"] as? String == "wN")

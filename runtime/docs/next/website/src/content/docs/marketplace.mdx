@@ -11,7 +11,7 @@ is not a reviewed catalog.
 
 The [marketplace](/plugins/) lists public repositories tagged with the GitHub
 topic `herdr-plugin` when their default branch contains at least one
-`herden-plugin.toml` whose required metadata can be parsed. Search by repository
+`herdr-plugin.toml` whose required metadata can be parsed. Search by repository
 or plugin metadata, and sort repository cards by popularity, recent activity,
 or newest. Each card links to its source repository and lists every discovered
 plugin inside it.
@@ -31,13 +31,13 @@ herdr plugin install owner/repo[/subdir...]
 ```
 
 The command works with a public GitHub repository that has a
-`herden-plugin.toml` manifest at its root or in a subdirectory. See
+`herdr-plugin.toml` manifest at its root or in a subdirectory. See
 [Plugins](/docs/plugins/) for the manifest and authoring reference.
 
 ## Get your plugin listed
 
 Add the GitHub topic `herdr-plugin` to a public repository and put one or more
-`herden-plugin.toml` manifests with parseable required metadata on its default
+`herdr-plugin.toml` manifests with parseable required metadata on its default
 branch. Manifests may be at the root or in subdirectories. The marketplace uses
 one card per repository and lists each valid manifest as a separately
 installable plugin. The index refreshes automatically every 30 minutes and

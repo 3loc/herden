@@ -13,12 +13,11 @@ AGPL-3.0 to Apache-2.0 in
 [issue #282](https://github.com/ZingerLittleBee/Heeler/issues/282). The
 resulting relicense commit,
 [`59792841ccb1005459952a5a981c977e86ddd035`](https://github.com/ZingerLittleBee/Heeler/commit/59792841ccb1005459952a5a981c977e86ddd035),
-is the licensing baseline for Herden's imported iOS sources. Herden's public
-repository intentionally begins with one consolidated root commit, so the exact
-upstream commits are recorded here rather than retained as parents.
+is the licensing baseline for Herden's iOS sources. The exact Heeler commits
+and their ancestry are retained in Herden's public Git history.
 
-Heeler is historical provenance, not a routinely synchronized upstream.
-Later changes are reviewed and ported only when they remain useful to Herden.
+Heeler is observed rather than merged wholesale. Later changes are reviewed
+and ported only when they remain useful to Herden's current architecture.
 
 ## herdr
 
@@ -27,6 +26,7 @@ The Host runtime began from
 and import policy are recorded in [runtime/UPSTREAM.md](runtime/UPSTREAM.md).
 Herdr is the active Host upstream; Herden keeps the runtime delta narrow so
 upstream changes can be reviewed and adopted without unnecessary conflicts.
+Its exact history is retained through subtree merges into `runtime/`.
 
 ## License
 

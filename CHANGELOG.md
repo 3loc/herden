@@ -1,14 +1,17 @@
 # Herden changelog
 
-Herden's public history begins with one consolidated source release. Earlier
-development commits remain private; upstream provenance is recorded in
-[UPSTREAM.md](UPSTREAM.md) and [runtime/UPSTREAM.md](runtime/UPSTREAM.md).
+Herden retains its Heeler ancestry and the exact herdr commits merged into the
+Host runtime. Upstream provenance is recorded in [UPSTREAM.md](UPSTREAM.md) and
+[runtime/UPSTREAM.md](runtime/UPSTREAM.md).
 
 The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
 ### Fixed
+
+- Configure the Host command on PATH in shell startup files without duplicate
+  entries, and make `herden pair` work immediately after the quick-start block.
 
 - Replace the outdated landing-page screenshot with a current Herden simulator
   capture showing the shared keyboard, media and document uploads, and dictation.
@@ -20,6 +23,10 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ### Added
 
+- Synchronized the Host runtime with Herdr 0.9.0 and retained exact upstream
+  ancestry through subtree merges.
+- Added repo-local skills for repeatable herdr synchronization and selective
+  Heeler change review.
 - Show a compact, accent-colored `[herden]` label above Spaces in the terminal app.
 
 - Unified the native iPhone console and Rust Host runtime as one Herden

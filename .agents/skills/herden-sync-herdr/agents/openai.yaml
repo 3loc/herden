@@ -1,0 +1,4 @@
+interface:
+  display_name: "Sync Herden Host"
+  short_description: "Merge herdr upstream into the Herden runtime"
+  default_prompt: "Use $herden-sync-herdr to audit and merge the latest herdr upstream into Herden."
