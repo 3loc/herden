@@ -36,6 +36,14 @@ case "$url" in
   */herden-linux-x86_64)
     cat > "$output" <<'BIN'
 #!/bin/sh
+if [ "${1:-}" = --version ]; then
+  if [ "${HERDEN_TEST_WRONG_VERSION:-0}" = 1 ]; then
+    printf '%s\n' 'herden 9.9.9'
+  else
+    printf '%s\n' 'herden 0.8.3'
+  fi
+  exit 0
+fi
 if [ "${1:-}" = plugin ]; then
   printf '%s\n' "$*" > "$HERDEN_TEST_PLUGIN_LOG"
 fi
@@ -80,11 +88,26 @@ test -x "$fixture/install/herden"
 test -s "$fixture/doc/LICENSE"
 test -s "$fixture/doc/NOTICE"
 test ! -e "$fixture/plugin.log"
+grep -Fq "Herden 0.8.3 is ready" "$fixture/install.out"
+grep -Fq "Start or reattach" "$fixture/install.out"
 grep -Fq "\"$fixture/install/herden\" pair" "$fixture/install.out"
+grep -Fq "Already inside Herden? Press Ctrl-B, then i." "$fixture/install.out"
+test "$("$fixture/install/herden" --version)" = 'herden 0.8.3'
+if grep -Fq 'detach and relaunch' "$fixture/install.err"; then
+  echo 'fresh install printed upgrade instructions' >&2
+  exit 1
+fi
 
 HERDEN_INSTALL_NOTIFICATIONS=1 sh "$repo_root/install.sh" > "$fixture/optional.out" 2> "$fixture/optional.err"
 grep -Fq 'is already 0.8.3' "$fixture/optional.out"
 grep -Fqx 'plugin install 3loc/herden/plugin --ref host-v0.8.3 --yes' "$fixture/plugin.log"
+
+printf '%s\n' '#!/bin/sh' 'printf "%s\n" "herden 0.8.2"' > "$fixture/install/herden"
+chmod 0755 "$fixture/install/herden"
+sh "$repo_root/install.sh" > "$fixture/upgrade.out" 2> "$fixture/upgrade.err"
+grep -Fq 'detach and relaunch' "$fixture/upgrade.err"
+grep -Fq "server live-handoff --import-exe \"$fixture/install/herden\"" "$fixture/upgrade.err"
+test "$("$fixture/install/herden" --version)" = 'herden 0.8.3'
 
 bad_install="$fixture/bad-install"
 mkdir -p "$bad_install"
@@ -95,5 +118,15 @@ if HERDEN_INSTALL_DIR="$bad_install" HERDEN_TEST_BAD_CHECKSUM=1 \
 fi
 test ! -e "$bad_install/herden"
 grep -Fq 'failed checksum verification' "$fixture/bad.err"
+
+wrong_version_install="$fixture/wrong-version-install"
+mkdir -p "$wrong_version_install"
+if HERDEN_INSTALL_DIR="$wrong_version_install" HERDEN_TEST_WRONG_VERSION=1 \
+    sh "$repo_root/install.sh" > "$fixture/wrong-version.out" 2> "$fixture/wrong-version.err"; then
+  echo 'installer accepted a binary with the wrong version' >&2
+  exit 1
+fi
+test ! -e "$wrong_version_install/herden"
+grep -Fq "expected 'herden 0.8.3'" "$fixture/wrong-version.err"
 
 echo 'installer behavior passed'

@@ -48,6 +48,7 @@ main() {
     asset="herden-${platform}-${architecture}"
     staged=""
     updated=0
+    previously_installed=0
     temporary="$(mktemp -d)"
     trap 'rm -rf "$temporary"; [ -z "$staged" ] || rm -f "$staged"' EXIT HUP INT TERM
 
@@ -70,18 +71,25 @@ main() {
     if [ "${#expected}" -ne 64 ] || [ "$actual" != "$expected" ]; then
         fail "the downloaded Herden binary failed checksum verification"
     fi
-
     mkdir -p "$install_dir"
+    staged="$(mktemp "${install_dir}/.herden.XXXXXX")"
+    cp "${temporary}/${binary}" "$staged"
+    chmod 0755 "$staged"
+    reported_version="$("$staged" --version 2>/dev/null)" \
+        || fail "the downloaded Herden binary does not run on this Host"
+    [ "$reported_version" = "herden ${host_version}" ] \
+        || fail "the downloaded binary reports '${reported_version}', expected 'herden ${host_version}'"
+
     installed_digest=""
     if [ -f "${install_dir}/${binary}" ]; then
+        previously_installed=1
         installed_digest="$(checksum "${install_dir}/${binary}" | awk '{print tolower($1)}')"
     fi
     if [ "$installed_digest" = "$actual" ]; then
+        rm -f "$staged"
+        staged=""
         log "${install_dir}/${binary} is already ${host_version}"
     else
-        staged="$(mktemp "${install_dir}/.herden.XXXXXX")"
-        cp "${temporary}/${binary}" "$staged"
-        chmod 0755 "$staged"
         mv "$staged" "${install_dir}/${binary}"
         staged=""
         updated=1
@@ -100,7 +108,7 @@ main() {
                 || warn "notification support could not be installed; the Host runtime is ready"
         else
             warn "notifications need git and npm; install them, then run:"
-            warn "herden plugin install 3loc/herden/plugin --ref ${host_tag} --yes"
+            warn "\"${install_dir}/${binary}\" plugin install 3loc/herden/plugin --ref ${host_tag} --yes"
         fi
     fi
 
@@ -113,16 +121,19 @@ main() {
     esac
 
     if command -v sshd >/dev/null 2>&1; then
-        log "OpenSSH Server is available"
+        log "OpenSSH Server is installed"
     else
-        warn "enable OpenSSH Server before pairing this Host"
+        warn "install and enable OpenSSH Server before pairing this Host"
     fi
 
-    if [ "$updated" -eq 1 ]; then
-        warn "already-running Herden sessions keep their current executable until restarted"
+    if [ "$updated" -eq 1 ] && [ "$previously_installed" -eq 1 ]; then
+        warn "an already-open Herden client keeps its old code until you detach and relaunch it"
+        warn "update a running server without dropping sessions:"
+        warn "\"${install_dir}/${binary}\" server live-handoff --import-exe \"${install_dir}/${binary}\""
     fi
 
-    printf '\nHerden is ready. Display a Pairing Code with:\n\n  "%s/herden" pair\n\n' "$install_dir"
+    printf '\nHerden %s is ready.\n\nStart or reattach:\n\n  "%s/herden"\n\nDisplay a Pairing Code from a shell:\n\n  "%s/herden" pair\n\nAlready inside Herden? Press Ctrl-B, then i.\n\n' \
+        "$host_version" "$install_dir" "$install_dir"
 }
 
 main "$@"
