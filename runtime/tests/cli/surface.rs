@@ -287,8 +287,8 @@ fn root_and_command_group_help_point_agents_to_plain_text_docs() {
         let stdout = String::from_utf8_lossy(&output.stdout);
         for expected in [
             "Are you an AI? Use these resources ONLY IF your task specifically asks you to:",
-            "https://herden.austrheim.ca7.fm/agent-guide.md",
-            "https://herden.austrheim.ca7.fm/llms.txt",
+            "https://raw.githubusercontent.com/3loc/herden/main/README.md",
+            "https://raw.githubusercontent.com/3loc/herden/main/CLAUDE.md",
             "herden --skill",
         ] {
             assert!(

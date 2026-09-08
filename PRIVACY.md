@@ -122,4 +122,5 @@ build.
 
 For questions about this policy, use the
 [project issue tracker](https://github.com/3loc/herden/issues) and do
-not include sensitive information.
+not include sensitive information. Report suspected vulnerabilities through
+the private process in [SECURITY.md](SECURITY.md).

@@ -1,96 +1,123 @@
 <div align="center">
 
-<img src="docs/images/logo.png" width="96" alt="Herden logo" />
+<img src="docs/images/logo.png" width="100" alt="Herden sheep logo" />
 
 # Herden
 
-**[herdr](https://herdr.dev) 的原生 iOS 伴侣应用 —— herdr 是一个 agent 优先的终端运行时。**
+**让 coding agent 持续运行的终端 runtime，并配有原生 iPhone 控制台。**
 
-[![CI](https://github.com/3loc/herden/actions/workflows/ci.yml/badge.svg)](https://github.com/3loc/herden/actions/workflows/ci.yml)
+[安装 Host](#安装-host) · [配对 iPhone](#配对-iphone) · [Host 指南](docs/guides/install-host.md) · [构建 iOS 应用](docs/guides/build-ios.md)
+
+[![iOS CI](https://github.com/3loc/herden/actions/workflows/ci.yml/badge.svg)](https://github.com/3loc/herden/actions/workflows/ci.yml)
+[![Linux CI](https://github.com/3loc/herden/actions/workflows/ci-linux.yml/badge.svg)](https://github.com/3loc/herden/actions/workflows/ci-linux.yml)
 [![License: Apache 2.0](https://img.shields.io/badge/License-Apache_2.0-blue.svg)](LICENSE)
 [![GitHub stars](https://img.shields.io/github/stars/3loc/herden?style=flat)](https://github.com/3loc/herden/stargazers)
-[![Swift](https://img.shields.io/badge/Swift-6-F05138?logo=swift&logoColor=white)](https://www.swift.org)
-[![iOS](https://img.shields.io/badge/iOS-18%2B-000000?logo=apple&logoColor=white)](https://developer.apple.com/ios/)
-[![TestFlight](https://img.shields.io/badge/TestFlight-beta-0D96F6?logo=apple&logoColor=white)](https://testflight.apple.com/join/aXSxRn4r)
-
-**[通过 TestFlight 加入 beta](https://testflight.apple.com/join/aXSxRn4r)**
 
 [English](./README.md) | 简体中文
 
 </div>
 
----
+Herden 是 coding agent 的持久化 runtime。它在你控制的电脑上保留 Agent
+的终端、工作区和进程，即使没有客户端连接也会继续运行。原生 iPhone 应用
+连接到 Herden Host，而不是直接连接 Claude Code 或 Codex。
 
-Herden 是一个 **agent 控制台**：把所有机器上正在运行的 coding agent 汇成一个原生仪表盘，按「谁需要你」排序。打开一个 Agent 即可阅读并操控它的实时终端，在原生 Composer 里用完整的 iOS 键盘起草，一次 Send 投递完整消息 —— 全程只走普通 SSH。
+本项目结合了 [herdr](https://github.com/herdrdev/herdr) 和
+[Heeler](https://github.com/ZingerLittleBee/Heeler)。Rust runtime、CLI、工作区
+模型和 socket API 以 herdr 为基础。Herden 加入原生 iPhone 控制台，并把安全
+配对做成 Host 的内置功能。
 
-## 截图
+如果你熟悉 herdr，使用方式很简单：原来运行 `herdr` 的地方改为运行
+`herden`，要添加 iPhone 时运行 `herden pair`。
 
-| Agent 控制 | Composer | Terminal | 实时活动 |
-| --- | --- | --- | --- |
-| <img src="docs/images/agent-iphone.png" width="220" alt="iPhone 上带工具键盘的 Agent 终端" /> | <img src="docs/images/composer-iphone.png" width="220" alt="iPhone 上的 Agent 终端与 Composer" /> | <img src="docs/images/terminal-iphone.png" width="220" alt="iPhone 上带 Text / Keys 的普通 Terminal" /> | <img src="docs/images/live-activity-iphone.png" width="220" alt="iPhone 锁屏上实时跟踪 Agent 的实时活动" /> |
+## 与上游相比的主要变化
 
-## 功能
+- **统一的 Herden 产品：** Host runtime 和 iOS 控制台在同一个仓库维护。
+  公共命令、状态路径、socket 和界面文案都使用 Herden 名称。
+- **内置配对：** `herden pair` 生成短期、单次使用的 Bootstrap Key，并直接
+  在终端显示 Pairing Code。配对不需要 Node、插件操作或 Herden 账户。
+- **原生 iOS 控制台：** SwiftUI 应用使用 libghostty 渲染真实终端，通过仓库
+  内的 HerdenSSH 实现连接 Host。支持直接输入、听写、文件上传和 Host 切换。
+- **SSH 传输：** API 通过 OpenSSH direct-streamlocal 连接 Unix socket，交互
+  终端通过带 PTY 的 exec channel 连接。没有中心应用服务器，也不需要 socat。
+- **私有网络优先：** 推荐使用 Tailscale 或 Headscale，但任何能够访问普通
+  OpenSSH 的网络路径都可以使用。
+- **通知可选：** Node Host 扩展和无状态 Push Relay 提供端到端加密的 APNs
+  通知。配对和终端访问不依赖它们。
+- **兼容性优先：** 为避免破坏现有客户端和集成，部分 `HERDR_*` 环境变量和
+  wire 标识会继续保留。它们是兼容接口，不是产品名称。
 
-- **Console** —— 所有机器上的 Agent 汇成一个按状态排序的列表（Blocked
-  排最前），可按 Host 过滤，实时更新。
-- **Attach** —— libghostty 渲染的 Agent 真实终端：原生历史回看、也能驱动全屏
-  TUI 的惯性触摸滚动、长按选择、接管失效的终端占用者，并静默收集网页链接
-  供稍后打开。
-- **Composer** —— 在本地用完整的 iOS 键盘起草（自动纠错、输入法、听写），
-  一次 Send 投递；工具键盘另有 Agent 控制键、Agent Skills、可复用的
-  Snippets 和终端外观。
-- **Terminal** —— 在 Agent 的目录打开普通 shell，带 Text / Keys 两种模式，
-  每个工作区复用同一个 tab。
-- **附件** —— 把照片或最大 64 MiB 的文件经 SFTP 暂存到 Host，并把路径
-  插入草稿。
-- **扫码配对** —— 扫描 Pairing Code 即可添加机器；密钥在设备上生成，私钥
-  不离开 Keychain，配对码同时固定 host key 指纹。
-- **通知 + 实时活动** —— Agent 进入 Blocked 或 Done 时的端到端加密推送，
-  以及锁屏 / 灵动岛上实时跟踪 Agent 的横幅；中继永远读不到内容
-  （[PRIVACY.md](PRIVACY.md)）。
-- **Worktrees** —— 让 Agent 从工作区仓库的干净检出上启动。
-- **外观** —— 跟随系统 / 浅色 / 深色；30 个终端主题，浅色深色各有独立
-  槽位；内置 JetBrains Mono 与 IBM Plex Mono；双指缩放字号。
-- **跳板机** —— 经 SSH 跳板访问不可直连的机器，两跳各自校验密钥。
+Herden Host 从未经修改的 herdr 0.8.2 开始开发。准确的来源 commit 记录在
+[runtime/UPSTREAM.md](runtime/UPSTREAM.md)。
 
-## 连接原理
+## 上游策略
 
-Herden 通过 SSH 使用 herdr 的 JSON API：每个请求经 direct-streamlocal
-通道直连 `herdr.sock`，一条长连接承载事件流，交互终端则在 SSH PTY 上运行
-`herdr agent attach --takeover`。前提只有 SSH 访问和一个运行中的
-herdr —— 不改服务器、不装额外软件包。SSH 服务器需允许 stream-local 转发
-（OpenSSH 默认开启）；若被关闭，引导流程会明确指出。
+- **Heeler 只作为历史来源。** Herden 保留其 iOS 基础和归属说明，但不计划
+  持续合并或追踪后续 Heeler 开发。
+- **herdr 是 Host 的活跃上游。** Herden 尽量缩小 runtime 差异，让上游更新
+  容易审查和采用。
 
-不可直连的机器可以放在 SSH 跳板机之后：
+目前仓库在 GitHub 上是独立项目，并把 herdr 放在 `runtime/` 下，因此不能使用
+GitHub 的 **Sync fork** 按钮。启用该工作流需要把仓库迁移成真正的 herdr fork，
+并采用兼容的默认分支历史和目录结构。
 
-- [逐步搭建远程访问](docs/guides/vps-jump-host-setup.md)
-- [架构、安全边界与 VPS 迁移手册](docs/guides/vps-jump-host.md)
+## 安装 Host
 
-## 添加机器
+在 Linux 或 macOS Host 上运行：
 
-在运行 herdr 的机器上（Node >= 20、herdr >= 0.7.5、已启用 OpenSSH 服务器
-—— macOS 上是 **系统设置 > 通用 > 共享 > 远程登录**）：
-
-```bash
-herdr pair
+```sh
+curl -fsSL https://raw.githubusercontent.com/3loc/herden/main/install.sh | sh
+export PATH="$HOME/.local/bin:$PATH"
+herden
 ```
 
-用应用扫描弹出的 Pairing Code 二维码，机器即被添加为 Host —— 地址、
-host key 指纹和 SSH 密钥注册全部由配对码承载。在应用里为该 Host 启用通知
-后，同一个[插件](plugin/README.md)负责投递加密通知。
+安装器会选择当前系统和 CPU 对应的 release binary，验证 SHA-256 后安装到
+`~/.local/bin`。源码构建方式见 [Host 指南](docs/guides/install-host.md#build-from-source)。
 
-## 技术栈
+## 配对 iPhone
 
-- SwiftUI，iOS 18+，当前仅 iPhone（iPad 在计划中）
-- 仓库内 `Packages/HerdenSSH`（libssh2 + OpenSSL）负责 SSH
-- [libghostty-spm](https://github.com/lakr233/libghostty-spm) 负责终端仿真与 Metal 渲染
+iPhone 必须能访问 Host 的普通 OpenSSH 服务。推荐使用 Tailscale 或 Headscale，
+不需要开放公网路由器端口。
 
-选型缘由见 `docs/adr/`（传输层的故事尤其不直观）。
+在 Host 的普通 shell 中运行：
 
-## 参与贡献
+```sh
+herden pair
+```
 
-欢迎 Issue 和 PR：仓库结构、构建与测试、提交约定见 [CONTRIBUTING.md](CONTRIBUTING.md)。
+然后在 iPhone 上打开 **Herden → Hosts → Add Host**，扫描 Pairing Code，并确认
+Host 指纹。配对码两分钟后过期，且只能添加一台手机。添加另一台设备时重新
+运行命令即可。
 
-## 状态
+## 安装 iPhone 应用
 
-Beta，已上 [TestFlight](https://testflight.apple.com/join/aXSxRn4r)。以个人日常使用打磨为先，仍有粗糙之处，迭代较快。与 herdr 项目无隶属关系。
+构建原生 iOS 应用需要安装 Xcode 26 或更高版本的 Mac。Simulator 不需要付费
+Apple 会员；真机版本需要开发团队，以及属于该团队的 App Group。
+
+```sh
+git clone https://github.com/3loc/herden.git
+cd herden
+make sim
+```
+
+签名、真机安装和 Wi-Fi 部署见 [iOS 构建指南](docs/guides/build-ios.md)。
+
+## 开发
+
+```sh
+make help          # 查看所有任务
+make host-check    # 检查 Host 构建依赖
+make host-install  # 构建并安装 Host
+make sim           # 在 Simulator 中构建并启动 iOS 应用
+make test          # 运行 iOS 和 HerdenSSH 测试
+```
+
+贡献方式见 [CONTRIBUTING.md](CONTRIBUTING.md)。隐私和通知的安全边界见
+[PRIVACY.md](PRIVACY.md)。
+
+## 来源和许可证
+
+Heeler 的贡献者在
+[issue #282](https://github.com/ZingerLittleBee/Heeler/issues/282) 中批准了
+Apache-2.0 重新许可，该 commit 已保留在 Herden 历史中。完整来源记录和维护
+策略见 [UPSTREAM.md](UPSTREAM.md)。整个 Herden 仓库采用
+[Apache License 2.0](LICENSE)。

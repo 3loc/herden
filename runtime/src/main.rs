@@ -697,7 +697,7 @@ fn main() -> io::Result<()> {
         println!("Config: {}", config::config_path().display());
         println!("Logs:   {}", logging::help_log_paths_summary());
         println!("Env:    HERDR_CONFIG_PATH overrides config file path");
-        println!("Home:   https://herden.austrheim.ca7.fm");
+        println!("Home:   https://github.com/3loc/herden");
         println!();
         println!("{}", cli::AGENT_HELP_FOOTER);
         return Ok(());

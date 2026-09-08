@@ -55,7 +55,7 @@ Herden does not require 3LOC's private network.
 Install the release binary on Linux or macOS:
 
 ```sh
-curl -fsSL https://herden.austrheim.ca7.fm/install.sh | sh
+curl -fsSL https://raw.githubusercontent.com/3loc/herden/main/install.sh | sh
 export PATH="$HOME/.local/bin:$PATH"
 herden --version
 ```
@@ -136,7 +136,7 @@ for another device. No Node, npm, plugin action or push relay is required.
 | Symptom | Next step |
 | --- | --- |
 | `herden: command not found` | Run `"$HOME/.local/bin/herden"` or set PATH as above. |
-| Release download fails | Check access to `herden.austrheim.ca7.fm`, or use the source build above. |
+| Release download fails | Check access to `github.com`, or use the source build above. |
 | Expired QR code | Run `herden pair` again and keep its terminal open. |
 | Host unreachable | Check Tailscale on both devices, the Host address, firewall and access policy. |
 | Permission denied | Pair as the Host user running Herden; check Remote Login and whether Tailscale SSH is intercepting port 22. |

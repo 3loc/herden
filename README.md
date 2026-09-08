@@ -8,7 +8,8 @@
 
 [Install](#install) · [Pair an iPhone](#pair-an-iphone) · [Host guide](docs/guides/install-host.md) · [Build the iOS app](docs/guides/build-ios.md)
 
-[![CI](https://github.com/3loc/herden/actions/workflows/ci.yml/badge.svg)](https://github.com/3loc/herden/actions/workflows/ci.yml)
+[![iOS CI](https://github.com/3loc/herden/actions/workflows/ci.yml/badge.svg)](https://github.com/3loc/herden/actions/workflows/ci.yml)
+[![Linux CI](https://github.com/3loc/herden/actions/workflows/ci-linux.yml/badge.svg)](https://github.com/3loc/herden/actions/workflows/ci-linux.yml)
 [![License: Apache 2.0](https://img.shields.io/badge/License-Apache_2.0-blue.svg)](LICENSE)
 [![GitHub stars](https://img.shields.io/github/stars/3loc/herden?style=flat)](https://github.com/3loc/herden/stargazers)
 
@@ -98,7 +99,7 @@ not describe Herden as automatically synchronised with herdr.
 On a Linux or macOS Host:
 
 ```sh
-curl -fsSL https://herden.austrheim.ca7.fm/install.sh | sh
+curl -fsSL https://raw.githubusercontent.com/3loc/herden/main/install.sh | sh
 export PATH="$HOME/.local/bin:$PATH"
 herden
 ```
@@ -181,4 +182,6 @@ approved its Apache-2.0 relicense in
 [Heeler issue #282](https://github.com/ZingerLittleBee/Heeler/issues/282), and
 that relicense is preserved in this repository's history. The Host runtime
 retains herdr's attribution in [runtime/LICENSE](runtime/LICENSE). The combined
-Herden repository is licensed under the [Apache License 2.0](LICENSE).
+Herden repository is licensed under the [Apache License 2.0](LICENSE). Exact
+source commits and maintenance policy are recorded in
+[UPSTREAM.md](UPSTREAM.md).

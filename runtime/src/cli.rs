@@ -47,9 +47,9 @@ const TERMINAL_SESSION_CONTROL_USAGE: &str =
 pub(crate) const AGENT_HELP_FOOTER: &str = concat!(
     "Are you an AI? Use these resources ONLY IF your task specifically asks you to:\n",
     "  Help a human understand or set up Herden for the first time:\n",
-    "    https://herden.austrheim.ca7.fm/agent-guide.md\n",
+    "    https://raw.githubusercontent.com/3loc/herden/main/README.md\n",
     "  Debug or investigate a problem with Herden:\n",
-    "    https://herden.austrheim.ca7.fm/llms.txt\n",
+    "    https://raw.githubusercontent.com/3loc/herden/main/CLAUDE.md\n",
     "  Control Herden panes, agents, or workspaces:\n",
     "    SKIP if a Herden skill is already in your context. Otherwise run: herden --skill",
 );

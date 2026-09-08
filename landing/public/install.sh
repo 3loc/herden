@@ -5,7 +5,7 @@ binary="herden"
 host_version="0.8.2"
 host_tag="host-v${host_version}"
 install_dir="${HERDEN_INSTALL_DIR:-$HOME/.local/bin}"
-download_root="${HERDEN_DOWNLOAD_ROOT:-https://herden.austrheim.ca7.fm/downloads/${host_tag}}"
+download_root="${HERDEN_DOWNLOAD_ROOT:-https://github.com/3loc/herden/releases/download/${host_tag}}"
 
 log() { printf '  \033[32m>\033[0m %s\n' "$1"; }
 warn() { printf '  \033[33m!\033[0m %s\n' "$1" >&2; }

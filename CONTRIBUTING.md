@@ -1,7 +1,7 @@
 # Contributing to Herden
 
 Issues and PRs are welcome. Bug reports from real setups are especially
-valuable — much of this app is shaped by what breaks in daily use, and a
+valuable. Much of this app is shaped by what breaks in daily use, and a
 report that names the herdr version, the SSH topology, and what the screen
 showed is already half the fix.
 
@@ -9,12 +9,12 @@ showed is already half the fix.
 
 Read these before changing anything non-trivial:
 
-- [`CONTEXT.md`](CONTEXT.md) — the domain vocabulary. PRs and issues read
+- [`CONTEXT.md`](CONTEXT.md): the domain vocabulary. PRs and issues read
   better when they use these terms the way the codebase does.
-- [`docs/adr/`](docs/adr/) — the decisions that look strange from the
+- [`docs/adr/`](docs/adr/): the decisions that look strange from the
   outside (the transport design especially) and the dead ends that led to
   them. Challenge them with evidence, not re-litigation.
-- [`CLAUDE.md`](CLAUDE.md) — the working guide for humans and coding agents
+- [`CLAUDE.md`](CLAUDE.md): the working guide for humans and coding agents
   alike: conventions, load-bearing herdr facts, and the commands that
   matter. Coding agents are first-class contributors here; the repo is
   deliberately structured for them.
@@ -43,7 +43,7 @@ project is generated from `project.yml` (XcodeGen; `brew install xcodegen`).
 Run `make generate` after changing the YAML. CI builds the *committed*
 `Herden.xcodeproj`, so commit the regenerated project alongside the change.
 
-- `make test` — the full app suite plus the `Packages/HerdenSSH` package
+- `make test`: the full app suite plus the `Packages/HerdenSSH` package
   suites (those run through `scripts/run-herdenssh-package-tests.sh`, not
   `-only-testing`).
 - One suite:
@@ -57,7 +57,7 @@ A few suites exercise a real SSH server; they skip cleanly on machines
 without a local sshd and seeded key, and CI provisions disposable sshd
 instances to run them for you.
 
-Two artifact families are generated or shared — never hand-edit them:
+Two artifact families are generated or shared. Never hand-edit them:
 
 - `Sources/Herden/Transport/Generated/` comes from
   `scripts/generate-wire-types.py --schema scripts/herdr-schema.json`; CI
@@ -72,7 +72,7 @@ Two artifact families are generated or shared — never hand-edit them:
   lowercase subject.
 - User-visible changes get a `CHANGELOG.md` entry under `[Unreleased]`,
   referencing the PR. Internal refactors and test work stay out of it.
-- Never hand-edit `MARKETING_VERSION` or create version tags — releases are
+- Never hand-edit `MARKETING_VERSION` or create version tags. Releases are
   cut by the maintainer with `make publish`, and `CHANGELOG.md` is the
   source of both the version and the notes.
 - Keys and secrets never leave the Keychain and never appear in code, logs,
@@ -81,8 +81,8 @@ Two artifact families are generated or shared — never hand-edit them:
 ## Reporting security issues
 
 The privacy model (what the relay can and cannot see) is documented in
-[PRIVACY.md](PRIVACY.md). For anything that looks like a vulnerability,
-prefer a private report over a public issue.
+[PRIVACY.md](PRIVACY.md). Report anything that looks like a vulnerability
+through the private process in [SECURITY.md](SECURITY.md), not a public issue.
 
 ## License
 
