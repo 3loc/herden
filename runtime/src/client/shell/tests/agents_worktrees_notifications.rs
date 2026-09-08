@@ -7,12 +7,13 @@ fn mouse_hits_use_stable_workspace_tab_and_pane_ids() {
     state.set_snapshot(Box::new(snapshot()));
     state.set_pane_surface(surface());
     state.compose(106, 20).expect("composed frame");
+    let workspace_rect = state.hits.workspaces[0].rect;
 
     let workspace_down =
         state.handle_raw_events(vec![RawInputEvent::Mouse(crossterm::event::MouseEvent {
             kind: MouseEventKind::Down(MouseButton::Left),
             column: 2,
-            row: 2,
+            row: workspace_rect.y,
             modifiers: KeyModifiers::empty(),
         })]);
     assert!(workspace_down.actions.is_empty());
@@ -20,7 +21,7 @@ fn mouse_hits_use_stable_workspace_tab_and_pane_ids() {
         state.handle_raw_events(vec![RawInputEvent::Mouse(crossterm::event::MouseEvent {
             kind: MouseEventKind::Up(MouseButton::Left),
             column: 2,
-            row: 2,
+            row: workspace_rect.y,
             modifiers: KeyModifiers::empty(),
         })]);
     assert!(workspace.requests.is_empty());
@@ -184,7 +185,7 @@ fn workspace_click_waits_for_release_and_drag_reorders_by_stable_id() {
     let mut state = ClientShellState::new(ClientShellConfig::from_config(&Config::default()));
     state.set_snapshot(Box::new(projected));
     state.set_pane_surface(surface());
-    state.compose(106, 24).expect("three workspaces");
+    state.compose(106, 30).expect("three workspaces");
     let first = state.hits.workspaces[0].rect;
     let third = state.hits.workspaces[2].rect;
 
@@ -209,7 +210,7 @@ fn workspace_click_waits_for_release_and_drag_reorders_by_stable_id() {
             target: Some((None, _)),
         }) if source_workspace_id == "ws_1"
     ));
-    let frame = state.compose(106, 24).expect("workspace drop indicator");
+    let frame = state.compose(106, 30).expect("workspace drop indicator");
     assert!(frame
         .cells
         .chunks(frame.width as usize)
@@ -232,7 +233,7 @@ fn workspace_click_waits_for_release_and_drag_reorders_by_stable_id() {
             )
     ));
 
-    state.compose(106, 24).expect("workspaces after drag");
+    state.compose(106, 30).expect("workspaces after drag");
     let second = state.hits.workspaces[1].rect;
     state.handle_raw_events(vec![RawInputEvent::Mouse(crossterm::event::MouseEvent {
         kind: MouseEventKind::Down(MouseButton::Left),

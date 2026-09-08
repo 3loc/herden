@@ -10,6 +10,7 @@ pub(super) fn render_collapsed(
 ) {
     let palette = &config.palette;
     super::render::render_sidebar_background(buffer, area, palette);
+    let area = super::brand::render_header(buffer, area, config);
     let (workspace_area, divider_y, detail_area) = super::sidebar::collapsed_sidebar_sections(area);
     let mut y = workspace_area.y;
     for (index, endpoint) in state.endpoints.iter().enumerate() {
@@ -158,6 +159,7 @@ pub(super) fn render_expanded(
 ) {
     let palette = &config.palette;
     super::render::render_sidebar_background(buffer, area, palette);
+    let area = super::brand::render_header(buffer, area, config);
     hits.sidebar_divider = if area.is_empty() {
         Rect::default()
     } else {

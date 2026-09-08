@@ -138,6 +138,7 @@ fn client_owned_sidebar_dividers_resize_live() {
     state.set_pane_surface(surface());
     state.compose(106, 30).expect("resized sidebar");
     let section_divider = state.hits.sidebar_section_divider;
+    let sidebar_content = state.hits.sidebar_divider;
     state.handle_raw_events(vec![RawInputEvent::Mouse(crossterm::event::MouseEvent {
         kind: MouseEventKind::Down(MouseButton::Left),
         column: section_divider.x + 2,
@@ -147,7 +148,7 @@ fn client_owned_sidebar_dividers_resize_live() {
     let split = state.handle_raw_events(vec![RawInputEvent::Mouse(crossterm::event::MouseEvent {
         kind: MouseEventKind::Drag(MouseButton::Left),
         column: section_divider.x + 2,
-        row: 20,
+        row: sidebar_content.y + sidebar_content.height * 2 / 3,
         modifiers: KeyModifiers::empty(),
     })]);
     assert!(state.sidebar_section_split > 0.6);

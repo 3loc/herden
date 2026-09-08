@@ -34,6 +34,7 @@ pub(crate) fn render_collapsed_sidebar(
 ) {
     let palette = &config.palette;
     render_sidebar_background(buffer, area, palette);
+    let area = super::super::brand::render_header(buffer, area, config);
     let (workspace_area, divider_y, detail_area) = collapsed_sidebar_sections(area);
     for (index, workspace) in snapshot
         .workspaces
@@ -190,6 +191,7 @@ pub(crate) fn render_sidebar(
 ) {
     let palette = &config.palette;
     render_sidebar_background(buffer, area, palette);
+    let area = super::super::brand::render_header(buffer, area, config);
     hits.sidebar_divider = if area.is_empty() {
         Rect::default()
     } else {
