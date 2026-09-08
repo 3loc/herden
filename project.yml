@@ -61,7 +61,7 @@ targets:
         PRODUCT_BUNDLE_IDENTIFIER: ltd.3loc.herden
         INFOPLIST_KEY_CFBundleDisplayName: Herden
         MARKETING_VERSION: "0.1.5"
-        CURRENT_PROJECT_VERSION: "18"
+        CURRENT_PROJECT_VERSION: "19"
         # Scan to Pair (#62) reads the Pairing Code QR from the computer screen.
         INFOPLIST_KEY_NSCameraUsageDescription: "Herden uses the camera to scan the Pairing Code shown on your computer, so you can add that machine without typing anything."
         INFOPLIST_KEY_NSMicrophoneUsageDescription: "Herden uses the microphone for on-device terminal dictation."
@@ -123,7 +123,7 @@ targets:
         PRODUCT_BUNDLE_IDENTIFIER: ltd.3loc.herden.share
         PRODUCT_NAME: HerdenShareExtension
         MARKETING_VERSION: "0.1.5"
-        CURRENT_PROJECT_VERSION: "18"
+        CURRENT_PROJECT_VERSION: "19"
         TARGETED_DEVICE_FAMILY: "1"
         APPLICATION_EXTENSION_API_ONLY: YES
         SKIP_INSTALL: YES
