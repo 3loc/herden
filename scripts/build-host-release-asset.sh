@@ -27,7 +27,7 @@ rustup target add "$target"
 if [ "$target" = aarch64-unknown-linux-musl ]; then
     command -v cargo-zigbuild >/dev/null 2>&1 \
         || fail 'cargo-zigbuild 0.23.4 is required for the Linux ARM64 build'
-    [ "$(cargo zigbuild --version)" = 'cargo-zigbuild 0.23.4' ] \
+    [ "$(cargo-zigbuild -V)" = 'cargo-zigbuild 0.23.4' ] \
         || fail 'cargo-zigbuild 0.23.4 is required for the Linux ARM64 build'
     cargo zigbuild --release --locked --target "$target"
 else
