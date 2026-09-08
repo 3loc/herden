@@ -186,9 +186,11 @@ tables as embedded in nayuki/QR-Code-generator `QrCode.java:773-790`:
 | 10 | 57x57 | 271 | 395 | 652 |
 | 11 | 61x61 | 321 | 468 | 772 |
 
-### Base45 would make our QR bigger, not smaller
+### Base45 is slightly less dense than raw bytes, but scanner-safe
 
-This is the most important correction to the framing of the original question.
+Base45 is not itself the source of the size reduction. Compacting the envelope
+is. Base45 then makes that binary envelope safe to deliver through QR scanners
+as text while keeping the symbol in alphanumeric mode.
 
 **Base45 costs 8.25 QR data bits per source byte; raw byte mode costs 8.00.**
 Base45 encodes 2 bytes into 3 alphanumeric characters (RFC 9285 §4), and each
@@ -228,9 +230,13 @@ row is the practical trap: if any character in the payload falls outside the
 45-character alphanumeric set, the encoder drops the whole segment to byte mode
 and the result is two versions *worse* than doing nothing.
 
-**Conclusion for us: encode the compacted envelope as raw bytes. Do not
-Base45-encode it.** Our current payload is base64url inside an ASCII envelope,
-which is the Base64 row of that table — the worst realistic option.
+**Conclusion for us: Base45 is the practical transport for the compact binary
+envelope.** Raw byte mode is 34 bits denser for this representative payload,
+but both encodings produce the same v6 symbol. Base45 avoids arbitrary-byte
+text-decoding behavior in camera/scanner APIs, provided the prefix and payload
+stay inside QR's alphanumeric character set. The legacy v1 JSON plus base64url
+envelope was the material size problem; deployed v2 uses compact binary plus
+Base45 and remains v6 at error-correction level L.
 
 ### EU DCC, for the record
 

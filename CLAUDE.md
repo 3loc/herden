@@ -36,6 +36,8 @@ eliminating several dead ends.
 | `Sources/Herden/Transport/SSHTransportSettings.swift` | Host command defaults and injectable SSH environment boundaries. |
 | `Sources/Herden/Sharing/` | Durable Share Extension transfer ingestion and delivery. |
 | `runtime/` | Rust Herden Host, CLI and built-in `herden pair`. |
+| `runtime/src/pairing/code.rs` + `Sources/Herden/Pairing/PairingCode.swift` | Paired Host/iOS codecs for compact v2 and legacy v1 pairing envelopes. |
+| `plugin/test-vectors/pairing-code-v2.json` | Cross-language source of truth for the v2 pairing wire format. |
 | `plugin/` | Optional Node notification extension. |
 | `relay/` | Stateless APNs relay. |
 | `landing/` | Static Herden site and public installer copy. |
@@ -51,6 +53,9 @@ eliminating several dead ends.
 Both Agent and Space terminal views feed the shared keyboard into the same
 terminal input controller; attachment paths and pasted text therefore reach
 the live PTY through one guarded input path.
+
+Pairing facts flow from the Host codec into a Base45 QR envelope and through
+the shared vector into the Swift decoder tests; change all three in lockstep.
 
 The installer persists PATH in shell startup files; the quick-start export
 updates the current Terminal. Keep both: a `curl ... | sh` child cannot update
