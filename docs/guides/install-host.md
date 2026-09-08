@@ -89,7 +89,7 @@ sudo apt install build-essential cmake pkg-config git curl
 
 On macOS, install Xcode's command-line tools with `xcode-select --install`.
 Install [Rust with rustup](https://rustup.rs/) and a current stable toolchain;
-the release workflow uses Rust 1.96.1.
+the release workflow uses Rust 1.98.1.
 
 Install **Zig 0.15.2**, the exact version required by the bundled terminal
 engine, from [Zig downloads](https://ziglang.org/download/). Extract the archive

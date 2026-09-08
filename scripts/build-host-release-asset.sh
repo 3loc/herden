@@ -24,9 +24,9 @@ export ZIG
 
 cd "$repo_dir/runtime"
 rustup target add "$target"
-if [ "$target" = aarch64-unknown-linux-musl ]; then
+if [ "$target" = aarch64-unknown-linux-musl ] || [ "$target" = x86_64-unknown-linux-musl ]; then
     command -v cargo-zigbuild >/dev/null 2>&1 \
-        || fail 'cargo-zigbuild 0.23.4 is required for the Linux ARM64 build'
+        || fail 'cargo-zigbuild 0.23.4 is required for Linux release builds'
     [ "$(cargo-zigbuild -V)" = 'cargo-zigbuild 0.23.4' ] \
         || fail 'cargo-zigbuild 0.23.4 is required for the Linux ARM64 build'
     cargo zigbuild --release --locked --target "$target"
@@ -35,7 +35,7 @@ else
 fi
 
 mkdir -p "$output_dir"
-install -m 0755 "target/$target/release/herden" "$output_dir/$asset"
+install -m 0755 "${CARGO_TARGET_DIR:-target}/$target/release/herden" "$output_dir/$asset"
 
 version=$(awk -F'"' '/^version = "/ { print $2; exit }' Cargo.toml)
 sh "$repo_dir/scripts/verify-host-release-asset.sh" \
