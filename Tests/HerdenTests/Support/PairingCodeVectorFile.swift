@@ -1,9 +1,8 @@
 import Foundation
 
-/// The shared Pairing Code v1 vectors from `plugin/test-vectors/`, the single
-/// source of truth for the envelope across the Node plugin and this app
-/// (ADR 0007). The JSON file is bundled into the test target as a resource so
-/// the Swift tests exercise exactly the same cases as the Node tests.
+/// Shared Pairing Code vectors from `plugin/test-vectors/`. Both versions are
+/// bundled into the test target so the Swift decoder and Rust Host encoder
+/// exercise the same compatibility contract.
 struct PairingCodeVectorFile: Decodable, Sendable {
     let valid: [Valid]
     let invalid: [Invalid]
@@ -19,6 +18,7 @@ struct PairingCodeVectorFile: Decodable, Sendable {
         let addresses: [String]
         let port: Int
         let username: String
+        let hostName: String?
         let hostKeyFingerprint: String
         /// Raw 32-byte Bootstrap Key seed as unpadded base64url (wire encoding).
         let bootstrapSeed: String?
@@ -33,19 +33,22 @@ struct PairingCodeVectorFile: Decodable, Sendable {
         var description: String { name }
     }
 
-    static let shared: PairingCodeVectorFile = {
+    static let shared = load(named: "pairing-code-v1")
+    static let compact = load(named: "pairing-code-v2")
+
+    private static func load(named name: String) -> PairingCodeVectorFile {
         guard
             let url = Bundle(for: BundleLocator.self)
-                .url(forResource: "pairing-code-v1", withExtension: "json")
+                .url(forResource: name, withExtension: "json")
         else {
-            fatalError("pairing-code-v1.json is missing from the test bundle")
+            fatalError("\(name).json is missing from the test bundle")
         }
         do {
             return try JSONDecoder().decode(PairingCodeVectorFile.self, from: Data(contentsOf: url))
         } catch {
             fatalError("shared pairing vectors failed to load: \(error)")
         }
-    }()
+    }
 
     private final class BundleLocator {}
 }

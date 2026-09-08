@@ -3,16 +3,15 @@ import Foundation
 /// A parsed Pairing Code: the versioned payload the pairing plugin renders as
 /// a QR image (ADR 0007). Wire format:
 ///
-///     HERDR-PAIR:<version>:<base64url(JSON, no padding)>
+///     HERDR-PAIR:1:<base64url(JSON, no padding)>
+///     HERDR-PAIR:2:<Base45(compact binary)>
 ///
-/// The schema and error taxonomy live in `plugin/README.md`; the shared test
-/// vectors in `plugin/test-vectors/pairing-code-v1.json` are the single
-/// source of truth for both this decoder and the plugin's encoder. Unknown
-/// payload fields are ignored (additive v1 metadata); breaking changes bump
-/// the version, which both implementations must honor together.
+/// v1 remains decode-only compatibility. The Host emits v2, whose compact
+/// body keeps the same complete credential and identity material while fitting
+/// a materially smaller terminal QR.
 struct PairingCode: Sendable, Equatable {
     static let prefix = "HERDR-PAIR"
-    static let version = 1
+    static let version = 2
 
     /// Candidate addresses in the order the app should try them.
     /// IPv6 literals carry no brackets and no zone id.
@@ -61,14 +60,16 @@ struct PairingCode: Sendable, Equatable {
             throw .badPrefix
         }
         let foundVersion = String(rest[..<separator])
-        guard foundVersion == String(version) else {
-            throw .unsupportedVersion(found: foundVersion)
+        let encodedBody = String(rest[rest.index(after: separator)...])
+        switch foundVersion {
+        case "1": return try decodeV1(encodedBody)
+        case "2": return try decodeV2(encodedBody)
+        default: throw .unsupportedVersion(found: foundVersion)
         }
+    }
 
-        guard let body = Data(base64URLEncoded: String(rest[rest.index(after: separator)...]))
-        else {
-            throw .badEncoding
-        }
+    private static func decodeV1(_ encodedBody: String) throws(PairingCodeError) -> PairingCode {
+        guard let body = Data(base64URLEncoded: encodedBody) else { throw .badEncoding }
         let wire: WirePayload
         do {
             wire = try JSONDecoder().decode(WirePayload.self, from: body)
@@ -81,6 +82,71 @@ struct PairingCode: Sendable, Equatable {
             throw .badPayload(reason: "payload shape mismatch")
         }
         return try validated(wire)
+    }
+
+    private static func decodeV2(_ encodedBody: String) throws(PairingCodeError) -> PairingCode {
+        guard let body = decodeBase45(encodedBody) else { throw .badEncoding }
+        var reader = BinaryReader(data: body)
+
+        let flags = try reader.readByte()
+        guard flags & ~hostNameFlag == 0 else {
+            throw .badPayload(reason: "unsupported compact payload flags")
+        }
+        let port = Int(try reader.readUInt16())
+        guard (1...65535).contains(port) else {
+            throw .badPayload(reason: "port must be an integer in 1..65535")
+        }
+        let expiresAt = try reader.readUInt32()
+        guard expiresAt > 0 else {
+            throw .badPayload(reason: "exp must be a positive unix-seconds integer")
+        }
+        let fingerprint = HostKeyFingerprint(digest: try reader.readData(count: fingerprintBytes))
+        let seed = try reader.readData(count: bootstrapSeedBytes)
+        let username = try reader.readString()
+        guard !username.isEmpty, !containsWhitespace(username) else {
+            throw .badPayload(reason: "username must be a non-empty string without whitespace")
+        }
+        let hostName = flags & hostNameFlag != 0 ? try reader.readString() : nil
+        if let hostName, hostName.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+            throw .badPayload(reason: "Host name must not be empty")
+        }
+
+        let addressCount = Int(try reader.readByte())
+        guard addressCount > 0 else {
+            throw .badPayload(reason: "addresses must be a non-empty array")
+        }
+        var addresses: [String] = []
+        addresses.reserveCapacity(addressCount)
+        for _ in 0..<addressCount {
+            let address: String
+            switch try reader.readByte() {
+            case addressIPv4:
+                address = try reader.readBytes(count: 4).map(String.init).joined(separator: ".")
+            case addressIPv6:
+                address = formatIPv6(try reader.readBytes(count: 16))
+            case addressName:
+                address = try reader.readString()
+            default:
+                throw .badPayload(reason: "unknown compact address kind")
+            }
+            guard !address.isEmpty, !containsWhitespace(address) else {
+                throw .badPayload(reason: "invalid address: \(address)")
+            }
+            addresses.append(address)
+        }
+        guard reader.isAtEnd else {
+            throw .badPayload(reason: "unexpected trailing compact payload data")
+        }
+
+        return PairingCode(
+            addresses: addresses,
+            port: port,
+            username: username,
+            hostName: hostName,
+            hostKeyFingerprint: fingerprint,
+            bootstrap: Bootstrap(
+                seed: seed,
+                expiresAt: Date(timeIntervalSince1970: TimeInterval(expiresAt))))
     }
 
     private static func validated(_ wire: WirePayload) throws(PairingCodeError) -> PairingCode {
@@ -129,6 +195,11 @@ struct PairingCode: Sendable, Equatable {
     }
 
     private static let bootstrapSeedBytes = 32
+    private static let fingerprintBytes = 32
+    private static let hostNameFlag: UInt8 = 1
+    private static let addressIPv4: UInt8 = 0
+    private static let addressIPv6: UInt8 = 1
+    private static let addressName: UInt8 = 2
 
     /// JSON wire shape. Every field is optional and numbers are decoded as
     /// Double so that missing keys and wrong values fail validation with
@@ -157,6 +228,112 @@ struct PairingCode: Sendable, Equatable {
 
     private static func containsWhitespace(_ text: String) -> Bool {
         text.unicodeScalars.contains { CharacterSet.whitespacesAndNewlines.contains($0) }
+    }
+
+    private static func decodeBase45(_ text: String) -> Data? {
+        let alphabet = Array("0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ $%*+-./:".utf8)
+        var values: [UInt16] = []
+        values.reserveCapacity(text.utf8.count)
+        for byte in text.utf8 {
+            guard let value = alphabet.firstIndex(of: byte) else { return nil }
+            values.append(UInt16(value))
+        }
+        guard values.count % 3 != 1 else { return nil }
+
+        var decoded: [UInt8] = []
+        decoded.reserveCapacity(values.count * 2 / 3)
+        var index = 0
+        while index + 2 < values.count {
+            let value = UInt32(values[index])
+                + UInt32(values[index + 1]) * 45
+                + UInt32(values[index + 2]) * 2_025
+            guard value <= UInt32(UInt16.max) else { return nil }
+            decoded.append(UInt8(value >> 8))
+            decoded.append(UInt8(value & 0xff))
+            index += 3
+        }
+        if index < values.count {
+            let value = values[index] + values[index + 1] * 45
+            guard value <= UInt8.max else { return nil }
+            decoded.append(UInt8(value))
+        }
+        return Data(decoded)
+    }
+
+    private static func formatIPv6(_ bytes: [UInt8]) -> String {
+        let groups = stride(from: 0, to: bytes.count, by: 2).map {
+            UInt16(bytes[$0]) << 8 | UInt16(bytes[$0 + 1])
+        }
+        var longestStart: Int?
+        var longestCount = 0
+        var index = 0
+        while index < groups.count {
+            guard groups[index] == 0 else {
+                index += 1
+                continue
+            }
+            let start = index
+            while index < groups.count, groups[index] == 0 { index += 1 }
+            if index - start > longestCount, index - start >= 2 {
+                longestStart = start
+                longestCount = index - start
+            }
+        }
+        guard let longestStart else {
+            return groups.map { String($0, radix: 16) }.joined(separator: ":")
+        }
+        let before = groups[..<longestStart].map { String($0, radix: 16) }.joined(separator: ":")
+        let after = groups[(longestStart + longestCount)...]
+            .map { String($0, radix: 16) }.joined(separator: ":")
+        return before + "::" + after
+    }
+
+    private struct BinaryReader {
+        private let bytes: [UInt8]
+        private var offset = 0
+
+        init(data: Data) {
+            bytes = Array(data)
+        }
+
+        var isAtEnd: Bool { offset == bytes.count }
+
+        mutating func readByte() throws(PairingCodeError) -> UInt8 {
+            guard offset < bytes.count else { throw truncated }
+            defer { offset += 1 }
+            return bytes[offset]
+        }
+
+        mutating func readBytes(count: Int) throws(PairingCodeError) -> [UInt8] {
+            guard count >= 0, offset <= bytes.count - count else { throw truncated }
+            defer { offset += count }
+            return Array(bytes[offset..<(offset + count)])
+        }
+
+        mutating func readData(count: Int) throws(PairingCodeError) -> Data {
+            Data(try readBytes(count: count))
+        }
+
+        mutating func readUInt16() throws(PairingCodeError) -> UInt16 {
+            let value = try readBytes(count: 2)
+            return UInt16(value[0]) << 8 | UInt16(value[1])
+        }
+
+        mutating func readUInt32() throws(PairingCodeError) -> UInt32 {
+            try readBytes(count: 4).reduce(UInt32.zero) { ($0 << 8) | UInt32($1) }
+        }
+
+        mutating func readString() throws(PairingCodeError) -> String {
+            let value = try readData(count: Int(readByte()))
+            guard let string = String(data: value, encoding: .utf8) else {
+                throw .badPayload(reason: "compact string is not UTF-8")
+            }
+            return string
+        }
+
+        private var truncated: PairingCodeError {
+            .badPayload(reason: "compact payload is truncated")
+        }
     }
 }
 

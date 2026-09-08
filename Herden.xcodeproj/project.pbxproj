@@ -364,6 +364,7 @@
 		EFECAD3940E78D7E1168D30B /* JSONValueTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5A9E6484546FD13B3D0CA9FD /* JSONValueTests.swift */; };
 		F068445F9C7CC84574DFCAA9 /* PairingCeremonyE2ETests.swift in Sources */ = {isa = PBXBuildFile; fileRef = E899360DEBEE0BA15DC9E563 /* PairingCeremonyE2ETests.swift */; };
 		F12563A61C0AEC6A09BF510C /* StartAgentStoreTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0F48859372956E0F5EF209D2 /* StartAgentStoreTests.swift */; };
+		F2D81CEEBB65F8976DC9A368 /* pairing-code-v2.json in Resources */ = {isa = PBXBuildFile; fileRef = A2F66D0AA94A8091C75E85A6 /* pairing-code-v2.json */; };
 		F322951D50C9D82CA3198A80 /* HostKeyPolicy.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0742FD40446764AB3E620168 /* HostKeyPolicy.swift */; };
 		F333E528C70B9C269652A035 /* SkillsPaneStoreTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 975CDD6774386C3AF013FD36 /* SkillsPaneStoreTests.swift */; };
 		F3E0628EA56C82776B032F64 /* SecretStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3D9A7D8A7709ED6A9A7D05BA /* SecretStore.swift */; };
@@ -647,6 +648,7 @@
 		A09842B03275FE0A866EADF9 /* PairingScanStoreTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PairingScanStoreTests.swift; sourceTree = "<group>"; };
 		A0EF2D2628B14B8AF540929E /* FakeLiveActivityController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FakeLiveActivityController.swift; sourceTree = "<group>"; };
 		A1AD833C834224DB89E80D22 /* TerminalTouchScroll.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TerminalTouchScroll.swift; sourceTree = "<group>"; };
+		A2F66D0AA94A8091C75E85A6 /* pairing-code-v2.json */ = {isa = PBXFileReference; lastKnownFileType = text.json; path = "pairing-code-v2.json"; sourceTree = "<group>"; };
 		A311B2D510DA19FDA3689D93 /* GeneratedWireTypesTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GeneratedWireTypesTests.swift; sourceTree = "<group>"; };
 		A3E653D4010703CBD1347E7A /* ConsoleListPresentationStoreTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ConsoleListPresentationStoreTests.swift; sourceTree = "<group>"; };
 		A4F84E4DE2B4B55232DEF695 /* CancellablePhaseGate.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CancellablePhaseGate.swift; sourceTree = "<group>"; };
@@ -1307,6 +1309,7 @@
 				084B0094A64A4333B4207340 /* live-activity-content-v1.json */,
 				621EAA643E38715F4A37DDDE /* notification-payload-v1.json */,
 				66B55164FA4B54AF280264D8 /* pairing-code-v1.json */,
+				A2F66D0AA94A8091C75E85A6 /* pairing-code-v2.json */,
 			);
 			path = "test-vectors";
 			sourceTree = "<group>";
@@ -1530,6 +1533,7 @@
 				21386C28A363F2C25C2EC212 /* live-activity-content-v1.json in Resources */,
 				F728F561C11D32B7A4F542EF /* notification-payload-v1.json in Resources */,
 				3A9F2A5273F8FA6630721ADA /* pairing-code-v1.json in Resources */,
+				F2D81CEEBB65F8976DC9A368 /* pairing-code-v2.json in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -1945,7 +1949,7 @@
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				CODE_SIGN_ENTITLEMENTS = Sources/Herden/Herden.entitlements;
 				CODE_SIGN_IDENTITY = "iPhone Developer";
-				CURRENT_PROJECT_VERSION = 19;
+				CURRENT_PROJECT_VERSION = 20;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_KEY_CFBundleDisplayName = Herden;
 				INFOPLIST_KEY_ITSAppUsesNonExemptEncryption = NO;
@@ -1988,7 +1992,7 @@
 			buildSettings = {
 				APPLICATION_EXTENSION_API_ONLY = YES;
 				CODE_SIGN_ENTITLEMENTS = Sources/HerdenShareExtension/HerdenShareExtension.entitlements;
-				CURRENT_PROJECT_VERSION = 19;
+				CURRENT_PROJECT_VERSION = 20;
 				INFOPLIST_FILE = Sources/HerdenShareExtension/Info.plist;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
@@ -2010,7 +2014,7 @@
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				CODE_SIGN_ENTITLEMENTS = Sources/Herden/Herden.entitlements;
 				CODE_SIGN_IDENTITY = "iPhone Developer";
-				CURRENT_PROJECT_VERSION = 19;
+				CURRENT_PROJECT_VERSION = 20;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_KEY_CFBundleDisplayName = Herden;
 				INFOPLIST_KEY_ITSAppUsesNonExemptEncryption = NO;
@@ -2118,7 +2122,7 @@
 			buildSettings = {
 				APPLICATION_EXTENSION_API_ONLY = YES;
 				CODE_SIGN_ENTITLEMENTS = Sources/HerdenShareExtension/HerdenShareExtension.entitlements;
-				CURRENT_PROJECT_VERSION = 19;
+				CURRENT_PROJECT_VERSION = 20;
 				INFOPLIST_FILE = Sources/HerdenShareExtension/Info.plist;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",

@@ -28,8 +28,9 @@ _Avoid_: scan to connect, binding
 **Pairing Code**:
 The versioned pairing payload (candidate addresses, host key fingerprint,
 Bootstrap Key, expiry) produced by `herden pair`. The QR image is just its
-rendering. Its `HERDR-PAIR:1` prefix is a compatibility identifier, not a
-product name.
+rendering. The Host emits compact `HERDR-PAIR:2` codes; the app retains
+decode-only support for legacy JSON `HERDR-PAIR:1` codes. `HERDR-PAIR` is a
+compatibility identifier, not a product name.
 _Avoid_: QR code, invite
 
 **Bootstrap Key**:

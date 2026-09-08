@@ -119,11 +119,11 @@ struct PairingScanStoreTests {
         let env = try makeEnv()
         defer { env.cleanup() }
 
-        env.store.submit(scannedCode: "HERDR-PAIR:2:eyJhZGRycyI6WyIxOTIuMTY4LjEuNDIiXX0")
+        env.store.submit(scannedCode: "HERDR-PAIR:3:eyJhZGRycyI6WyIxOTIuMTY4LjEuNDIiXX0")
 
         #expect(env.store.pairingCode == nil)
         let message = env.store.scanFailureMessage
-        #expect(message?.contains("version 2") == true)
+        #expect(message?.contains("version 3") == true)
         #expect(message?.contains("Update") == true)
     }
 

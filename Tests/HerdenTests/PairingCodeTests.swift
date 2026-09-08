@@ -3,9 +3,7 @@ import Testing
 
 @testable import Herden
 
-/// Decoder tests for the Pairing Code v1 envelope (#62), driven by the shared
-/// vectors in `plugin/test-vectors/pairing-code-v1.json` — the same file the
-/// Node plugin tests consume, so the two implementations cannot drift.
+/// Decoder tests for the legacy v1 and compact v2 Pairing Code envelopes.
 @Suite("Pairing Code envelope")
 struct PairingCodeTests {
     @Test func decodesAdditiveHostName() throws {
@@ -17,6 +15,7 @@ struct PairingCodeTests {
     }
 
     private static let vectors = PairingCodeVectorFile.shared
+    private static let compactVectors = PairingCodeVectorFile.compact
 
     /// Guards against silently loading an empty or truncated vector file;
     /// mirrors the same assertion in the Node suite.
@@ -27,11 +26,21 @@ struct PairingCodeTests {
 
     @Test(arguments: vectors.valid)
     func decodesValidVector(vector: PairingCodeVectorFile.Valid) throws {
+        try assertDecoded(vector)
+    }
+
+    @Test(arguments: compactVectors.valid)
+    func decodesCompactVector(vector: PairingCodeVectorFile.Valid) throws {
+        try assertDecoded(vector)
+    }
+
+    private func assertDecoded(_ vector: PairingCodeVectorFile.Valid) throws {
         let code = try PairingCode.decode(vector.code)
 
         #expect(code.addresses == vector.payload.addresses)
         #expect(code.port == vector.payload.port)
         #expect(code.username == vector.payload.username)
+        #expect(code.hostName == vector.payload.hostName)
         #expect(code.hostKeyFingerprint.displayString == vector.payload.hostKeyFingerprint)
 
         if let expectedSeed = vector.payload.bootstrapSeed {
@@ -46,6 +55,15 @@ struct PairingCodeTests {
 
     @Test(arguments: vectors.invalid)
     func rejectsInvalidVector(vector: PairingCodeVectorFile.Invalid) {
+        assertRejected(vector)
+    }
+
+    @Test(arguments: compactVectors.invalid)
+    func rejectsInvalidCompactVector(vector: PairingCodeVectorFile.Invalid) {
+        assertRejected(vector)
+    }
+
+    private func assertRejected(_ vector: PairingCodeVectorFile.Invalid) {
         do {
             _ = try PairingCode.decode(vector.code)
             Issue.record("unexpectedly decoded \(vector.name)")

@@ -1,0 +1,35 @@
+{
+  "description": "Shared compact Pairing Code v2 vectors. The binary body retains the full v1 security material, represents IP addresses as bytes, and uses Base45 so the complete envelope stays in QR alphanumeric mode.",
+  "valid": [
+    {
+      "name": "compact bootstrap with IPv4, IPv6 and DNS candidates",
+      "code": "HERDR-PAIR:2:*5082MVFGA50/JT.BE/JC0MOFME8CS7CM+G3XYNZRUM102O6H:3-LH*%L DRX507H0QS00+0J61%H1CT1V+1572OI2/T2H-2 73AJ3TU3J-3XVD/+D5KCXED3VC64E3H00GOS60EB0JJF/VBEES000000000000X50QP114E.UEB$CBECP9EB2",
+      "payload": {
+        "addresses": ["192.168.1.42", "fd7a:115c:a1e0::1", "host.example"],
+        "port": 2222,
+        "username": "lin",
+        "hostName": "buildbox",
+        "hostKeyFingerprint": "SHA256:6+jncNdibsG2cqvfoLApGrO8CvIwAEMzsB+IilOs8tg",
+        "bootstrapSeed": "AAECAwQFBgcICQoLDA0ODxAREhMUFRYXGBkaGxwdHh8",
+        "expiresAt": 1753305600
+      }
+    }
+  ],
+  "invalid": [
+    {
+      "name": "invalid Base45 character",
+      "code": "HERDR-PAIR:2:abc",
+      "error": "bad_encoding"
+    },
+    {
+      "name": "truncated binary payload",
+      "code": "HERDR-PAIR:2:BB8",
+      "error": "bad_payload"
+    },
+    {
+      "name": "unsupported flags",
+      "code": "HERDR-PAIR:2:20",
+      "error": "bad_payload"
+    }
+  ]
+}

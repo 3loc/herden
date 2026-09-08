@@ -10,6 +10,9 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ### Fixed
 
+- Shrink the terminal Pairing Code from roughly 77×39 to 49×25 cells while
+  retaining the full Bootstrap Key, SSH Host fingerprint and connection data;
+  the iOS app continues to decode legacy v1 codes.
 - Configure the Host command on PATH in shell startup files without duplicate
   entries, and make `herden pair` work immediately after the quick-start block.
 

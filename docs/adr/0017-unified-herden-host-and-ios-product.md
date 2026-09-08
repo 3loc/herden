@@ -15,8 +15,10 @@ The Host therefore exposes `herden pair` and a hidden, forced-command enrollment
 path directly in Rust. The command creates a short-lived restricted Bootstrap
 Key, prints a terminal QR code, enrolls exactly one iOS Device Key, and cleans
 up temporary authorization on success, expiry, interruption, or error. The
-existing `HERDR-PAIR:1`, `HERDR-ENROLL:*`, and `HERDR_*` identifiers remain on
+existing `HERDR-PAIR`, `HERDR-ENROLL:*`, and `HERDR_*` identifiers remain on
 the wire or in the environment where changing them would break deployed apps.
+The Pairing Code payload version may advance under its existing versioned
+envelope; clients retain old decoders when practical.
 
 The Node plugin remains only as the optional notification and Live Activity
 extension. It is not required to pair or use the core product. The public
