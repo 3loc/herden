@@ -1810,8 +1810,8 @@ assert_behavior "worktree remove params" HerdenSSHTransportBehaviorE2ETests \
 assert_behavior "worktree remove stale authorization writes nothing" \
     HerdenSSHTransportBehaviorE2ETests \
     '"stale worktree authorization writes no request bytes"'
-assert_behavior "herdr API rejection" HerdenSSHTransportBehaviorE2ETests \
-    '"a herdr error envelope surfaces as a typed API rejection"'
+assert_behavior "herden API rejection" HerdenSSHTransportBehaviorE2ETests \
+    '"a herden error envelope surfaces as a typed API rejection"'
 assert_behavior "session API rejection mapping" HerdenSSHTransportBehaviorE2ETests \
     '"the session maps a herdr rejection to apiRejected"'
 # herdr 0.7.5's `agent_pane_busy` window, which 0.8.0 no longer opens: nothing
