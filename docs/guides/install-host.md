@@ -50,10 +50,25 @@ on TCP port 22. No router port forwarding is needed. Headscale users follow
 their administrator's enrolment instructions to join their existing network.
 Herden does not require 3LOC's private network.
 
-## Install from source today
+## Install the Host
 
-Public Host binaries have not been published yet. Use this path with the
-unified source tree. Compilation can take several minutes.
+Install the release binary on Linux or macOS:
+
+```sh
+curl -fsSL https://herden.austrheim.ca7.fm/install.sh | sh
+export PATH="$HOME/.local/bin:$PATH"
+herden --version
+```
+
+The installer selects the binary for the Host's OS and architecture, verifies
+its SHA-256 checksum and installs it to `~/.local/bin`. Add the `export PATH`
+line to `~/.zshrc` for zsh or `~/.bashrc` for bash so future terminals find
+Herden.
+
+## Build from source
+
+Use this route to develop the Host or build a revision that has not been
+released. Compilation can take several minutes.
 
 On Ubuntu or Debian, install the build tools:
 
@@ -82,10 +97,9 @@ export PATH="$HOME/.local/bin:$PATH"
 herden --version
 ```
 
-Already have the checkout? Start at `make host-check`. Add the `export PATH`
-line to `~/.zshrc` for zsh or `~/.bashrc` for bash so future terminals find
-Herden. Installation writes the executable to `~/.local/bin`. It does not
-install plugins or change your Claude, Codex, SSH or Tailscale configuration.
+Already have the checkout? Start at `make host-check`. Source installation
+writes the executable to `~/.local/bin`. It does not install plugins or change
+your Claude, Codex, SSH or Tailscale configuration.
 
 ## Start and pair
 
@@ -122,7 +136,7 @@ for another device. No Node, npm, plugin action or push relay is required.
 | Symptom | Next step |
 | --- | --- |
 | `herden: command not found` | Run `"$HOME/.local/bin/herden"` or set PATH as above. |
-| No downloadable release | Use `make host-install` until binaries are published. |
+| Release download fails | Check access to `herden.austrheim.ca7.fm`, or use the source build above. |
 | Expired QR code | Run `herden pair` again and keep its terminal open. |
 | Host unreachable | Check Tailscale on both devices, the Host address, firewall and access policy. |
 | Permission denied | Pair as the Host user running Herden; check Remote Login and whether Tailscale SSH is intercepting port 22. |
