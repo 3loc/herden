@@ -16,7 +16,7 @@ struct DeviceKeyStore: Sendable {
     private let account: String
 
     init(
-        secrets: any SecretStore = KeychainSecretStore(service: "com.3loc.herden.ssh"),
+        secrets: any SecretStore = KeychainSecretStore(service: "ltd.3loc.herden.ssh"),
         account: String = "device-ed25519-private-key"
     ) {
         self.secrets = secrets

@@ -55,15 +55,24 @@ Herden does not require 3LOC's private network.
 Install the release binary on Linux or macOS:
 
 ```sh
-curl -fsSL https://raw.githubusercontent.com/3loc/herden/main/install.sh | sh
-export PATH="$HOME/.local/bin:$PATH"
-herden --version
+curl -fsSL https://herden.3loc.ltd/install.sh | sh
 ```
 
 The installer selects the binary for the Host's OS and architecture, verifies
-its SHA-256 checksum and installs it to `~/.local/bin`. Add the `export PATH`
-line to `~/.zshrc` for zsh or `~/.bashrc` for bash so future terminals find
-Herden.
+its SHA-256 checksum, installs it to `~/.local/bin`, and installs the release's
+licence and attribution notice under `~/.local/share/doc/herden`. Open a new
+terminal and run `herden --version`. If the command is not found, run
+`"$HOME/.local/bin/herden" --version`, then add this line to `~/.zshrc` for zsh
+or `~/.bashrc` for bash:
+
+```sh
+export PATH="$HOME/.local/bin:$PATH"
+```
+
+The same command upgrades an existing installation. It is idempotent: when the
+installed binary already matches the current release, it is verified and left
+in place. An already-running Herden session keeps its existing process until it
+is restarted.
 
 ## Build from source
 
@@ -140,7 +149,7 @@ for another device. No Node, npm, plugin action or push relay is required.
 | Symptom | Next step |
 | --- | --- |
 | `herden: command not found` | Run `"$HOME/.local/bin/herden"` or set PATH as above. |
-| Release download fails | Check access to `github.com`, or use the source build above. |
+| Release download fails | Check access to `herden.3loc.ltd`, or use the source build above. |
 | Expired QR code | Run `herden pair` again and keep its terminal open. |
 | Host unreachable | Check Tailscale on both devices, the Host address, firewall and access policy. |
 | Permission denied | Pair as the Host user running Herden; check Remote Login and whether Tailscale SSH is intercepting port 22. |

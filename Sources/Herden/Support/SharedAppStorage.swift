@@ -1,13 +1,9 @@
 import Foundation
 
 enum SharedAppStorage {
-    static let appGroup = "group.com.3loc.herden"
-    /// The development build that immediately preceded the public Herden
-    /// identity stored Ted's Hosts and device key here. Keep read access so a
-    /// correctly identified install can migrate that state once.
-    static let legacyFounderTerminalAppGroup = "group.com.fansvine.founderterminal"
-    static let sshKeychainService = "com.3loc.herden.ssh"
-    static let notificationKeychainService = "com.3loc.herden.notifications"
+    static let appGroup = "group.ltd.3loc.herden.shared"
+    static let sshKeychainService = "ltd.3loc.herden.ssh"
+    static let notificationKeychainService = "ltd.3loc.herden.notifications"
 
     static var defaults: UserDefaults {
         UserDefaults(suiteName: appGroup) ?? .standard
@@ -21,23 +17,13 @@ enum SharedAppStorage {
         KeychainSecretStore(service: sshKeychainService)
     }
 
-    static var founderTerminalSecrets: KeychainSecretStore {
-        KeychainSecretStore(
-            service: sshKeychainService,
-            accessGroup: legacyFounderTerminalAppGroup)
-    }
-
     /// Copies app-private state into the App Group once so the Share Extension
     /// can read the same Host catalog, fingerprints, passwords, and SSH key.
     static func migrateSharedStateIfNeeded() {
         let shared = defaults
-        let previousDefaults = [
-            UserDefaults.standard,
-            UserDefaults(suiteName: legacyFounderTerminalAppGroup),
-        ].compactMap { $0 }
         migrateState(
-            from: previousDefaults,
-            sourceSecrets: [legacySecrets, founderTerminalSecrets],
+            from: [UserDefaults.standard],
+            sourceSecrets: [legacySecrets],
             to: shared,
             destinationSecrets: sharedSecrets)
     }

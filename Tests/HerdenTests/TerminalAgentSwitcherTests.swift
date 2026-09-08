@@ -56,6 +56,7 @@ struct TerminalAgentSwitcherTests {
     /// leads; the agent's own name is the fallback when nothing named the
     /// workspace.
     @Test func chipLabelsPreferTheProject() {
+        #expect(Self.makeAgent(pane: "named", workspace: "proj", name: "reviewer").switcherLabel == "reviewer")
         #expect(Self.makeAgent(pane: "p1", workspace: "proj", repo: "repo").switcherLabel == "proj")
         #expect(Self.makeAgent(pane: "p2", repo: "repo").switcherLabel == "repo")
         #expect(Self.makeAgent(pane: "p3", name: "reviewer").switcherLabel == "reviewer")

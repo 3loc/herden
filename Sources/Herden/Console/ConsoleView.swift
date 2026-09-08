@@ -27,6 +27,10 @@ struct ConsoleView: View {
     @State private var createsSpaceAfterHostSheetCloses = false
     @State private var isStartingAgent = false
     @State private var isShowingSettings = false
+    @State private var isBrowsingSpaces = false
+    @State private var spaceAfterBrowserDismissal: ConsoleSpace?
+    @State private var createsTerminalAfterBrowserDismissal = false
+    @State private var startedAgentAfterDismissal: ConsoleAgent.ID?
     @State private var selectedSpace: ConsoleSpace?
     @State private var openedSpace: OpenedSpace?
     @State private var openingSpaceID: ConsoleSpace.ID?
@@ -100,20 +104,16 @@ struct ConsoleView: View {
                     }
                     ToolbarItem(placement: .primaryAction) {
                         Menu("Settings", systemImage: "ellipsis.circle") {
+                            Button("Spaces & Terminals", systemImage: "apple.terminal") { isBrowsingSpaces = true }
                             Button("Hosts", systemImage: "server.rack") { presentHosts() }
                             Button("Settings", systemImage: "gearshape") { isShowingSettings = true }
                         }
                     }
                     if !hosts.hosts.isEmpty {
                         ToolbarItem(placement: .primaryAction) {
-                            Menu("Add", systemImage: "plus") {
-                                Button("New Space", systemImage: "folder.badge.plus") {
-                                    newSpaceHostID = hostFilter
-                                    isCreatingSpace = true
-                                }
-                                Button("New Agent", systemImage: "plus.bubble") {
-                                    isStartingAgent = true
-                                }
+                            Button("New Agent", systemImage: "plus") {
+                                newSpaceHostID = hostFilter
+                                isStartingAgent = true
                             }
                         }
                     }
@@ -121,7 +121,7 @@ struct ConsoleView: View {
                 .sheet(item: $hostSheet, onDismiss: {
                     guard createsSpaceAfterHostSheetCloses else { return }
                     createsSpaceAfterHostSheetCloses = false
-                    isCreatingSpace = true
+                    isStartingAgent = true
                 }) { destination in
                     // HostListView brings its own NavigationStack.
                     HostListView(
@@ -138,12 +138,16 @@ struct ConsoleView: View {
                             hostSheet = nil
                         })
                 }
-                .sheet(isPresented: $isStartingAgent) {
+                .sheet(isPresented: $isStartingAgent, onDismiss: {
+                    guard let id = startedAgentAfterDismissal else { return }
+                    startedAgentAfterDismissal = nil
+                    notificationRouter.path = [id]
+                }) {
                     // StartAgentView brings its own NavigationStack.
-                    StartAgentView(hosts: hosts.hosts, console: console) { id in
+                    StartAgentView(hosts: hosts.hosts, console: console, initialHostID: newSpaceHostID) { id in
                         // A fresh launch lands in its own terminal, exactly
                         // as tapping the new row would.
-                        notificationRouter.path = [id]
+                        startedAgentAfterDismissal = id
                     }
                 }
                 .sheet(isPresented: $isCreatingSpace, onDismiss: {
@@ -183,6 +187,37 @@ struct ConsoleView: View {
                 .sheet(item: $selectedSpace) { space in
                     spaceDetail(space)
                 }
+                .sheet(isPresented: $isBrowsingSpaces, onDismiss: {
+                    if let space = spaceAfterBrowserDismissal {
+                        spaceAfterBrowserDismissal = nil
+                        openSpace(space)
+                    } else if createsTerminalAfterBrowserDismissal {
+                        createsTerminalAfterBrowserDismissal = false
+                        isCreatingSpace = true
+                    }
+                }) {
+                    NavigationStack {
+                        List {
+                            ForEach(filteredSpaces) { space in
+                                spaceRow(space)
+                            }
+                            Button("New Terminal", systemImage: "plus") {
+                                createsTerminalAfterBrowserDismissal = true
+                                isBrowsingSpaces = false
+                                newSpaceHostID = hostFilter
+                            }
+                        }
+                        .scrollContentBackground(.hidden)
+                        .background(Brand.background)
+                        .navigationTitle("Spaces & Terminals")
+                        .toolbar {
+                            ToolbarItem(placement: .confirmationAction) {
+                                Button("Done") { isBrowsingSpaces = false }
+                            }
+                        }
+                    }
+                    .preferredColorScheme(.dark)
+                }
                 .fullScreenCover(item: $openedSpace) { opened in
                     NavigationStack {
                         ShellTerminalView(
@@ -191,7 +226,7 @@ struct ConsoleView: View {
                             activity: activity,
                             isReturning: false,
                             title: opened.label,
-                            backLabel: "Back to Spaces",
+                            backLabel: "Back to Agents",
                             stageImage: console.imageStager(for: opened.hostID),
                             stageFile: console.fileStager(for: opened.hostID)
                         ) {
@@ -332,7 +367,7 @@ struct ConsoleView: View {
         } else {
             ContentUnavailableView(
                 "Nothing Open", systemImage: "rectangle.on.rectangle",
-                description: Text("Choose a Space or Agent to open its terminal."))
+                description: Text("Choose an Agent to open its terminal."))
         }
     }
 
@@ -406,14 +441,14 @@ struct ConsoleView: View {
                         .frame(maxWidth: 260, maxHeight: 260)
                         .clipShape(.rect(cornerRadius: 22))
                         .accessibilityHidden(true)
-                    Label("No Spaces", systemImage: "folder.badge.plus")
+                    Label("No Agents", systemImage: "plus.bubble")
                 }
             } description: {
-                Text("Create a Space to open a shell on your Host.")
+                Text("Start an Agent. Its Space is created automatically.")
             } actions: {
-                Button("New Space", systemImage: "plus") {
+                Button("New Agent", systemImage: "plus") {
                     newSpaceHostID = hostFilter
-                    isCreatingSpace = true
+                    isStartingAgent = true
                 }
                 .buttonStyle(.borderedProminent)
                 .tint(Brand.vine)
@@ -424,19 +459,14 @@ struct ConsoleView: View {
                     "No Agents on \(hostName)",
                     systemImage: "line.3.horizontal.decrease.circle")
             } actions: {
+                Button("New Agent", systemImage: "plus") {
+                    newSpaceHostID = hostFilter
+                    isStartingAgent = true
+                }
                 Button("Show All Hosts") { hostFilter = nil }
             }
         case .rows:
             List(selection: selectedAgent) {
-                if !filteredSpaces.isEmpty {
-                    Section {
-                        ForEach(filteredSpaces) { space in
-                            spaceRow(space)
-                        }
-                    } header: {
-                        consoleSectionLabel("Spaces")
-                    }
-                }
                 Section {
                     flatAgentListRows
                 } header: {
@@ -466,7 +496,7 @@ struct ConsoleView: View {
             agentRow(agent)
         }
         if filteredAgents.isEmpty && visibleHostIssues.isEmpty {
-            Text("No Agents in these Spaces")
+            Text("No Agents")
                 .font(Brand.sans(.subheadline))
                 .foregroundStyle(Brand.muted)
                 .listRowBackground(Brand.elevated)
@@ -496,7 +526,12 @@ struct ConsoleView: View {
 
     private func spaceRow(_ space: ConsoleSpace) -> some View {
         Button {
-            openSpace(space)
+            if isBrowsingSpaces {
+                spaceAfterBrowserDismissal = space
+                isBrowsingSpaces = false
+            } else {
+                openSpace(space)
+            }
         } label: {
             HStack(spacing: 12) {
                 HerdenSpaceMark(size: 42)
@@ -532,38 +567,41 @@ struct ConsoleView: View {
         .listRowBackground(Brand.card)
         .accessibilityElement(children: .combine)
         .disabled(openingSpaceID != nil)
-        .accessibilityHint("Opens this Space's shell terminal")
+        .accessibilityHint("Opens the first Agent, or the first terminal in this Space")
     }
 
     private func openSpace(_ space: ConsoleSpace) {
         guard openingSpaceID == nil else { return }
-        guard let cwd = space.workspace.cwd else {
-            selectedSpace = space
-            return
-        }
+        isBrowsingSpaces = false
         openingSpaceID = space.id
         Task { @MainActor in
             defer { openingSpaceID = nil }
             do {
                 let identity: ShellTerminalIdentity
-                if let remembered = console.recallShellTerminal(
-                    forWorkspaceID: space.workspace.id, on: space.hostID),
-                    try await console.shellTerminalStillExists(remembered, on: space.hostID)
+                switch try await console.existingSpaceDestination(
+                    workspaceID: space.workspace.id, on: space.hostID)
                 {
-                    identity = remembered
-                } else {
-                    console.forgetShellTerminal(
-                        forWorkspaceID: space.workspace.id, on: space.hostID)
+                case .agent(let paneID):
+                    let id = ConsoleAgent.ID(hostID: space.hostID, paneID: paneID)
+                    lastOpenedAgentID = id
+                    lastOpenedSpaceID = space.id
+                    notificationRouter.path = [id]
+                    return
+                case .terminal(let existing):
+                    identity = existing
+                case nil:
+                    guard let cwd = space.workspace.cwd else {
+                        selectedSpace = space
+                        return
+                    }
                     identity = try await console.createShellTerminal(
                         ShellTerminalCreationRequest(
                             workspaceID: space.workspace.id,
                             cwd: cwd),
                         on: space.hostID)
-                    console.rememberShellTerminal(
-                        identity,
-                        forWorkspaceID: space.workspace.id,
-                        on: space.hostID)
                 }
+                console.rememberShellTerminal(
+                    identity, forWorkspaceID: space.workspace.id, on: space.hostID)
                 openedSpace = makeOpenedSpace(
                     hostID: space.hostID,
                     workspaceID: space.workspace.id,
@@ -686,7 +724,7 @@ struct ConsoleView: View {
             hostCount: hosts.hosts.count,
             filteredHostName: hostFilter == nil ? nil : filteredHostName,
             filteredAgentCount: filteredAgents.count,
-            filteredSpaceCount: filteredSpaces.count,
+            filteredSpaceCount: 0,
             visibleIssueCount: visibleHostIssues.count,
             presentationMode: .flat,
             projectedSectionCount: 0)

@@ -233,6 +233,19 @@ final class HostConsoleProjection {
         }
     }
 
+    func existingSpaceDestination(workspaceID: String) async throws -> SpaceOpenDestination? {
+        let epoch = snapshotEpoch
+        let snapshot = try await session.withTransport { transport in
+            try await transport.sessionSnapshot()
+        }
+        guard !hasEnded, status == .connected, snapshotEpoch == epoch else {
+            throw TransportError.sshUnreachable(detail: "The Host connection changed.")
+        }
+        // Keep projection updates on the existing serialized resync path.
+        scheduleResync()
+        return SpaceOpenDestination.existing(in: snapshot, workspaceID: workspaceID)
+    }
+
     func createSpace(_ request: SpaceCreationRequest) async throws -> CreatedSpace {
         let created = try await session.withTransport { transport in
             try await transport.createSpace(request)

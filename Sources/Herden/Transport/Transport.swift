@@ -495,10 +495,11 @@ struct WorktreeSpec: Sendable, Equatable {
 /// `directory` is the remote path `workspace.create` opens; `label` is
 /// optional and omitted on the wire when nil so herden applies its default.
 struct NewWorkspaceSpec: Sendable, Equatable {
-    let directory: String
+    /// Nil explicitly means the SSH account's home, never the focused pane's cwd.
+    let directory: String?
     let label: String?
 
-    init(directory: String, label: String? = nil) {
+    init(directory: String? = nil, label: String? = nil) {
         self.directory = directory
         self.label = label
     }

@@ -9,16 +9,17 @@ import SwiftUI
 struct StartAgentView: View {
     @State private var store: StartAgentStore
     private let onStarted: (ConsoleAgent.ID) -> Void
+    @State private var showsLocationOptions = false
     @Environment(\.dismiss) private var dismiss
 
     init(
         hosts: [Host], console: ConsoleStore,
         origin: StartAgentStore.LaunchOrigin? = nil,
+        initialHostID: Host.ID? = nil,
         onStarted: @escaping (ConsoleAgent.ID) -> Void
     ) {
         self.onStarted = onStarted
-        _store = State(
-            initialValue: StartAgentStore(
+        let store = StartAgentStore(
                 hosts: hosts,
                 workspaces: { console.workspaces(for: $0) },
                 existingAgentNames: { hostID in
@@ -41,24 +42,18 @@ struct StartAgentView: View {
                     }
                 },
                 awaitAgentVisible: { await console.waitForAgent($0) },
-                origin: origin))
+                origin: origin,
+                dedicatedWorkspaceByDefault: true)
+        if origin == nil, let initialHostID, hosts.contains(where: { $0.id == initialHostID }) {
+            store.selectedHostID = initialHostID
+        }
+        _store = State(initialValue: store)
     }
 
     var body: some View {
         NavigationStack {
             Form {
-                if let origin = store.origin {
-                    Section {
-                        Text(origin.cwd)
-                            .font(.callout.monospaced())
-                            .lineLimit(2)
-                            .truncationMode(.middle)
-                    } header: {
-                        Text("Directory")
-                    } footer: {
-                        Text("The Agent starts in a new tab here, next to the one you opened this from.")
-                    }
-                } else {
+                if store.origin == nil {
                     Section("Host") {
                         Picker("Host", selection: $store.selectedHostID) {
                             if store.selectedHostID == nil {
@@ -68,71 +63,38 @@ struct StartAgentView: View {
                                 Text(host.pickerIdentity).tag(Host.ID?.some(host.id))
                             }
                         }
-                        if let host = store.hosts.first(where: { $0.id == store.selectedHostID }) {
-                            LabeledContent("Machine") {
-                                VStack(alignment: .trailing, spacing: 2) {
-                                    Text(host.displayName)
-                                        .fontWeight(.semibold)
-                                    Text(host.connectionIdentity)
-                                        .font(.caption.monospaced())
-                                        .foregroundStyle(.secondary)
-                                }
-                            }
-                        }
                     }
-
+                }
+                if store.launchTarget == .newWorkspace {
                     Section {
-                        if store.offersNewWorkspace {
-                            Picker("Launch", selection: $store.launchTarget) {
-                                Text("Existing Workspace").tag(
-                                    StartAgentStore.LaunchTarget.existingWorkspace)
-                                Text("New Workspace").tag(
-                                    StartAgentStore.LaunchTarget.newWorkspace)
-                            }
-                        }
-                        if store.launchTarget != .newWorkspace {
-                            Picker("Workspace", selection: $store.selectedWorkspaceID) {
-                                if store.workspaces.isEmpty {
-                                    Text("None reported").tag(String?.none)
-                                }
-                                ForEach(store.workspaces) { workspace in
-                                    Text(workspace.label).tag(String?.some(workspace.id))
-                                }
-                            }
-                            .disabled(store.selectedHostID == nil || store.workspaces.isEmpty)
-                        }
+                        TextField(store.origin?.cwd ?? "Host home directory", text: $store.newWorkspaceDirectory)
+                            .font(.callout.monospaced())
+                            .autocorrectionDisabled()
+                            .textInputAutocapitalization(.never)
                     } header: {
-                        Text("Workspace")
+                        Text("Directory")
                     } footer: {
-                        if store.launchTarget == .newWorkspace {
-                            Text("The Host does not need to report an existing Workspace.")
-                        } else {
-                            Text(
-                                "Where the agent runs. Defaults to the one you last started an agent in."
-                            )
-                        }
+                        Text("A Space is created automatically for this Agent. This does not create an isolated checkout.")
                     }
-
-                    if store.launchTarget == .newWorkspace {
-                        Section {
-                            TextField("e.g. /home/you/src/app", text: $store.newWorkspaceDirectory)
-                                .font(.callout.monospaced())
-                                .autocorrectionDisabled()
-                                .textInputAutocapitalization(.never)
-                        } header: {
-                            Text("Directory")
-                        } footer: {
-                            Text("Remote path herden opens as the new Workspace.")
-                        }
-
-                        Section {
-                            TextField("Optional", text: $store.newWorkspaceLabel)
-                                .autocorrectionDisabled()
-                                .textInputAutocapitalization(.never)
-                        } header: {
-                            Text("Workspace Label")
-                        } footer: {
-                            Text("Empty uses herden's default label.")
+                }
+                if store.origin == nil {
+                    Section {
+                        DisclosureGroup("Location options", isExpanded: $showsLocationOptions) {
+                            Picker("Location", selection: $store.launchTarget) {
+                                Text("New Space automatically").tag(StartAgentStore.LaunchTarget.newWorkspace)
+                                Text("Reuse an existing Space").tag(StartAgentStore.LaunchTarget.existingWorkspace)
+                            }
+                            if store.launchTarget == .existingWorkspace {
+                                Picker("Space", selection: $store.selectedWorkspaceID) {
+                                    if store.workspaces.isEmpty {
+                                        Text("None reported").tag(String?.none)
+                                    }
+                                    ForEach(store.workspaces) { workspace in
+                                        Text(workspace.label).tag(String?.some(workspace.id))
+                                    }
+                                }
+                                .disabled(store.selectedHostID == nil || store.workspaces.isEmpty)
+                            }
                         }
                     }
                 }

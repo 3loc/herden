@@ -33,9 +33,7 @@ mod tests {
         let remaining = render_header(&mut buffer, area, &config);
 
         assert_eq!(remaining, Rect::new(0, 1, 20, 3));
-        let rendered = (0..8)
-            .map(|x| buffer[(x, 0)].symbol())
-            .collect::<String>();
+        let rendered = (0..8).map(|x| buffer[(x, 0)].symbol()).collect::<String>();
         assert_eq!(rendered, "[herden]");
     }
 }

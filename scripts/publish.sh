@@ -9,9 +9,8 @@
 # Publish mode: local build. The archive is signed with the developer's Apple
 # credentials and uploaded to App Store Connect, neither of which exists on a
 # CI runner, so a tag-triggered workflow cannot produce the artifact. The
-# GitHub release is created with the notes and tag; the tag-triggered Host
-# workflow then attaches signed-by-checksum Linux/macOS binaries and the update
-# manifest, while the iOS build ships through TestFlight.
+# GitHub release carries the notes and tag while the iOS build ships through
+# TestFlight. Host binaries use the separately documented Host release path.
 #
 # Options arrive as environment variables because make consumes flags of its
 # own (--dry-run is make's -n) and rejects unknown long options, so a flag

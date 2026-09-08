@@ -13,7 +13,9 @@ AGPL-3.0 to Apache-2.0 in
 [issue #282](https://github.com/ZingerLittleBee/Heeler/issues/282). The
 resulting relicense commit,
 [`59792841ccb1005459952a5a981c977e86ddd035`](https://github.com/ZingerLittleBee/Heeler/commit/59792841ccb1005459952a5a981c977e86ddd035),
-is merged into Herden's history.
+is the licensing baseline for Herden's imported iOS sources. Herden's public
+repository intentionally begins with one consolidated root commit, so the exact
+upstream commits are recorded here rather than retained as parents.
 
 Heeler is historical provenance, not a routinely synchronized upstream.
 Later changes are reviewed and ported only when they remain useful to Herden.
@@ -29,5 +31,8 @@ upstream changes can be reviewed and adopted without unnecessary conflicts.
 ## License
 
 The combined repository is distributed under the
-[Apache License 2.0](LICENSE). Existing third-party license and attribution
-files remain alongside the components to which they apply.
+[Apache License 2.0](LICENSE). [NOTICE](NOTICE) identifies the upstream works
+and states that Herden modifies both of them. Existing third-party licence and
+attribution files remain alongside the components to which they apply, and the
+iOS application exposes redistributed notices under Settings → About →
+Acknowledgements.

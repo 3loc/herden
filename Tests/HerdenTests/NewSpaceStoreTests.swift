@@ -7,7 +7,7 @@ import Testing
 @Suite("New Space store")
 struct NewSpaceStoreTests {
     @Test func aSingleHostIsPreselectedAndDirectoryDefaultsToHostHome() {
-        let host = Host.fixture(name: "vinux")
+        let host = Host.fixture(name: "buildbox")
         let store = NewSpaceStore(hosts: [host]) { _, _ in Self.createdSpace }
 
         #expect(store.selectedHostID == host.id)
@@ -17,13 +17,13 @@ struct NewSpaceStoreTests {
         #expect(store.directoryErrorMessage == "Enter an absolute path on the Host.")
         #expect(!store.canSubmit)
 
-        store.directory = "/home/vivian/src/app"
+        store.directory = "/home/developer/src/app"
         #expect(store.directoryErrorMessage == nil)
         #expect(store.canSubmit)
     }
 
     @Test func submitCreatesOnlyTheSpaceAndReturnsItsRootTerminal() async throws {
-        let host = Host.fixture(name: "vinux")
+        let host = Host.fixture(name: "buildbox")
         var receivedSpec: SpaceCreationRequest?
         var receivedHostID: Host.ID?
         let store = NewSpaceStore(hosts: [host]) { spec, hostID in
@@ -31,12 +31,12 @@ struct NewSpaceStoreTests {
             receivedHostID = hostID
             return Self.createdSpace
         }
-        store.directory = "  /home/vivian/src/app  "
+        store.directory = "  /home/developer/src/app  "
         store.label = "  App  "
 
         let result = try #require(await store.submit())
 
-        #expect(receivedSpec == SpaceCreationRequest(directory: "/home/vivian/src/app", label: "App"))
+        #expect(receivedSpec == SpaceCreationRequest(directory: "/home/developer/src/app", label: "App"))
         #expect(receivedHostID == host.id)
         #expect(result.0 == host.id)
         #expect(result.1 == Self.createdSpace)
@@ -44,7 +44,7 @@ struct NewSpaceStoreTests {
     }
 
     @Test func anEmptyDirectoryAsksHerdrForTheHostDefault() async throws {
-        let host = Host.fixture(name: "vinux")
+        let host = Host.fixture(name: "buildbox")
         var receivedSpec: SpaceCreationRequest?
         let store = NewSpaceStore(hosts: [host]) { spec, _ in
             receivedSpec = spec
@@ -57,11 +57,11 @@ struct NewSpaceStoreTests {
     }
 
     @Test func transportFailureReturnsTheFormToAnActionableState() async {
-        let host = Host.fixture(name: "vinux")
+        let host = Host.fixture(name: "buildbox")
         let store = NewSpaceStore(hosts: [host]) { _, _ in
             throw TransportError.sshUnreachable(detail: "connection dropped")
         }
-        store.directory = "/home/vivian"
+        store.directory = "/home/developer"
 
         #expect(await store.submit() == nil)
         #expect(store.state == .failed("The Host is not connected."))

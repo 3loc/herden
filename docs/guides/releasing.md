@@ -101,6 +101,23 @@ uploaded to App Store Connect. Neither exists on a CI runner here, so a
 tag-triggered workflow cannot produce the artifact and there is no
 release workflow to keep in sync.
 
+The Apple team ID belongs in the ignored `.herden.local.mk`, as described in
+the iOS build guide. It must not be committed to `project.yml` or the generated
+Xcode project.
+
+`make upload` accepts App Store Connect API-key authentication through
+`APP_STORE_CONNECT_KEY_ID`, `APP_STORE_CONNECT_ISSUER_ID`, and either
+`APP_STORE_CONNECT_PRIVATE_KEY_P8_BASE64` or
+`APP_STORE_CONNECT_PRIVATE_KEY_PATH`. With none of those variables set it
+uses the Apple account configured in Xcode. The base64 form is decoded into a
+mode-0600 temporary file and removed as soon as the upload exits, so a private
+key never needs to live in the repository or the build directory.
+
+Maintainers inject these variables from their secret manager when uploading.
+Other contributors can use their own secret manager or configure an Apple
+account in Xcode. Never commit an App Store Connect `.p8` file, key ID, issuer
+ID, or private secret-store coordinates.
+
 The GitHub release therefore carries the notes and the tag only. There
 is no downloadable asset: an App Store-signed `.ipa` installs nowhere,
 and the build reaches testers through TestFlight.

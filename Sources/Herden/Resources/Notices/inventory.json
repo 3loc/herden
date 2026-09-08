@@ -22,6 +22,14 @@
   },
   "components": [
     {
+      "id": "Herden",
+      "displayName": "Herden and Heeler-derived application code",
+      "version": "0.1.5",
+      "source": "https://github.com/3loc/herden; derived from https://github.com/ZingerLittleBee/Heeler",
+      "spdx": "Apache-2.0",
+      "notice": "Herden-NOTICE.txt"
+    },
+    {
       "id": "Ghostty",
       "displayName": "Ghostty",
       "version": "35e1a0160c4f6797e1bb1ef8e7a2b8c6b114ab58",
@@ -51,7 +59,7 @@
       "version": null,
       "source": "Sources/Herden/Resources/Fonts",
       "spdx": "OFL-1.1",
-      "notice": "JetBrainsMono-OFL-1.1.txt"
+      "notice": "InstrumentSerif-OFL-1.1.txt"
     },
     {
       "id": "Inter",
@@ -59,7 +67,7 @@
       "version": null,
       "source": "Sources/Herden/Resources/Fonts",
       "spdx": "OFL-1.1",
-      "notice": "JetBrainsMono-OFL-1.1.txt"
+      "notice": "Inter-OFL-1.1.txt"
     },
     {
       "id": "JetBrainsMono",

@@ -3,6 +3,8 @@ mod addresses;
 mod authorized_keys;
 mod code;
 mod identity;
+#[cfg(unix)]
+mod input;
 mod qr;
 #[cfg(unix)]
 mod session;
@@ -10,7 +12,7 @@ mod session;
 use std::io;
 
 #[cfg(unix)]
-use std::io::Read;
+use std::io::{BufRead, IsTerminal, Read, Write};
 #[cfg(unix)]
 use std::path::{Path, PathBuf};
 #[cfg(unix)]
@@ -57,6 +59,11 @@ fn display(args: &[String]) -> io::Result<i32> {
             return Ok(2);
         }
     };
+    let cancelled = Arc::new(AtomicBool::new(false));
+    let signal = Arc::clone(&cancelled);
+    ctrlc::set_handler(move || signal.store(true, Ordering::SeqCst))
+        .map_err(|error| io::Error::other(format!("could not install signal handler: {error}")))?;
+
     let home = home_directory()?;
     let state = PairingState::new(pairing_state_directory(&home));
     let authorized_keys = AuthorizedKeys::new(&home);
@@ -125,30 +132,40 @@ fn display(args: &[String]) -> io::Result<i32> {
         println!("\nPairing Code (for copy/paste):\n{pairing_code}\n");
     }
 
-    let cancelled = Arc::new(AtomicBool::new(false));
-    let signal = Arc::clone(&cancelled);
-    ctrlc::set_handler(move || signal.store(true, Ordering::SeqCst))
-        .map_err(|error| io::Error::other(format!("could not install signal handler: {error}")))?;
+    if io::stdin().is_terminal() {
+        println!("Press q, Esc or Ctrl+C to close.");
+    }
+    io::stdout().flush()?;
+    let input = input::PairingInput::new()?;
 
-    let result = loop {
+    let (result, message) = loop {
         if let Some(enrollment) = state.read_enrollment(&pairing_id) {
-            println!("Paired successfully: {}", enrollment.fingerprint);
-            break 0;
+            break (
+                0,
+                format!("Paired successfully: {}", enrollment.fingerprint),
+            );
         }
         if cancelled.load(Ordering::SeqCst) {
-            println!("Pairing cancelled.");
-            break 130;
+            break (130, "Pairing cancelled.".to_owned());
         }
         if unix_seconds() > expires_at {
             if let Some(enrollment) = state.read_enrollment(&pairing_id) {
-                println!("Paired successfully: {}", enrollment.fingerprint);
-                break 0;
+                break (
+                    0,
+                    format!("Paired successfully: {}", enrollment.fingerprint),
+                );
             }
-            println!("Pairing Code expired. Run `herden pair` to generate another.");
-            break 1;
+            break (
+                1,
+                "Pairing Code expired. Run `herden pair` to generate another.".to_owned(),
+            );
         }
-        std::thread::sleep(Duration::from_millis(100));
+        if let Some(status) = input.poll_cancel(Duration::from_millis(100))? {
+            break (status, "Pairing cancelled.".to_owned());
+        }
     };
+    drop(input);
+    println!("{message}");
     cleanup.finish()?;
     Ok(result)
 }
@@ -259,20 +276,21 @@ fn accept(args: &[String]) -> io::Result<i32> {
 fn read_submission() -> io::Result<String> {
     let (sender, receiver) = mpsc::sync_channel(1);
     std::thread::spawn(move || {
-        let mut bytes = Vec::new();
-        let result = io::stdin()
-            .take(4096)
-            .read_to_end(&mut bytes)
-            .and_then(|_| {
-                String::from_utf8(bytes)
-                    .map_err(|_| io::Error::new(io::ErrorKind::InvalidData, "input is not UTF-8"))
-            });
+        let result = read_submission_line(&mut io::stdin().lock());
         let _ = sender.send(result);
     });
     receiver
         .recv_timeout(ENROLLMENT_INPUT_TIMEOUT)
         .map_err(|_| io::Error::new(io::ErrorKind::TimedOut, "Device Key input timed out"))?
-        .map(|text| text.lines().next().unwrap_or_default().to_string())
+}
+
+#[cfg(unix)]
+fn read_submission_line(input: &mut impl BufRead) -> io::Result<String> {
+    let mut bytes = Vec::new();
+    input.take(4096).read_until(b'\n', &mut bytes)?;
+    let text = String::from_utf8(bytes)
+        .map_err(|_| io::Error::new(io::ErrorKind::InvalidData, "input is not UTF-8"))?;
+    Ok(text.lines().next().unwrap_or_default().to_string())
 }
 
 #[cfg(unix)]
@@ -451,5 +469,17 @@ mod tests {
             "'/opt/Herden Host/herden' pair accept --pairing-id abc"
         );
         assert!(forced_accept_command(Path::new("/tmp/a'b/herden"), "abc").is_err());
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn enrollment_reads_one_line_without_waiting_for_eof() {
+        let first = "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAITest herden\n";
+        let mut input = io::Cursor::new(format!("{first}input remains open"));
+
+        let submission = read_submission_line(&mut input).expect("submission");
+
+        assert_eq!(submission, first.trim_end());
+        assert_eq!(input.position(), first.len() as u64);
     }
 }

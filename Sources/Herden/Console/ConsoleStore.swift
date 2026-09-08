@@ -368,6 +368,16 @@ final class ConsoleStore {
         try await projection(for: hostID).createSpace(request)
     }
 
+    func existingSpaceDestination(
+        workspaceID: String, on hostID: Host.ID
+    ) async throws -> SpaceOpenDestination? {
+        let destination = try await projection(for: hostID).existingSpaceDestination(workspaceID: workspaceID)
+        if case .agent(let paneID) = destination {
+            await waitForAgent(ConsoleAgent.ID(hostID: hostID, paneID: paneID))
+        }
+        return destination
+    }
+
     func recallShellTerminal(
         forWorkspaceID workspaceID: String, on hostID: Host.ID
     ) -> ShellTerminalIdentity? {

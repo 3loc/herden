@@ -41,5 +41,5 @@ supplies the Host/pane destination that opens after the creation sheet dismisses
 
 Regression coverage: `StartAgentStoreTests`, `TerminalAgentSwitcherTests`,
 `ConsoleListPresentationStoreTests`, `ConsoleStoreTests` and the new-Space launch
-cases in `HerdenSSHTransportBehaviorE2ETests`. Run Swift validation on studio
+cases in `HerdenSSHTransportBehaviorE2ETests`. Run Swift validation on a Mac
 through `make`; real-SSH cases need their fixtures and may skip locally.

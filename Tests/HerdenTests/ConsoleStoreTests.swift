@@ -11,6 +11,52 @@ import Testing
 @MainActor
 @Suite("Console store")
 struct ConsoleStoreTests {
+    @Test(arguments: [false, true])
+    func openingSpaceDiscoversExistingDestinationsWithoutCreatingTabs(hasAgent: Bool) async throws {
+        let host = Host.fixture()
+        let transport = ScriptedTransport(snapshot: .fixture())
+        let store = makeStore(transports: [host.id: transport])
+        store.setHosts([host])
+        await store.resume()
+        try await waitUntil("initial snapshot should arrive") {
+            await transport.snapshotFetchCount > 0
+        }
+        let panes = ["other", "first", "second"].map { name in
+            PaneInfo(agentStatus: .unknown, focused: false, paneID: name,
+                revision: 1, tabID: "tab-\(name)", terminalID: "term-\(name)",
+                workspaceID: name == "other" ? "w2" : "w1")
+        }
+        let agents: [AgentInfo] = hasAgent ? [
+            .fixture(paneID: "other-host-space", workspaceID: "w2"),
+            .fixture(paneID: "agent-first", workspaceID: "w1"),
+            .fixture(paneID: "agent-second", workspaceID: "w1"),
+        ] : []
+        // No membership event and no remembered app-created shell: discovery
+        // must use the Host's current snapshot, including after an app restart.
+        await transport.setSnapshot(SessionSnapshot(
+            agents: agents, layouts: [], panes: panes, protocolVersion: 20,
+            tabs: [], version: "0.8.2", workspaces: []))
+        let expected: SpaceOpenDestination = hasAgent
+            ? .agent(paneID: "agent-first")
+            : .terminal(ShellTerminalIdentity(
+                paneID: "first", tabID: "tab-first", terminalID: "term-first"))
+        for _ in 0..<3 {
+            #expect(try await store.existingSpaceDestination(workspaceID: "w1", on: host.id) == expected)
+        }
+        #expect(try await store.existingSpaceDestination(workspaceID: "absent", on: host.id) == nil)
+        #expect(await transport.shellTerminalCreations.isEmpty)
+        if hasAgent {
+            #expect(store.agents.contains { $0.hostID == host.id && $0.agent.paneID == "agent-first" })
+        }
+        await transport.setSnapshotFailure(.timedOut)
+        do {
+            _ = try await store.existingSpaceDestination(workspaceID: "w1", on: host.id)
+            Issue.record("A failed lookup must not be treated as an empty Space")
+        } catch {}
+        #expect(await transport.shellTerminalCreations.isEmpty)
+        await store.suspend()
+    }
+
     /// Reconnect fast so resync tests never wait on real backoff.
     private static nonisolated let fastPolicy = ReconnectPolicy(
         initialDelay: .milliseconds(10), multiplier: 2, maxDelay: .milliseconds(50))

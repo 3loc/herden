@@ -23,7 +23,7 @@ final class AttachRestorationTrace {
     }
 
     private static let log = OSLog(
-        subsystem: "com.3loc.herden",
+        subsystem: "ltd.3loc.herden",
         category: "attach-restoration")
 
     private let traceID: String

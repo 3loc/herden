@@ -11,7 +11,6 @@ settings:
     # Swift 6 language mode implies complete strict concurrency checking.
     SWIFT_VERSION: "6.0"
     SWIFT_STRICT_CONCURRENCY: complete
-    DEVELOPMENT_TEAM: TRLCTG7S86
     CODE_SIGN_STYLE: Automatic
 
 packages:
@@ -53,19 +52,16 @@ targets:
       path: Sources/Herden/Herden.entitlements
       properties:
         # Shared by the app and Share Extension. Automatic signing provisions
-        # this identifier for Ted's 3LOC Apple team.
+        # this identifier for the selected Apple development team.
         com.apple.security.application-groups:
-          - group.com.3loc.herden
-          # One-way compatibility read for the development build that used
-          # the retired Founder Terminal bundle identity.
-          - group.com.fansvine.founderterminal
+          - group.ltd.3loc.herden.shared
     settings:
       base:
         GENERATE_INFOPLIST_FILE: YES
-        PRODUCT_BUNDLE_IDENTIFIER: com.3loc.herden
+        PRODUCT_BUNDLE_IDENTIFIER: ltd.3loc.herden
         INFOPLIST_KEY_CFBundleDisplayName: Herden
         MARKETING_VERSION: "0.1.5"
-        CURRENT_PROJECT_VERSION: "17"
+        CURRENT_PROJECT_VERSION: "18"
         # Scan to Pair (#62) reads the Pairing Code QR from the computer screen.
         INFOPLIST_KEY_NSCameraUsageDescription: "Herden uses the camera to scan the Pairing Code shown on your computer, so you can add that machine without typing anything."
         INFOPLIST_KEY_NSMicrophoneUsageDescription: "Herden uses the microphone for on-device terminal dictation."
@@ -120,14 +116,14 @@ targets:
       path: Sources/HerdenShareExtension/HerdenShareExtension.entitlements
       properties:
         com.apple.security.application-groups:
-          - group.com.3loc.herden
+          - group.ltd.3loc.herden.shared
     settings:
       base:
         INFOPLIST_FILE: Sources/HerdenShareExtension/Info.plist
-        PRODUCT_BUNDLE_IDENTIFIER: com.3loc.herden.share
+        PRODUCT_BUNDLE_IDENTIFIER: ltd.3loc.herden.share
         PRODUCT_NAME: HerdenShareExtension
         MARKETING_VERSION: "0.1.5"
-        CURRENT_PROJECT_VERSION: "17"
+        CURRENT_PROJECT_VERSION: "18"
         TARGETED_DEVICE_FAMILY: "1"
         APPLICATION_EXTENSION_API_ONLY: YES
         SKIP_INSTALL: YES
@@ -152,7 +148,7 @@ targets:
     settings:
       base:
         GENERATE_INFOPLIST_FILE: YES
-        PRODUCT_BUNDLE_IDENTIFIER: com.3loc.herden.tests
+        PRODUCT_BUNDLE_IDENTIFIER: ltd.3loc.herden.tests
     dependencies:
       - target: Herden
       - package: HerdenSSH

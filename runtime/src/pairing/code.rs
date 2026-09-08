@@ -114,8 +114,8 @@ mod tests {
         PairingPayload {
             addresses: vec!["100.64.1.2".into(), "192.168.1.20".into()],
             port: 22,
-            username: "vivian".into(),
-            host_name: Some("vinux".into()),
+            username: "developer".into(),
+            host_name: Some("buildbox".into()),
             host_key_fingerprint: format!("SHA256:{}", "A".repeat(43)),
             bootstrap_seed: [0; 32],
             expires_at: 1_800_000_000,
@@ -126,9 +126,9 @@ mod tests {
     fn encoding_is_canonical_and_keeps_legacy_wire_prefix_for_ios_compatibility() {
         let encoded = encode(&fixture()).expect("valid fixture");
         let expected_json = concat!(
-            r#"{"addrs":["100.64.1.2","192.168.1.20"],"port":22,"user":"vivian","fp":"SHA256:"#,
+            r#"{"addrs":["100.64.1.2","192.168.1.20"],"port":22,"user":"developer","fp":"SHA256:"#,
             "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA",
-            r#"","name":"vinux","seed":"AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA","exp":1800000000}"#,
+            r#"","name":"buildbox","seed":"AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA","exp":1800000000}"#,
         );
         assert_eq!(
             encoded,
@@ -196,11 +196,11 @@ mod tests {
     #[test]
     fn encoding_trims_the_optional_host_name() {
         let mut payload = fixture();
-        payload.host_name = Some("  vinux  ".into());
+        payload.host_name = Some("  buildbox  ".into());
         let encoded = encode(&payload).expect("valid fixture");
         let body = encoded.rsplit(':').next().expect("encoded body");
         let json = URL_SAFE_NO_PAD.decode(body).expect("base64url body");
         let value: serde_json::Value = serde_json::from_slice(&json).expect("JSON body");
-        assert_eq!(value["name"], "vinux");
+        assert_eq!(value["name"], "buildbox");
     }
 }

@@ -20,7 +20,7 @@ struct PairingScanStoreTests {
     /// only address.
     private static let pairedResult = PairingResult(
         address: "10.0.0.7", port: 22, username: "lin",
-        hostName: "vinux",
+        hostName: "buildbox",
         hostKeyFingerprint: HostKeyFingerprint(publicKeyBlob: Data("host-public-key".utf8)))
 
     private struct Env {
@@ -208,7 +208,7 @@ struct PairingScanStoreTests {
         #expect(paired.authMethod == .deviceKey)
         // Session selection stays with preflight discovery (ADR 0007).
         #expect(paired.sessionName.isEmpty)
-        #expect(paired.displayName == "lin@vinux")
+        #expect(paired.displayName == "lin@buildbox")
         // The pinned fingerprint means preflight never TOFU-prompts.
         #expect(
             await env.knownHosts.fingerprint(host: "10.0.0.7", port: 22)

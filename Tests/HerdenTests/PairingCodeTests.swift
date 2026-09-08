@@ -9,11 +9,11 @@ import Testing
 @Suite("Pairing Code envelope")
 struct PairingCodeTests {
     @Test func decodesAdditiveHostName() throws {
-        let json = #"{"addrs":["100.64.0.9"],"port":22,"user":"ted","name":"vinux","fp":"SHA256:AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA"}"#
+        let json = #"{"addrs":["100.64.0.9"],"port":22,"user":"dev","name":"buildbox","fp":"SHA256:AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA"}"#
         let body = Data(json.utf8).base64URLEncodedString()
         let code = try PairingCode.decode("HERDR-PAIR:1:\(body)")
 
-        #expect(code.hostName == "vinux")
+        #expect(code.hostName == "buildbox")
     }
 
     private static let vectors = PairingCodeVectorFile.shared

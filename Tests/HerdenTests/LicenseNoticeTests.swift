@@ -17,6 +17,7 @@ struct LicenseNoticeInventoryTests {
     private static let requiredComponentIDs: Set<String> = [
         "Ghostty",
         "GhosttyTheme",
+        "Herden",
         "IBMPlexMono",
         "InstrumentSerif",
         "Inter",
@@ -116,8 +117,13 @@ struct LicenseNoticeInventoryTests {
             let notice = try #require(byID[id])
             #expect(notice.license == "OFL-1.1")
             #expect(notice.text.contains("SIL OPEN FONT LICENSE Version 1.1 - 26 February 2007"))
-            #expect(notice.text.contains("PERMISSION & CONDITIONS"))
+            #expect(notice.text.contains("PERMISSION"))
+            #expect(notice.text.contains("CONDITIONS"))
         }
+
+        #expect(try #require(byID["InstrumentSerif"]).text.contains("Instrument Serif Project Authors"))
+        #expect(try #require(byID["Inter"]).text.contains("The Inter Project Authors"))
+        #expect(try #require(byID["JetBrainsMono"]).text.contains("JetBrains Mono Project Authors"))
     }
 
     @Test func everyDiscoveredDependencyDeclarationIsCoveredByInventory() throws {

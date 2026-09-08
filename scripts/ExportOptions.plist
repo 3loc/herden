@@ -6,8 +6,6 @@
 	<string>app-store-connect</string>
 	<key>destination</key>
 	<string>upload</string>
-	<key>teamID</key>
-	<string>TRLCTG7S86</string>
 	<key>uploadSymbols</key>
 	<true/>
 	<key>manageAppVersionAndBuildNumber</key>

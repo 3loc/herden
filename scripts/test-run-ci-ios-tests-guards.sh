@@ -110,10 +110,6 @@ app_fixture_lane_count=$(grep -c '^run_suite ' "$gate_script")
 # shellcheck disable=SC2016
 grep -qF 'if [[ "$ci_lane" == "package" ]]; then' "$gate_script" \
     || die "gate has no isolated package lane"
-grep -qF 'HERDEN_CI_LANE: package' "$repo_root/.github/workflows/ci.yml" \
-    || die "workflow has no package-only job"
-grep -qF 'HERDEN_CI_LANE: app' "$repo_root/.github/workflows/ci.yml" \
-    || die "workflow does not pin the app-only job"
 # shellcheck disable=SC2016
 grep -qF '"KexAlgorithms curve25519-sha256" >> "$modern_config"' "$gate_script" \
     || die "shared modern fixture does not pin the Curve25519 baseline"
@@ -167,15 +163,6 @@ awk '
     END { exit (app_gate && flag) ? 0 : 1 }
 ' "$gate_script" \
     || die "clonedSourcePackagesDirPath must be gated inside run_xcodebuild"
-grep -qF 'Cache SwiftPM checkouts' "$repo_root/.github/workflows/ci.yml" \
-    || die "workflow must cache SwiftPM checkouts for the app job"
-grep -qF '.ci/source-packages' "$repo_root/.github/workflows/ci.yml" \
-    || die "workflow cache must include .ci/source-packages"
-if grep -qE '^[[:space:]]+xcrun simctl list runtimes' "$repo_root/.github/workflows/ci.yml"; then
-    die "workflow must not cold-start CoreSimulator via simctl list runtimes"
-fi
-grep -qF 'Show Xcode version' "$repo_root/.github/workflows/ci.yml" \
-    || die "workflow must keep a lightweight Xcode version step"
 
 # cleanup reads these ownership slots even when a case never claimed a
 # resource. The real gate initializes them before installing its trap; the
@@ -540,7 +527,7 @@ echo
 echo "== the developer-laptop exemption is narrow, not a blanket pass =="
 # The capture's two real-password tests skip in both lanes, because the machine
 # had no passwordless sudo. Told the privileged fixture was present -- which is
-# what merge CI is -- the gate must refuse exactly those two.
+# what the exhaustive local run is -- the gate must refuse exactly those two.
 case_dir=$(new_case exemption)
 case_password_fixture=1
 run_case fail \

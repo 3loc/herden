@@ -6,14 +6,54 @@
 
 **The runtime your coding agents live on, with a native iPhone console.**
 
-[Install](#install) · [Pair an iPhone](#pair-an-iphone) · [Host guide](docs/guides/install-host.md) · [Build the iOS app](docs/guides/build-ios.md)
+[Website](https://herden.3loc.ltd) · [Download for iPhone](https://testflight.apple.com/join/nSsEZBvv) · [Quick start](#quick-start) · [Host guide](docs/guides/install-host.md) · [Build from source](docs/guides/build-ios.md)
 
-[![iOS CI](https://github.com/3loc/herden/actions/workflows/ci.yml/badge.svg)](https://github.com/3loc/herden/actions/workflows/ci.yml)
-[![Linux CI](https://github.com/3loc/herden/actions/workflows/ci-linux.yml/badge.svg)](https://github.com/3loc/herden/actions/workflows/ci-linux.yml)
 [![License: Apache 2.0](https://img.shields.io/badge/License-Apache_2.0-blue.svg)](LICENSE)
 [![GitHub stars](https://img.shields.io/github/stars/3loc/herden?style=flat)](https://github.com/3loc/herden/stargazers)
 
 </div>
+
+## Quick start
+
+Do these four things.
+
+### 1. Install Herden on your iPhone
+
+Open the **[Herden public beta on TestFlight](https://testflight.apple.com/join/nSsEZBvv)**.
+Install Apple's TestFlight app if asked, then tap **Accept** and **Install**.
+If TestFlight says the beta is not accepting testers, Apple's first-build beta
+review is still in progress. Try the same link again after it is approved.
+
+### 2. Install the Host on your computer
+
+On your Linux VM, Linux PC or Mac, open Terminal and paste:
+
+```sh
+curl -fsSL https://herden.3loc.ltd/install.sh | sh
+```
+
+Wait until it says **Herden is ready**.
+
+### 3. Show the QR code
+
+In the same Terminal, paste:
+
+```sh
+"$HOME/.local/bin/herden" pair
+```
+
+Leave the QR code open. It expires after two minutes; run the command again if
+that happens.
+
+### 4. Scan it with the iPhone
+
+Open **Herden → Hosts → Add Host**, scan the QR code, then confirm the Host
+fingerprint. Open the Host and tap **New Agent** to start Claude Code or Codex.
+
+Your iPhone must be able to reach this computer over SSH. If you want to use
+Herden away from home, install Tailscale on both devices and sign in to the
+same network first. The [Host guide](docs/guides/install-host.md) has the short
+SSH and Tailscale setup if pairing cannot connect.
 
 Herden is a persistent runtime for coding agents. It keeps their terminals,
 workspaces and processes alive on a computer you control, even when no client
@@ -41,6 +81,15 @@ would run `herdr`, and run `herden pair` when you want to add the iPhone app.
 - **Available from your phone:** The native iOS app puts named Agents first,
   attaches to their real terminal sessions and lets you keep working away
   from the computer. Spaces and Hosts provide context.
+- **Share straight to an Agent:** Send a screenshot, photo, video or document
+  from another app's iOS share sheet to Herden, then pick the Agent. Herden
+  uploads the file to its Host, ready for you to add instructions. You can also
+  add media and documents directly in the app.
+- **Say your next instruction:** Dictate on your iPhone with on-device speech
+  recognition. Review the words and send when you're ready.
+- **Your machines, one scan away:** Install the Host on a Linux or macOS
+  machine on your tailnet, allow SSH from your iPhone, and scan its Pairing Code.
+  Add your desktop, laptop or remote VM without opening SSH to the internet.
 
 ## Opinionated changes from upstream
 
@@ -97,33 +146,29 @@ Herden treats its two upstream projects differently:
   herdr so routine upstream changes can be adopted with little or no conflict.
   Herden-specific Host changes should stay small, explicit and covered by tests.
 
-The repository is currently standalone on GitHub and places herdr under
-`runtime/`, so GitHub's **Sync fork** button is not available today. Merely
-adding a Git remote cannot enable it. Before public launch, using that button
-requires Herden to become a real GitHub fork of herdr and to share a compatible
-default-branch history and tree layout. Until that migration is complete, do
-not describe Herden as automatically synchronised with herdr. This does not
-block publishing Herden; Host updates remain explicit, reviewed imports.
+The repository is standalone on GitHub and places herdr under `runtime/`, so
+GitHub's **Sync fork** button is not available. Host updates are explicit,
+reviewed imports from the recorded upstream baseline.
 
-## Install
+## Host installation details
 
-On a Linux or macOS Host:
+On a Linux or macOS Host, paste this one command into Terminal:
 
 ```sh
-curl -fsSL https://raw.githubusercontent.com/3loc/herden/main/install.sh | sh
-export PATH="$HOME/.local/bin:$PATH"
-herden
+curl -fsSL https://herden.3loc.ltd/install.sh | sh
 ```
 
 Herden starts or reattaches to the persistent session in the current working
-directory. Install and sign in to Claude Code, Codex or another supported agent
-on that Host, then run it inside Herden as usual.
+directory. Open a new terminal, run `herden`, then install and sign in to Claude
+Code, Codex or another supported agent on that Host and run it inside Herden as
+usual. If your shell cannot find it yet, run `"$HOME/.local/bin/herden"`.
 
 The installer selects the binary for the Host's OS and architecture, verifies
-its SHA-256 checksum and installs it to `~/.local/bin`. To compile instead, see
-the [Host guide](docs/guides/install-host.md#build-from-source).
+its SHA-256 checksum, installs it to `~/.local/bin`, and installs its licence
+and attribution notice under `~/.local/share/doc/herden`. To compile instead,
+see the [Host guide](docs/guides/install-host.md#build-from-source).
 
-## Pair an iPhone
+## Pairing details
 
 The phone must be able to reach the Host's ordinary OpenSSH service. Tailscale
 or Headscale is recommended, and no public router port needs to be opened.
@@ -151,11 +196,13 @@ herden pair --address 100.64.1.2 --port 22
 See the [Host installation and pairing guide](docs/guides/install-host.md) for
 OpenSSH requirements and troubleshooting.
 
-## Install the iPhone app
+## Build the iPhone app from source
 
-Herden is a native iOS application. Building it requires a Mac with Xcode 26 or
-newer. The Simulator needs no paid Apple membership; a physical-device build
-uses an Apple development team and App Group owned by that team.
+Most people should install the
+**[public TestFlight beta](https://testflight.apple.com/join/nSsEZBvv)**.
+Build it yourself only when developing Herden. This requires a Mac with Xcode
+26 or newer. The Simulator needs no paid Apple membership; a physical-device
+build uses an Apple development team and App Group owned by that team.
 
 ```sh
 git clone https://github.com/3loc/herden.git
@@ -170,6 +217,7 @@ physical iPhone and Wi-Fi deployment.
 
 - [Host installation and pairing](docs/guides/install-host.md)
 - [Build and install the iOS app](docs/guides/build-ios.md)
+- [Release the Host](docs/guides/releasing-host.md)
 - [Terminal keyboard guide](docs/guides/keyboard.md)
 - [Privacy](PRIVACY.md)
 - [Architecture decisions](docs/adr/)
@@ -197,6 +245,7 @@ approved its Apache-2.0 relicense in
 [Heeler issue #282](https://github.com/ZingerLittleBee/Heeler/issues/282), and
 that relicense is preserved in this repository's history. The Host runtime
 retains herdr's attribution in [runtime/LICENSE](runtime/LICENSE). The combined
-Herden repository is licensed under the [Apache License 2.0](LICENSE). Exact
-source commits and maintenance policy are recorded in
+Herden repository is licensed under the [Apache License 2.0](LICENSE). The
+[NOTICE](NOTICE) identifies both upstream works and Herden's modifications.
+Exact source commits and maintenance policy are recorded in
 [UPSTREAM.md](UPSTREAM.md).

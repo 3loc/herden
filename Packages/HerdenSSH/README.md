@@ -6,7 +6,7 @@ the app target consumes only the `HerdenSSH` product and never imports native
 modules or owns native pointers directly.
 
 The checked-in XCFrameworks are the normal build input. Rebuilding them is a
-dependency-maintenance operation, not part of ordinary app or CI builds.
+dependency-maintenance operation, not part of ordinary app builds.
 
 ## Audit and rebuild
 
@@ -148,8 +148,8 @@ for this package's own suites, including `SessionDriverE2ETests`. The local
 package runner asserts only that something executed, not an exact count, so
 machines without the disposable sshd fixture can skip the E2E suite cleanly.
 
-The E2E integration package must update `scripts/run-ci-ios-tests.sh` before
-merge so its package lane expects **48** executed tests and pins these
+The E2E integration package must update `scripts/run-ci-ios-tests.sh` with its
+change so the exhaustive package lane expects **48** executed tests and pins these
 display names exactly:
 
 - `handshake negotiates post-quantum key exchange`
@@ -176,7 +176,7 @@ The post-quantum handshake uses its own ML-KEM-only sshd endpoint. The shared
 resource and timing suites remain on a Curve25519-only baseline so algorithm
 coverage cannot change their fixture behavior.
 
-The package lane treats the count and display names as merge gates, so adding
+The package lane treats the count and display names as validation gates, so adding
 E2E behavior requires updating both in the same change.
 
 ## Direct-streamlocal acceptance
@@ -193,13 +193,13 @@ on every machine and can never reach a real herdr server. The single exception
 is real password authentication: macOS cannot verify an account password
 without root, and an unprivileged sshd can only authenticate the account it
 already runs as. Those two tests need a disposable account and one root-owned
-sshd, so they skip without passwordless `sudo` and are mandatory in merge CI
+sshd, so they skip without passwordless `sudo` and are mandatory in the exhaustive local gate
 (`HERDEN_CI_MANDATORY=1`).
 
 The suite includes a repeatable 25-exchange loopback measurement. Its printed
 output is telemetry for local channel open, exchange, and close cost — not a
 merge gate, not a machine-speed promise, and not a WAN latency promise.
-Absolute loopback timing varies with the CI scheduler; accidental remote-process
+Absolute loopback timing varies with machine load; accidental remote-process
 fallback is a hard functional failure under the socat-free Host PATH the
 fixture already enforces (see `scripts/run-ci-ios-tests.sh`).
 

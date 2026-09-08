@@ -6,7 +6,7 @@ absolute Host path plus a space. It sends no keys, newline or `agent.prompt`.
 The user opens the Agent in Herden, adds any instructions and presses Return.
 
 The extension and app share transfer records and protected source copies in
-`group.com.3loc.herden`. Atomic JSON records expose progress, destination and
+`group.ltd.3loc.herden.shared`. Atomic JSON records expose progress, destination and
 completion to the app. A nonblocking POSIX lock per transfer prevents concurrent
 uploaders and stays held across upload and path insertion. Process termination
 releases the lock. Recovery never takes ownership from a live extension.
@@ -47,6 +47,7 @@ Reviewed 8 September 2026:
 - [Apple: NSItemProvider file representation](https://developer.apple.com/documentation/foundation/nsitemprovider/loadfilerepresentation(fortypeidentifier:completionhandler:)): copy the provider's temporary file within its completion handler.
 - [cordova-plugin-openwith](https://github.com/j3k0/cordova-plugin-openwith/blob/master/src/ios/ShareExtension/ShareViewController.m): comparable App Group file spooling. Herden does not adopt its responder-chain URL-opening workaround or store file bytes in preferences.
 
-Verify through `make test` on studio, then `make install DEVICE=<tedda UUID>`.
+Verify through `make test` on the build Mac, then
+`make install DEVICE=<physical-device UUID>`.
 Exercise sharing from Files, select an Agent, observe progress and reopen Herden.
 Confirm that the path remains editable in the Agent prompt until Return.

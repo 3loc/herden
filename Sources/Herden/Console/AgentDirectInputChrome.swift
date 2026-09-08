@@ -114,7 +114,7 @@ struct AgentConsoleButton: View {
         Button(action: action) {
             HStack(spacing: 6) {
                 HerdenMark(size: 18)
-                Text("Spaces")
+                Text("Agents")
                     .font(Brand.sans(.caption, weight: .semibold))
             }
             .foregroundStyle(Brand.ink)
@@ -129,6 +129,6 @@ struct AgentConsoleButton: View {
             .contentShape(.rect)
         }
         .buttonStyle(.plain)
-        .accessibilityLabel("Back to Spaces and Agents")
+        .accessibilityLabel("Back to Agents")
     }
 }

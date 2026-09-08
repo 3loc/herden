@@ -244,6 +244,15 @@ struct ConsoleSpacePresentationTests {
 
 @Suite("Agent card presentation")
 struct AgentCardPresentationTests {
+    @Test func namedAgentsInTheSameSpaceKeepDistinctHeadlinesAndSharedContext() {
+        let first = presentation(kind: "codex", name: "reviewer", title: "", cwd: "/src/app", workspaceLabel: "App")
+        let second = presentation(kind: "codex", name: "builder", title: "", cwd: "/src/app", workspaceLabel: "App")
+        #expect(first.headline == "reviewer")
+        #expect(second.headline == "builder")
+        #expect(first.context == "App · /src/app")
+        #expect(second.context == first.context)
+    }
+
     @Test func everyAgentKindMatchesHerdrNameThenTypeAndDirectory() {
         let claude = presentation(
             kind: "claude",

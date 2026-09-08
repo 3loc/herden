@@ -4,11 +4,7 @@ import logo from '../assets/logo.png';
 import Button from './Button.astro';
 
 const links = [
-  { href: '#features', label: 'Features' },
-  { href: '#connect', label: 'How it connects' },
-  { href: '#build', label: 'Build' },
-  { href: '#security', label: 'Security' },
-  { href: '#faq', label: 'FAQ' },
+  { href: '#install', label: 'Set up' },
 ];
 ---
 
@@ -22,8 +18,8 @@ const links = [
       {links.map((link) => <a class="nav-link" href={link.href}>{link.label}</a>)}
     </nav>
     <div class="spacer"></div>
-    <span class="eyebrow stage">Beta</span>
-    <Button href="https://github.com/3loc/herden" size="sm">Star on GitHub</Button>
+    <span class="eyebrow stage">Open source</span>
+    <Button href="https://github.com/3loc/herden" size="sm">View on GitHub</Button>
   </div>
 </header>
 

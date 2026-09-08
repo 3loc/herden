@@ -210,6 +210,7 @@ struct AgentTerminalView: View {
     @State private var isSelectingFile = false
     @State private var isConfirmingClose = false
     @State private var isStartingAgent = false
+    @State private var startedAgentAfterDismissal: ConsoleAgent.ID?
     @State private var isManagingSnippets = false
     @State private var isShowingSkillsPicker = false
     @State private var isRenamingAgent = false
@@ -429,7 +430,11 @@ struct AgentTerminalView: View {
                 copy: { link in UIPasteboard.general.string = link.target })
             .presentationCompactAdaptation(.sheet)
         }
-        .sheet(isPresented: $isStartingAgent) {
+        .sheet(isPresented: $isStartingAgent, onDismiss: {
+            guard let id = startedAgentAfterDismissal else { return }
+            startedAgentAfterDismissal = nil
+            switchToAgent(id)
+        }) {
             // StartAgentView brings its own NavigationStack.
             StartAgentView(
                 hosts: hosts,
@@ -438,7 +443,7 @@ struct AgentTerminalView: View {
                     hostID: agent.hostID,
                     workspaceID: agent.agent.workspaceID,
                     cwd: agent.agent.cwd),
-                onStarted: { switchToAgent($0) })
+                onStarted: { startedAgentAfterDismissal = $0 })
         }
         // Presenting this takes the keyboard down and dismissing brings it
         // back; see `allowsKeyboardActivation` in HerdenTerminalView.

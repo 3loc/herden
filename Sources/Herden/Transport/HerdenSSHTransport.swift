@@ -727,10 +727,16 @@ actor HerdenSSHTransport: Transport {
         _ launch: AgentLaunchRequest,
         workspace: NewWorkspaceSpec
     ) async throws -> Agent {
+        let directory: String
+        if let specified = workspace.directory {
+            directory = specified
+        } else {
+            directory = try await remoteHomeDirectory()
+        }
         let created = try await request(
             method: "workspace.create",
             params: WorkspaceCreateParams(
-                cwd: workspace.directory,
+                cwd: directory,
                 focus: false,
                 label: workspace.label),
             decoding: WorkspaceCreatedResponse.self)

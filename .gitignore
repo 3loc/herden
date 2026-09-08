@@ -11,6 +11,9 @@ xcuserdata/
 DerivedData/
 *.xcscmblueprint
 *.xccheckout
+# Local Apple signing choice. Public project files intentionally contain no
+# maintainer team ID.
+.herden.local.mk
 
 # SPM
 .build/
@@ -45,9 +48,8 @@ __pycache__/
 # Local-only notes and experiments
 .local/
 
-# testloop scratch artifacts; keep concise run reports as repository history
-.testloop/*
-!.testloop/reports/
+# Local testloop scratch artifacts
+.testloop/
 
 # Agent workspace (research reports, scratch)
 .claude/

@@ -2,18 +2,14 @@
 status: accepted
 ---
 
-# Keep Herden's web services behind the 3loc Headscale tailnet
+# Keep infrastructure deployment outside the product repository
 
-The Herden site is `herden.austrheim.ca7.fm` and the Push Relay is
-`herden-apns.austrheim.ca7.fm`. Both run inside the Austrheim homelab and are
-served by the native Traefik edge on nidavellir. Split-horizon DNS resolves the
-names to that edge for LAN and Headscale clients.
+The public site is `herden.3loc.ltd`. The maintainer-operated Push Relay has a
+separate endpoint because it handles APNs credentials and must be deployable
+independently from static web content.
 
-Headscale, self-hosted on Hetzner for the `3loc.ltd` tailnet, is the remote
-access layer. The services have no public WAN ingress and do not use a public
-Cloudflare Worker or tunnel. The existing wildcard certificate is issued by
-DNS-01, so TLS does not require an inbound HTTP challenge.
-
-The Herden repository owns application code and build verification. The fleet
-repository is the declarative source of truth for workloads, Traefik routers,
-split-DNS aliases, Headscale policy, secrets, deployment, and live verification.
+This repository owns application code and build verification only. DNS, TLS,
+network policy, secrets, workload definitions and live deployment verification
+belong to the operator's infrastructure repository. No infrastructure hostnames,
+network topology, secret-store coordinates or credentials belong in Herden's
+public history.

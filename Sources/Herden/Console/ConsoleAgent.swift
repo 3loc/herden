@@ -70,7 +70,10 @@ struct ConsoleAgent: Identifiable, Sendable, Equatable {
     /// room for one word, and a console full of `claude` is told apart by
     /// where each one is working.
     var switcherLabel: String {
-        workspaceLabel ?? repoName ?? agent.displayName
+        if let name = agent.name?.trimmingCharacters(in: .whitespacesAndNewlines), !name.isEmpty {
+            return name
+        }
+        return workspaceLabel ?? repoName ?? agent.displayName
     }
 
     /// The directory the skills probe treats as the agent's project root:
@@ -135,6 +138,23 @@ struct ConsoleWorkspace: Identifiable, Hashable, Sendable {
 
 /// A Host-qualified Workspace presented as a user-facing Space on Herden's
 /// home screen. Workspace ids are opaque and only become unique with Host id.
+enum SpaceOpenDestination: Equatable, Sendable {
+    case agent(paneID: String)
+    case terminal(ShellTerminalIdentity)
+
+    /// Use Host snapshot order, not the Console's changing status/pin order.
+    static func existing(in snapshot: SessionSnapshot, workspaceID: String) -> Self? {
+        if let agent = snapshot.agents.first(where: { $0.workspaceID == workspaceID }) {
+            return .agent(paneID: agent.paneID)
+        }
+        if let pane = snapshot.panes.first(where: { $0.workspaceID == workspaceID }) {
+            return .terminal(ShellTerminalIdentity(
+                paneID: pane.paneID, tabID: pane.tabID, terminalID: pane.terminalID))
+        }
+        return nil
+    }
+}
+
 struct ConsoleSpace: Identifiable, Hashable, Sendable {
     struct ID: Hashable, Sendable {
         let hostID: Host.ID

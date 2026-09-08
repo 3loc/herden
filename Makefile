@@ -7,9 +7,16 @@ PROJECT := Herden.xcodeproj
 SCHEME  := Herden
 ARCHIVE := build/Herden.xcarchive
 DERIVED := build/DerivedData
-APP_ID  := com.3loc.herden
+APP_ID  := ltd.3loc.herden
 SIM     ?= iPhone 17
 IOS_WATCH_DEBOUNCE ?= 1s
+
+# Keep the signing team out of the public project. Maintainers can place
+# `DEVELOPMENT_TEAM = ABCDE12345` in the ignored .herden.local.mk once, or pass
+# it to make explicitly. Simulator builds do not need it.
+-include .herden.local.mk
+DEVELOPMENT_TEAM ?= $(HERDEN_DEVELOPMENT_TEAM)
+SIGNING_ARGS = $(if $(strip $(DEVELOPMENT_TEAM)),DEVELOPMENT_TEAM=$(DEVELOPMENT_TEAM),)
 
 # First physical device paired with devicectl; override with `make install DEVICE=<uuid>`.
 DEVICE ?= $(shell xcrun devicectl list devices 2>/dev/null | awk '/physical[a-z]* *$$/ { for (i = 1; i <= NF; i++) if ($$i ~ /^[0-9A-Fa-f-]{36}$$/) { print $$i; exit } }')
@@ -19,13 +26,23 @@ DEVICE ?= $(shell xcrun devicectl list devices 2>/dev/null | awk '/physical[a-z]
 help: ## Show available targets
 	@awk -F':.*## ' '/^[a-z-]+:.*## / { printf "  make %-20s %s\n", $$1, $$2 }' $(MAKEFILE_LIST)
 
-.PHONY: host-install host-check
+.PHONY: host-install host-check host-release-asset host-release-assemble
 
 host-install: ## Build and install the native Host on this Linux or macOS machine
 	sh scripts/install-host-source.sh
 
 host-check: ## Check Host source-build prerequisites without installing anything
 	sh scripts/install-host-source.sh --check
+
+host-release-asset: ## Build one Host release asset (TARGET=... OUT_DIR=...)
+	@test -n "$(TARGET)" || { echo "TARGET is required" >&2; exit 2; }
+	@test -n "$(OUT_DIR)" || { echo "OUT_DIR is required" >&2; exit 2; }
+	sh scripts/build-host-release-asset.sh "$(TARGET)" "$(OUT_DIR)"
+
+host-release-assemble: ## Assemble Host release metadata (HOST_VERSION=... OUT_DIR=...)
+	@test -n "$(HOST_VERSION)" || { echo "HOST_VERSION is required" >&2; exit 2; }
+	@test -n "$(OUT_DIR)" || { echo "OUT_DIR is required" >&2; exit 2; }
+	sh scripts/assemble-host-release.sh "$(HOST_VERSION)" "$(OUT_DIR)"
 
 ssh-artifacts: ## Rebuild the pinned HerdenSSH XCFrameworks
 	Packages/HerdenSSH/Scripts/build-native.sh
@@ -39,7 +56,7 @@ generate: ## Regenerate the Xcode project from project.yml (XcodeGen)
 build: ## Build Debug for a physical device without installing
 	xcodebuild -project $(PROJECT) -scheme $(SCHEME) -configuration Debug \
 		-destination 'generic/platform=iOS' -derivedDataPath $(DERIVED) \
-		-allowProvisioningUpdates build
+		-allowProvisioningUpdates $(SIGNING_ARGS) build
 
 test: ## Run the app and HerdenSSH unit test suites on a simulator
 	xcodebuild -project $(PROJECT) -scheme $(SCHEME) \
@@ -78,12 +95,10 @@ sim: ## Build Debug and run it on the simulator (override with SIM=<name>)
 archive: ## Archive a Release build for distribution
 	xcodebuild -project $(PROJECT) -scheme $(SCHEME) -configuration Release \
 		-destination 'generic/platform=iOS' -archivePath $(ARCHIVE) \
-		-allowProvisioningUpdates archive
+		-allowProvisioningUpdates $(SIGNING_ARGS) archive
 
 upload: ## Upload the existing archive to App Store Connect (TestFlight)
-	xcodebuild -exportArchive -archivePath $(ARCHIVE) \
-		-exportOptionsPlist scripts/ExportOptions.plist \
-		-exportPath build/export -allowProvisioningUpdates
+	scripts/upload-testflight.sh
 
 testflight: archive upload ## Archive and upload in one go
 

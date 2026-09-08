@@ -91,14 +91,17 @@ Install XcodeGen:
 brew install xcodegen
 ```
 
-Edit `project.yml`:
+Create the ignored local signing file with your ten-character Apple team ID:
 
-1. Replace `DEVELOPMENT_TEAM` with your ten-character Apple team ID.
-2. Replace the three `PRODUCT_BUNDLE_IDENTIFIER` values with the app, Share
+```sh
+printf 'DEVELOPMENT_TEAM = ABCDE12345\n' > .herden.local.mk
+```
+
+Replace `ABCDE12345` with your own team ID. Then edit `project.yml`:
+
+1. Replace the three `PRODUCT_BUNDLE_IDENTIFIER` values with the app, Share
    Extension and test identifiers above.
-3. Replace `group.com.3loc.herden` in both targets with your App Group.
-4. Remove `group.com.fansvine.founderterminal`. It is a compatibility group for
-   an old 3LOC development build and another team cannot sign it.
+2. Replace `group.ltd.3loc.herden.shared` in both targets with your App Group.
 
 Then update the two runtime constants to the same App Group:
 
@@ -115,7 +118,8 @@ git diff -- project.yml Herden.xcodeproj \
   Sources/HerdenNotificationCore/NotificationKeyStore.swift
 ```
 
-`project.yml` is the source of truth. Do not edit
+The local signing file is deliberately ignored so your team ID never enters
+repository history. `project.yml` is the source of truth. Do not edit
 `Herden.xcodeproj/project.pbxproj` by hand.
 
 ### 3. Prepare the iPhone
@@ -220,7 +224,8 @@ scripts/run-herdenssh-package-tests.sh \
 ```
 
 Some real-SSH suites require disposable local SSH fixtures. They skip on a
-normal Mac when those fixtures are unavailable; merge CI provisions them.
+normal Mac when those fixtures are unavailable;
+`scripts/run-ci-ios-tests.sh` provisions them for exhaustive local validation.
 
 ## Common failures
 
@@ -238,8 +243,7 @@ normal Mac when those fixtures are unavailable; merge CI provisions them.
 
 Run `make generate` after changing targets, signing settings, package links or
 source membership in `project.yml`. Commit the regenerated `Herden.xcodeproj`
-with the YAML change because CI builds the committed project and does not run
-XcodeGen.
+with the YAML change because it is part of the repository's build source.
 
 Maintainers cutting TestFlight or App Store releases must follow
 [the release guide](releasing.md). Do not run `make publish` merely to install a

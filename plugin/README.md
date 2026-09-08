@@ -9,7 +9,7 @@ are available, you can explicitly request notifications during installation
 (Git and npm are required):
 
 ```sh
-curl -fsSL https://raw.githubusercontent.com/3loc/herden/main/install.sh | HERDEN_INSTALL_NOTIFICATIONS=1 sh
+curl -fsSL https://herden.3loc.ltd/install.sh | HERDEN_INSTALL_NOTIFICATIONS=1 sh
 ```
 
 To install it separately from a checkout:

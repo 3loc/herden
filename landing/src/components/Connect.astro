@@ -25,6 +25,7 @@ const path = [
 // Written as markup so the pre keeps its exact line breaks and token colours.
 const pairingCommands = [
   '<span class="tk-fn">herden</span> pair',
+  '<span class="tk-comment"># or, inside Herden: Ctrl-B i</span>',
 ].join('\n');
 ---
 
@@ -73,7 +74,7 @@ const pairingCommands = [
         <pre set:html={pairingCommands}></pre>
       </div>
 
-      <p class="aside-note"><span class="mono">herden pair</span> prints a two-minute Pairing Code directly in your terminal. Scan it and the machine is added with its addresses, pinned Host key, and single-use SSH enrollment.</p>
+      <p class="aside-note"><span class="mono">herden pair</span> prints a two-minute Pairing Code directly in your terminal. If the session is already open, <span class="mono">Ctrl-B i</span> shows it in a full-screen popup. Scan it and the machine is added with its addresses, pinned Host key, and single-use SSH enrollment.</p>
       <p class="aside-note">Pairing is built into Herden. There is no separate pairing plugin or backend account to configure.</p>
     </div>
   </div>

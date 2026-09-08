@@ -45,6 +45,13 @@ struct AgentCardView: View {
                         .lineLimit(1)
                         .truncationMode(.tail)
                 }
+                if let context = presentation.context {
+                    Text(context)
+                        .font(Brand.mono(.caption2))
+                        .foregroundStyle(Brand.subtle)
+                        .lineLimit(1)
+                        .truncationMode(.middle)
+                }
             }
         }
         .padding(.vertical, 4)
@@ -57,10 +64,14 @@ struct AgentCardPresentation: Equatable {
     let agentType: String?
 
     init(agent: ConsoleAgent) {
-        headline = agent.switcherLabel
-        context = Self.nonEmpty(agent.agent.cwd).map {
+        let title = agent.switcherLabel
+        headline = title
+        let directory = Self.nonEmpty(agent.agent.cwd).map {
             Self.abbreviatingStandardHome(in: $0, username: agent.hostUsername)
         }
+        let details = [Self.nonEmpty(agent.workspaceLabel).flatMap { $0 == title ? nil : $0 }, directory]
+            .compactMap { $0 }.joined(separator: " · ")
+        context = details.isEmpty ? nil : details
 
         let kind = switch SupportedAgentKind(rawValue: agent.agent.kind) {
         case .some(.claude): "Claude"

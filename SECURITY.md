@@ -7,8 +7,6 @@ keys. Please do not disclose a suspected vulnerability in a public issue.
 
 Use GitHub's
 [private vulnerability report](https://github.com/3loc/herden/security/advisories/new).
-If private reporting is unavailable before the repository changes visibility,
-email `ted@3loc.ltd` with the subject `Herden security report`.
 Include the affected Herden version, Host operating system, iOS version and the
 smallest reproduction you can provide. Remove private keys, passwords, tokens,
 Host addresses and user content before attaching logs.

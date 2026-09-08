@@ -69,7 +69,7 @@ of displaying unverified content.
 
 ### Purpose, retention, and service providers
 
-The 3loc-hosted relay uses this data only to validate requests, limit
+The maintainer-hosted relay uses this data only to validate requests, limit
 abuse, and deliver notifications to APNs. It does not use the data for
 advertising, analytics, tracking, profiling, or sale.
 
@@ -79,8 +79,8 @@ and Apple push tokens are used in volatile, per-instance memory for one-minute
 rate-limit windows. This memory is not a durable user record and is discarded
 when the relay process is restarted.
 
-The relay is hosted inside the 3loc homelab and is reachable only through its
-private Headscale tailnet. Notifications are delivered by Apple APNs, which may
+The relay is hosted on a maintainer-controlled private network. Notifications
+are delivered by Apple APNs, which may
 process network and delivery metadata under its published privacy terms. Any
 provider processing data on Herden's behalf is required to protect it
 consistently with this policy and applicable law. Herden uses providers only

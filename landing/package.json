@@ -3,7 +3,7 @@
   "version": "0.1.0",
   "private": true,
   "license": "Apache-2.0",
-  "description": "Static Herden site served privately through the 3loc Headscale tailnet",
+  "description": "Static product site for the Herden Host and iPhone console",
   "type": "module",
   "engines": {
     "node": ">=20"

@@ -10,7 +10,12 @@ repo_root="${0:A:h:h}"
 derived_data="${HERDEN_DERIVED_DATA:-/tmp/herden-ios-device-derived}"
 build_log="${HERDEN_BUILD_LOG:-/tmp/herden-ios-device-build.log}"
 build_status="${HERDEN_BUILD_STATUS:-/tmp/herden-ios-device-build.status}"
-development_team="${HERDEN_DEVELOPMENT_TEAM:-TRLCTG7S86}"
+development_team="${HERDEN_DEVELOPMENT_TEAM:-}"
+
+if [[ -z "$development_team" ]]; then
+    print -u2 -- "Set HERDEN_DEVELOPMENT_TEAM to your ten-character Apple team ID."
+    exit 2
+fi
 
 finish() {
     result=$?

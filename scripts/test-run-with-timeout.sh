@@ -5,7 +5,6 @@ set -euo pipefail
 repo_root="$(cd "$(dirname "$0")/.." && pwd)"
 runner="$repo_root/scripts/run-with-timeout.py"
 gate_script="$repo_root/scripts/run-ci-ios-tests.sh"
-workflow="$repo_root/.github/workflows/ci.yml"
 work="$(mktemp -d "${TMPDIR:-/tmp}/herden-timeout-test.XXXXXX")"
 trap 'rm -rf "$work"' EXIT
 
@@ -82,14 +81,6 @@ fi
 wrapped_calls=$(grep -cE '^[[:space:]]*run_xcodebuild "' "$gate_script")
 [[ "$wrapped_calls" == 5 ]] || {
     echo "expected 5 watchdog-wrapped xcodebuild call sites, found $wrapped_calls" >&2
-    exit 1
-}
-[[ "$(grep -c 'timeout-minutes: 35' "$workflow")" == 1 ]] || {
-    echo "the iOS job must retain its 35-minute deadline" >&2
-    exit 1
-}
-[[ "$(grep -c 'timeout-minutes: 32' "$workflow")" == 1 ]] || {
-    echo "the Build and test step must retain its 32-minute deadline" >&2
     exit 1
 }
 
@@ -187,18 +178,6 @@ if grep -E '^[[:space:]]*run_xcodebuild "HerdenSSH package' -A 12 "$gate_script"
     echo "package lane must not take the app SourcePackages cache path" >&2
     exit 1
 fi
-[[ "$(grep -cF 'Cache SwiftPM checkouts' "$workflow")" == 1 ]] || {
-    echo "the app job must cache SwiftPM checkouts" >&2
-    exit 1
-}
-if grep -qE '^[[:space:]]+xcrun simctl list runtimes' "$workflow"; then
-    echo "CI must not list simulator runtimes on the critical path" >&2
-    exit 1
-fi
-[[ "$(grep -cF 'Show Xcode version' "$workflow")" == 2 ]] || {
-    echo "both macOS jobs must keep the lightweight Xcode version step" >&2
-    exit 1
-}
 awk '
     /^claim_port_block$/ { ports = NR }
     /xcrun simctl boot "/ { boot = NR }
@@ -206,61 +185,6 @@ awk '
     END { exit (ports && boot && keygen && ports < boot && boot < keygen) ? 0 : 1 }
 ' "$gate_script" || {
     echo "simulator boot must overlap fixture provisioning, not follow it" >&2
-    exit 1
-}
-
-# iOS CI uses positive paths. Omitting output, landing, Host runtime and the
-# Node sources is what keeps unrelated work off macOS runners.
-if grep -qE '^[[:space:]]+paths-ignore:' "$workflow"; then
-    echo "ci.yml must use positive paths, not paths-ignore" >&2
-    exit 1
-fi
-for required in \
-    'Sources/**' \
-    'Tests/**' \
-    'Herden.xcodeproj/**' \
-    'Packages/**' \
-    'project.yml' \
-    'Makefile' \
-    'scripts/**' \
-    'plugin/test-vectors/**' \
-    '.github/workflows/ci.yml'
-do
-    escaped="$(printf '%s' "$required" | sed 's/[.[*^$()+?{|]/\\&/g')"
-    [[ "$(grep -cE "^[[:space:]]+- ${escaped}$" "$workflow")" == 2 ]] || {
-        echo "pull_request and push paths must both include $required" >&2
-        exit 1
-    }
-done
-for excluded in 'output/**' 'landing/**' 'runtime/**' 'plugin/**' 'relay/**'; do
-    escaped="$(printf '%s' "$excluded" | sed 's/[.[*^$()+?{|]/\\&/g')"
-    if grep -qE "^[[:space:]]+- ${escaped}$" "$workflow"; then
-        echo "$excluded must not be an iOS trigger path" >&2
-        exit 1
-    fi
-done
-if grep -qE '^  (plugin-test|host-runtime|relay-test|codegen-drift):' "$workflow"; then
-    echo "Linux and codegen jobs belong in ci-linux.yml" >&2
-    exit 1
-fi
-
-linux_workflow="$repo_root/.github/workflows/ci-linux.yml"
-[[ -f "$linux_workflow" ]] || {
-    echo "ci-linux.yml is missing" >&2
-    exit 1
-}
-for job in plugin-test host-runtime relay-test codegen-drift; do
-    grep -qE "^  ${job}:" "$linux_workflow" || {
-        echo "ci-linux.yml must keep the $job job" >&2
-        exit 1
-    }
-done
-grep -qF 'group: ci-ios-${{ github.ref }}' "$workflow" || {
-    echo "ci.yml must keep an iOS-specific concurrency group" >&2
-    exit 1
-}
-grep -qF 'group: ci-linux-${{ github.ref }}' "$linux_workflow" || {
-    echo "ci-linux.yml must keep a Linux-specific concurrency group" >&2
     exit 1
 }
 

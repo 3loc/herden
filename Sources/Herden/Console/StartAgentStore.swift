@@ -86,6 +86,7 @@ final class StartAgentStore {
     /// Console: Host, workspace, and working directory are already decided,
     /// so the form collapses to the agent fields.
     let origin: LaunchOrigin?
+    let dedicatedWorkspaceByDefault: Bool
 
     var selectedHostID: Host.ID? {
         didSet {
@@ -96,7 +97,7 @@ final class StartAgentStore {
                 availableAgentKinds = []
                 selectedAgentKind = nil
                 agentDiscoveryState = .idle
-                launchTarget = .existingWorkspace
+                launchTarget = dedicatedWorkspaceByDefault ? .newWorkspace : .existingWorkspace
                 newWorkspaceDirectory = ""
                 newWorkspaceLabel = ""
                 startsInNewWorktree = false
@@ -221,10 +222,13 @@ final class StartAgentStore {
         start: @escaping (AgentLaunchRequest, LaunchDestination, Host.ID) async throws -> Agent,
         awaitAgentVisible: @escaping (ConsoleAgent.ID) async -> Void,
         origin: LaunchOrigin? = nil,
+        dedicatedWorkspaceByDefault: Bool = false,
         recents: RecentWorkspaceStore = RecentWorkspaceStore()
     ) {
         self.hosts = hosts
         self.origin = origin
+        self.dedicatedWorkspaceByDefault = dedicatedWorkspaceByDefault
+        self.launchTarget = dedicatedWorkspaceByDefault ? .newWorkspace : .existingWorkspace
         self.workspacesProvider = workspaces
         self.existingAgentNames = existingAgentNames
         self.discoverAgentKinds = discoverAgentKinds
@@ -305,6 +309,7 @@ final class StartAgentStore {
     /// Existing Workspace and origin launches need a reported Workspace;
     /// New Workspace needs a non-empty trimmed directory instead.
     private var hasLaunchTarget: Bool {
+        if dedicatedWorkspaceByDefault && launchTarget == .newWorkspace { return true }
         if origin != nil { return selectedWorkspaceID != nil }
         switch launchTarget {
         case .existingWorkspace:
@@ -402,6 +407,12 @@ final class StartAgentStore {
     /// chosen target is incomplete, so `submit()` is a no-op rather than
     /// inventing a Workspace id.
     private var launchDestination: LaunchDestination? {
+        if dedicatedWorkspaceByDefault && launchTarget == .newWorkspace {
+            return .newWorkspace(NewWorkspaceSpec(
+                directory: Self.nonEmptyTrimmed(newWorkspaceDirectory) ?? origin?.cwd,
+                label: Self.nonEmptyTrimmed(newWorkspaceLabel)
+                    ?? Self.nonEmptyTrimmed(name) ?? defaultAgentName))
+        }
         if origin != nil {
             guard selectedWorkspaceID != nil else { return nil }
             return .existingWorkspace

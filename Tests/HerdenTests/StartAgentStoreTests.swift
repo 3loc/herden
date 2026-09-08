@@ -61,6 +61,7 @@ struct StartAgentStoreTests {
         },
         awaitAgentVisible: @escaping (ConsoleAgent.ID) async -> Void = { _ in },
         origin: StartAgentStore.LaunchOrigin? = nil,
+        dedicatedWorkspaceByDefault: Bool = false,
         recents: RecentWorkspaceStore? = nil,
         recorder: StartRecorder
     ) -> StartAgentStore {
@@ -73,6 +74,7 @@ struct StartAgentStoreTests {
             },
             awaitAgentVisible: awaitAgentVisible,
             origin: origin,
+            dedicatedWorkspaceByDefault: dedicatedWorkspaceByDefault,
             recents: recents ?? makeRecents())
     }
 
@@ -80,6 +82,45 @@ struct StartAgentStoreTests {
     /// fixture pane on the submitting Host.
     private func started(on host: Host, paneID: String = "w1:pnew") -> StartAgentStore.State {
         .started(ConsoleAgent.ID(hostID: host.id, paneID: paneID))
+    }
+
+    @Test func agentFirstLaunchCreatesOneBackingSpaceWithoutRequiringAnExistingWorkspace() async {
+        let host = Host.fixture()
+        let recorder = StartRecorder()
+        let store = makeStore(hosts: [host], dedicatedWorkspaceByDefault: true, recorder: recorder)
+        await store.discoverAgents()
+        store.name = "reviewer"
+        #expect(store.canSubmit)
+        await store.submit()
+        #expect(recorder.destinations == [.newWorkspace(NewWorkspaceSpec(label: "reviewer"))])
+        #expect(recorder.params.first?.workspaceID == nil)
+        #expect(store.state == started(on: host))
+    }
+
+    @Test func agentFirstOriginGetsItsOwnSpaceInTheSameDirectory() async {
+        let host = Host.fixture()
+        let recorder = StartRecorder()
+        let store = makeStore(hosts: [host],
+            origin: .init(hostID: host.id, workspaceID: "shared-desktop", cwd: "/src/project"),
+            dedicatedWorkspaceByDefault: true, recorder: recorder)
+        await store.discoverAgents()
+        store.name = "reviewer"
+        await store.submit()
+        #expect(recorder.destinations == [.newWorkspace(NewWorkspaceSpec(directory: "/src/project", label: "reviewer"))])
+        #expect(recorder.params.first?.workspaceID == nil)
+    }
+
+    @Test func agentFirstCanExplicitlyReuseAnExistingSpace() async {
+        let host = Host.fixture()
+        let recorder = StartRecorder()
+        let store = makeStore(hosts: [host],
+            workspaces: { _ in [ConsoleWorkspace(id: "shared", label: "Shared")] },
+            dedicatedWorkspaceByDefault: true, recorder: recorder)
+        await store.discoverAgents()
+        store.launchTarget = .existingWorkspace
+        await store.submit()
+        #expect(recorder.destinations == [.existingWorkspace])
+        #expect(recorder.params.first?.workspaceID == "shared")
     }
 
     private func waitUntil(

@@ -12,9 +12,9 @@ It is a dumb pipe on purpose:
   credential and in-flight device tokens, source IPs, APNs environment,
   collapse identifiers, request metadata, and ciphertext. It still cannot
   decrypt notification content because it never receives Notification Keys.
-- **Production origin**: the 3loc app and plugin default to
+- **Production origin**: the distributed app and plugin default to
   `https://herden-apns.austrheim.ca7.fm`. It is reachable only through the
-  3loc Headscale tailnet. Both still accept a custom relay base URL
+  maintainer's private network. Both still accept a custom relay base URL
   for self-built apps whose APNs credentials are authorized for their bundle
   ID.
 - **What crosses it**: the request carries the device token, APNs environment,
@@ -119,10 +119,8 @@ rate-limit windows.
 
 ## Deploy
 
-The 3loc production service is deployed on nidavellir by the fleet repository,
-which owns its workload, Infisical-backed secret, Traefik router, split DNS,
-Headscale policy, and smoke tests. This repository never contains the `.p8`
-and has no homelab deployment credential.
+Production deployment is owned outside this repository. This repository never
+contains the `.p8`, infrastructure coordinates or deployment credentials.
 
 For local development, export the four required APNs variables and run
 `npm start`. `GET /health` does not require credentials.

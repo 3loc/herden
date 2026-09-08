@@ -70,7 +70,7 @@ final class HerdenSpeechRecorder: ObservableObject {
     @Published private(set) var selectedLocale: Locale
     @Published private(set) var settingsRequired = false
 
-    private let logger = Logger(subsystem: "com.3loc.herden", category: "speech")
+    private let logger = Logger(subsystem: "ltd.3loc.herden", category: "speech")
     private let defaults: UserDefaults
     private let engine = AVAudioEngine()
     private var request: SFSpeechAudioBufferRecognitionRequest?

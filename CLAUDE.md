@@ -18,9 +18,8 @@ eliminating several dead ends.
 - Sibling deliverables live in this repo: `plugin/` is the optional Host
   notification extension (Node, zero framework, `npm test`); `relay/` is the
   stateless Push Relay it posts to (dependency-free Node, `npm test`);
-  `landing/` is the zero-JS site at `herden.austrheim.ca7.fm`; both it and the
-  relay are served privately through nidavellir/Traefik and the 3loc Headscale
-  tailnet, with deployment state in the fleet repository. Wire types in
+  `landing/` is the zero-JS site at `herden.3loc.ltd`. Production deployment
+  configuration lives outside this repository. Wire types in
   `Sources/Herden/Transport/Generated/` are produced by
   `scripts/generate-wire-types.py` from the committed compatibility schema
   snapshot `scripts/herdr-schema.json`; regenerate with
@@ -40,8 +39,8 @@ eliminating several dead ends.
 | `plugin/` | Optional Node notification extension. |
 | `relay/` | Stateless APNs relay. |
 | `landing/` | Static Herden site and public installer copy. |
-| `.github/workflows/ci.yml` | macOS iOS and HerdenSSH validation. |
-| `.github/workflows/ci-linux.yml` | Linux Host, Node and wire-codegen validation. |
+| `Makefile` | Local build, test, Host release and TestFlight entrypoints. |
+| `scripts/run-ci-ios-tests.sh` | Exhaustive local iOS and real-SSH validation runner. |
 | `UPSTREAM.md` | Heeler/herdr provenance and update policy. |
 | `.agents/skills/herden-testflight/` | TestFlight source verification, build/upload, beta review and invitations. |
 
@@ -86,12 +85,12 @@ designed; they are compatibility surfaces, not public branding.
 
 ## Conventions
 
-- All builds, Swift tests, device installs, archives, and TestFlight uploads run on `studio`; never attempt them from the Linux checkout. They all go through `make` (see `make help`). An interim TestFlight build is `make bump && make testflight` — App Store Connect rejects reused build numbers.
+- All builds, Swift tests, device installs, archives, and TestFlight uploads run on macOS; never attempt them from a Linux checkout. They all go through `make` (see `make help`). An interim TestFlight build is `make bump && make testflight` — App Store Connect rejects reused build numbers.
 - Cutting a release is `make publish` (`scripts/publish.sh`, documented in `docs/guides/releasing.md`): it cuts `CHANGELOG.md`'s `[Unreleased]`, bumps `MARKETING_VERSION` in `project.yml`, builds and uploads to TestFlight, then tags and creates the GitHub release. `CHANGELOG.md` is the source of both the version and the notes; never hand-edit `MARKETING_VERSION` or create a `vX.Y.Z` tag by hand. Preview with `make publish DRY_RUN=1`.
 - Every distributable Host build is one public-to-fleet operation: publish the new versioned binaries and checksums, update both root `install.sh` and its identical `landing/public/install.sh` copy to download that exact version, and deploy them to `https://herden.3loc.ltd` before any fleet rollout. Test the public URL—not local files—in disposable Linux containers for fresh installation, an idempotent repeat, and upgrade from the previous release; verify the installed version and checksum against the published metadata.
 - After those public checks pass, run the 3loc/fleet rollout from the `3loc` VM and make every reachable `herden_hosts` member install through that same published `https://herden.3loc.ltd/install.sh`. The release path must not build or distribute `SOURCE=`, `REF=`, snapshots, or controller-local binaries; if the fleet target still does so, update its playbook before rollout. Finish with the fleet's independent version/checksum audit and report offline Hosts as pending. The Host release is not complete until the landing-page installer, its downloaded binaries, and the reachable fleet all agree.
 - A single suite runs with `xcodebuild test -project Herden.xcodeproj -scheme Herden -destination 'platform=iOS Simulator,name=iPhone 17' -only-testing:HerdenTests/<SuiteTypeName>`; `make test` runs everything. The `Packages/HerdenSSH` package suites are a separate test plan run by `scripts/run-herdenssh-package-tests.sh` — changes under `Packages/HerdenSSH` need that runner, not `-only-testing:HerdenTests/...`.
-- iOS CI (`.github/workflows/ci.yml`) builds the committed `Herden.xcodeproj` and never runs xcodegen, so run `make generate` and commit the regenerated project alongside any `project.yml` change. Linux Host, Node and wire-codegen checks live in `.github/workflows/ci-linux.yml`; keep their path filters and concurrency groups separate. `scripts/run-ci-ios-tests.sh` provisions disposable sshd instances and asserts executed test counts for the mandatory real-SSH suites; the remaining locally-gated suites skip cleanly on machines without a local sshd and seeded key.
+- The committed `Herden.xcodeproj` must stay in sync with `project.yml`, so run `make generate` and commit the regenerated project alongside every YAML change. GitHub Actions are intentionally absent: builds and releases run locally. `scripts/run-ci-ios-tests.sh` remains the exhaustive local validation runner; it provisions disposable sshd instances and asserts executed test counts for the real-SSH suites. The remaining locally gated suites skip cleanly on machines without a local sshd and seeded key.
 
 - Swift 6 strict concurrency. No force unwraps or `try!` outside tests.
 - Private keys never leave the Keychain and are generated on device (CryptoKit Ed25519) where possible. Per-Host Notification Keys are symmetric keys: the app retains each one in the shared Keychain and copies it over SSH to that Host so the plugin can encrypt notifications. Host key policy is TOFU with fingerprint confirmation.

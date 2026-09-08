@@ -1470,15 +1470,12 @@
 				LastUpgradeCheck = 1430;
 				TargetAttributes = {
 					01694BD7ABBFFAF3F5C22518 = {
-						DevelopmentTeam = TRLCTG7S86;
 						ProvisioningStyle = Automatic;
 					};
 					241393C01D8D68AE7A503558 = {
-						DevelopmentTeam = TRLCTG7S86;
 						ProvisioningStyle = Automatic;
 					};
 					37F346A15A02C81602ABA329 = {
-						DevelopmentTeam = TRLCTG7S86;
 						ProvisioningStyle = Automatic;
 					};
 				};
@@ -1948,7 +1945,7 @@
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				CODE_SIGN_ENTITLEMENTS = Sources/Herden/Herden.entitlements;
 				CODE_SIGN_IDENTITY = "iPhone Developer";
-				CURRENT_PROJECT_VERSION = 17;
+				CURRENT_PROJECT_VERSION = 18;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_KEY_CFBundleDisplayName = Herden;
 				INFOPLIST_KEY_ITSAppUsesNonExemptEncryption = NO;
@@ -1963,7 +1960,7 @@
 					"@executable_path/Frameworks",
 				);
 				MARKETING_VERSION = 0.1.5;
-				PRODUCT_BUNDLE_IDENTIFIER = com.3loc.herden;
+				PRODUCT_BUNDLE_IDENTIFIER = ltd.3loc.herden;
 				SDKROOT = iphoneos;
 				TARGETED_DEVICE_FAMILY = 1;
 			};
@@ -1979,7 +1976,7 @@
 					"@executable_path/Frameworks",
 					"@loader_path/Frameworks",
 				);
-				PRODUCT_BUNDLE_IDENTIFIER = com.3loc.herden.tests;
+				PRODUCT_BUNDLE_IDENTIFIER = ltd.3loc.herden.tests;
 				SDKROOT = iphoneos;
 				TARGETED_DEVICE_FAMILY = "1,2";
 				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/Herden.app/Herden";
@@ -1991,7 +1988,7 @@
 			buildSettings = {
 				APPLICATION_EXTENSION_API_ONLY = YES;
 				CODE_SIGN_ENTITLEMENTS = Sources/HerdenShareExtension/HerdenShareExtension.entitlements;
-				CURRENT_PROJECT_VERSION = 17;
+				CURRENT_PROJECT_VERSION = 18;
 				INFOPLIST_FILE = Sources/HerdenShareExtension/Info.plist;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
@@ -1999,7 +1996,7 @@
 					"@executable_path/../../Frameworks",
 				);
 				MARKETING_VERSION = 0.1.5;
-				PRODUCT_BUNDLE_IDENTIFIER = com.3loc.herden.share;
+				PRODUCT_BUNDLE_IDENTIFIER = ltd.3loc.herden.share;
 				PRODUCT_NAME = HerdenShareExtension;
 				SDKROOT = iphoneos;
 				SKIP_INSTALL = YES;
@@ -2013,7 +2010,7 @@
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				CODE_SIGN_ENTITLEMENTS = Sources/Herden/Herden.entitlements;
 				CODE_SIGN_IDENTITY = "iPhone Developer";
-				CURRENT_PROJECT_VERSION = 17;
+				CURRENT_PROJECT_VERSION = 18;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_KEY_CFBundleDisplayName = Herden;
 				INFOPLIST_KEY_ITSAppUsesNonExemptEncryption = NO;
@@ -2028,7 +2025,7 @@
 					"@executable_path/Frameworks",
 				);
 				MARKETING_VERSION = 0.1.5;
-				PRODUCT_BUNDLE_IDENTIFIER = com.3loc.herden;
+				PRODUCT_BUNDLE_IDENTIFIER = ltd.3loc.herden;
 				SDKROOT = iphoneos;
 				TARGETED_DEVICE_FAMILY = 1;
 			};
@@ -2044,7 +2041,7 @@
 					"@executable_path/Frameworks",
 					"@loader_path/Frameworks",
 				);
-				PRODUCT_BUNDLE_IDENTIFIER = com.3loc.herden.tests;
+				PRODUCT_BUNDLE_IDENTIFIER = ltd.3loc.herden.tests;
 				SDKROOT = iphoneos;
 				TARGETED_DEVICE_FAMILY = "1,2";
 				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/Herden.app/Herden";
@@ -2087,7 +2084,6 @@
 				CODE_SIGN_STYLE = Automatic;
 				COPY_PHASE_STRIP = NO;
 				DEBUG_INFORMATION_FORMAT = dwarf;
-				DEVELOPMENT_TEAM = TRLCTG7S86;
 				ENABLE_STRICT_OBJC_MSGSEND = YES;
 				ENABLE_TESTABILITY = YES;
 				GCC_C_LANGUAGE_STANDARD = gnu11;
@@ -2122,7 +2118,7 @@
 			buildSettings = {
 				APPLICATION_EXTENSION_API_ONLY = YES;
 				CODE_SIGN_ENTITLEMENTS = Sources/HerdenShareExtension/HerdenShareExtension.entitlements;
-				CURRENT_PROJECT_VERSION = 17;
+				CURRENT_PROJECT_VERSION = 18;
 				INFOPLIST_FILE = Sources/HerdenShareExtension/Info.plist;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
@@ -2130,7 +2126,7 @@
 					"@executable_path/../../Frameworks",
 				);
 				MARKETING_VERSION = 0.1.5;
-				PRODUCT_BUNDLE_IDENTIFIER = com.3loc.herden.share;
+				PRODUCT_BUNDLE_IDENTIFIER = ltd.3loc.herden.share;
 				PRODUCT_NAME = HerdenShareExtension;
 				SDKROOT = iphoneos;
 				SKIP_INSTALL = YES;
@@ -2174,7 +2170,6 @@
 				CODE_SIGN_STYLE = Automatic;
 				COPY_PHASE_STRIP = NO;
 				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
-				DEVELOPMENT_TEAM = TRLCTG7S86;
 				ENABLE_NS_ASSERTIONS = NO;
 				ENABLE_STRICT_OBJC_MSGSEND = YES;
 				GCC_C_LANGUAGE_STANDARD = gnu11;

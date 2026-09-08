@@ -683,17 +683,19 @@ struct HerdenSSHTransportBehaviorE2ETests {
     /// New Workspace (#230) creates the Workspace first, then starts in its
     /// root pane. `tab.create` would open a second tab inside a Workspace
     /// that already has one.
-    @Test("a new-workspace agent start creates the workspace then starts in its root pane")
-    func newWorkspaceAgentStartCreatesThenStartsWithoutATab() async throws {
+    @Test("a new-workspace agent start creates the workspace then starts in its root pane", arguments: [false, true])
+    func newWorkspaceAgentStartCreatesThenStartsWithoutATab(usesHome: Bool) async throws {
         let environment = try #require(HerdenSSHTransportBehaviorEnvironment.current)
+        let token = Self.scriptToken("ok")
+        var settings = environment.directSettings()
+        settings.homeCommand = "printf '__HERDEN_HOME__=/fixture/\(token)\\n'"
         let transport = try await HerdenSSHTransport.connect(
-            settings: environment.directSettings())
+            settings: settings)
         defer { Task { try? await transport.close() } }
 
-        let token = Self.scriptToken("ok")
         let agent = try await transport.startAgentInNewWorkspace(
             AgentLaunchRequest(kind: "codex", name: "fixture"),
-            workspace: NewWorkspaceSpec(directory: "/fixture/\(token)", label: "App"))
+            workspace: NewWorkspaceSpec(directory: usesHome ? nil : "/fixture/\(token)", label: "App"))
 
         #expect(agent.paneID == "pane:\(token)")
         #expect(agent.workspaceID == "workspace:\(token)")

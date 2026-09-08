@@ -51,7 +51,7 @@ struct DeviceKeyStoreTests {
 // exercise it for real rather than trusting the in-memory stand-in.
 @Suite("Keychain secret store", .serialized)
 struct KeychainSecretStoreTests {
-    private let store = KeychainSecretStore(service: "com.3loc.herden.tests")
+    private let store = KeychainSecretStore(service: "ltd.3loc.herden.tests")
 
     @Test func roundTripsAndRemoves() throws {
         let account = "test-\(UUID().uuidString)"

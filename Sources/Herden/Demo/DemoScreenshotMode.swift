@@ -79,9 +79,16 @@
                 activity: activity
             )
             .preferredColorScheme(appearance.preferredColorScheme)
+            .onChange(of: console.agents) { _, agents in
+                notificationRouter.agentsDidChange(agents)
+            }
             .task {
                 console.setHosts(hosts.hosts)
                 notificationPreferences.setHosts(hosts.hosts)
+                if ProcessInfo.processInfo.arguments.contains("--demo-agent-terminal") {
+                    notificationRouter.open(AgentNotificationTarget(
+                        hostID: DemoScreenshotFixture.buildHostID, paneID: "checkout:p3"))
+                }
                 await console.resume()
             }
         }
@@ -123,7 +130,7 @@
                 terminalFonts: TerminalFontSettings(defaults: defaults),
                 snippets: SnippetStore(defaults: defaults),
                 appearance: AppAppearanceSettings(defaults: defaults),
-                inputMode: AgentInputModeSettings(defaults: defaults),
+                inputMode: AgentInputModeSettings(defaults: defaults, defaultMode: .direct),
                 pushRegistration: pushRegistration,
                 notificationPreferences: notificationPreferences,
                 relaySettings: relaySettings,
@@ -238,7 +245,7 @@
         ]
 
         static let terminalOutput = """
-            \u{001B}[2J\u{001B}[H\u{001B}[1;36mHERDR  •  CLAUDE CODE\u{001B}[0m\r
+            \u{001B}[2J\u{001B}[H\u{001B}[1;36mHERDEN  •  CLAUDE CODE\u{001B}[0m\r
             \r
             \u{001B}[1mCheckout flow review\u{001B}[0m\r
             \u{001B}[2mstorefront  •  checkout:p3\u{001B}[0m\r
@@ -259,7 +266,7 @@
             """
 
         static func makeDefaults() -> UserDefaults {
-            let suiteName = "com.3loc.herden.demo-screenshots.\(UUID().uuidString)"
+            let suiteName = "ltd.3loc.herden.demo-screenshots.\(UUID().uuidString)"
             return UserDefaults(suiteName: suiteName) ?? UserDefaults()
         }
 

@@ -6,10 +6,8 @@
 
 **让 coding agent 持续运行的终端 runtime，并配有原生 iPhone 控制台。**
 
-[安装 Host](#安装-host) · [配对 iPhone](#配对-iphone) · [Host 指南](docs/guides/install-host.md) · [构建 iOS 应用](docs/guides/build-ios.md)
+[网站](https://herden.3loc.ltd) · [TestFlight 公测](https://testflight.apple.com/join/nSsEZBvv) · [安装 Host](#安装-host) · [配对 iPhone](#配对-iphone) · [Host 指南](docs/guides/install-host.md) · [构建 iOS 应用](docs/guides/build-ios.md)
 
-[![iOS CI](https://github.com/3loc/herden/actions/workflows/ci.yml/badge.svg)](https://github.com/3loc/herden/actions/workflows/ci.yml)
-[![Linux CI](https://github.com/3loc/herden/actions/workflows/ci-linux.yml/badge.svg)](https://github.com/3loc/herden/actions/workflows/ci-linux.yml)
 [![License: Apache 2.0](https://img.shields.io/badge/License-Apache_2.0-blue.svg)](LICENSE)
 [![GitHub stars](https://img.shields.io/github/stars/3loc/herden?style=flat)](https://github.com/3loc/herden/stargazers)
 
@@ -66,13 +64,14 @@ GitHub 的 **Sync fork** 按钮。启用该工作流需要把仓库迁移成真�
 在 Linux 或 macOS Host 上运行：
 
 ```sh
-curl -fsSL https://raw.githubusercontent.com/3loc/herden/main/install.sh | sh
-export PATH="$HOME/.local/bin:$PATH"
-herden
+curl -fsSL https://herden.3loc.ltd/install.sh | sh
 ```
 
 安装器会选择当前系统和 CPU 对应的 release binary，验证 SHA-256 后安装到
-`~/.local/bin`。源码构建方式见 [Host 指南](docs/guides/install-host.md#build-from-source)。
+`~/.local/bin`，并将许可证和归属声明安装到 `~/.local/share/doc/herden`。
+打开新的终端后运行 `herden`；如果 shell 暂时找不到该命令，请运行
+`"$HOME/.local/bin/herden"`。源码构建方式见
+[Host 指南](docs/guides/install-host.md#build-from-source)。
 
 ## 配对 iPhone
 
@@ -84,6 +83,9 @@ iPhone 必须能访问 Host 的普通 OpenSSH 服务。推荐使用 Tailscale �
 ```sh
 herden pair
 ```
+
+如果已经在 Herden 会话中，请按 **Ctrl-B i**。同一个 Pairing Code 会在全屏
+弹窗中显示；按 Ctrl-C 关闭。
 
 然后在 iPhone 上打开 **Herden → Hosts → Add Host**，扫描 Pairing Code，并确认
 Host 指纹。配对码两分钟后过期，且只能添加一台手机。添加另一台设备时重新
@@ -121,4 +123,5 @@ Heeler 的贡献者在
 [issue #282](https://github.com/ZingerLittleBee/Heeler/issues/282) 中批准了
 Apache-2.0 重新许可，该 commit 已保留在 Herden 历史中。完整来源记录和维护
 策略见 [UPSTREAM.md](UPSTREAM.md)。整个 Herden 仓库采用
-[Apache License 2.0](LICENSE)。
+[Apache License 2.0](LICENSE)，[NOTICE](NOTICE) 列出了两个上游项目以及
+Herden 所作的修改。

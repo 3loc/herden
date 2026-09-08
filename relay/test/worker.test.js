@@ -27,7 +27,7 @@ before(async () => {
   baseEnv = {
     APNS_TEAM_ID: "TEAM123456",
     APNS_KEY_ID: "KEY1234567",
-    APNS_TOPIC: "com.3loc.herden",
+    APNS_TOPIC: "ltd.3loc.herden",
     APNS_KEY_P8: `-----BEGIN PRIVATE KEY-----\n${b64.match(/.{1,64}/g).join("\n")}\n-----END PRIVATE KEY-----\n`,
   };
 });
@@ -108,7 +108,7 @@ suite("forwarding to APNs", () => {
     const call = calls[0];
     assert.equal(call.url, `https://api.push.apple.com/3/device/${goodBody.token}`);
     assert.equal(call.init.method, "POST");
-    assert.equal(call.headers.get("apns-topic"), "com.3loc.herden");
+    assert.equal(call.headers.get("apns-topic"), "ltd.3loc.herden");
     assert.equal(call.headers.get("apns-push-type"), "alert");
     assert.equal(call.headers.get("apns-priority"), "10");
     assert.equal(call.headers.get("apns-collapse-id"), "%5");
@@ -480,7 +480,7 @@ suite("live activity forwarding to APNs", () => {
     assert.equal(call.url, `https://api.push.apple.com/3/device/${goodActivity.token}`);
     assert.equal(call.init.method, "POST");
     assert.equal(call.headers.get("apns-push-type"), "liveactivity");
-    assert.equal(call.headers.get("apns-topic"), "com.3loc.herden.push-type.liveactivity");
+    assert.equal(call.headers.get("apns-topic"), "ltd.3loc.herden.push-type.liveactivity");
     assert.equal(call.headers.get("apns-priority"), "5");
     assert.equal(call.headers.get("apns-collapse-id"), null);
     assert.equal(call.headers.get("content-type"), "application/json");
@@ -620,7 +620,7 @@ suite("alert path compatibility", () => {
     assert.match(headers.authorization, /^bearer /);
     delete headers.authorization;
     assert.deepEqual(headers, {
-      "apns-topic": "com.3loc.herden",
+      "apns-topic": "ltd.3loc.herden",
       "apns-push-type": "alert",
       "apns-priority": "10",
       "content-type": "application/json",

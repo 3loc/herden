@@ -1,7 +1,6 @@
 ---
 const hostCommands = [
-  '<span class="tk-fn">curl</span> -fsSL https://herden.austrheim.ca7.fm/install.sh | sh',
-  '<span class="tk-fn">herden</span> pair',
+  '<span class="tk-fn">curl</span> -fsSL https://herden.3loc.ltd/install.sh | sh',
 ].join('\n');
 
 const sourceCommands = [
@@ -15,8 +14,8 @@ const sourceCommands = [
 <section id="build" class="section substrate-grid">
   <div class="container">
     <div class="eyebrow">Get started</div>
-    <h2 class="section-title">Two commands on your Host.</h2>
-    <p class="section-lede">Install the native runtime on Linux or macOS, then scan its QR code in the TestFlight app. The source remains available when you want to build and sign the iOS app yourself.</p>
+    <h2 class="section-title">One command on your Host.</h2>
+    <p class="section-lede">Paste one curl command on Linux or macOS. Then run Herden and press <span class="mono">Ctrl-B i</span> to pair the TestFlight app. The source remains available when you want to build and sign the iOS app yourself.</p>
 
     <div class="cards">
       <article class="code">

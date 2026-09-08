@@ -1,13 +1,12 @@
 # Herden landing page
 
-The private site at <https://herden.austrheim.ca7.fm>. Astro produces a static,
-zero-client-JavaScript bundle. The 3loc fleet serves it from nidavellir through
-Traefik; Headscale is the remote access layer and there is no public WAN route.
+The public site at <https://herden.3loc.ltd>. Astro produces a static,
+zero-client-JavaScript bundle. Production hosting configuration lives outside
+this public product repository.
 
 It is self-contained on purpose: nothing outside this directory imports from
-it, and no other workflow in the repo depends on it. `ci.yml` excludes
-`landing/**` and `.github/workflows/landing.yml` only runs for it, so a copy
-edit here never starts an iOS build.
+it. Validate it locally with the commands below; GitHub Actions are
+intentionally absent from this repository.
 
 ## Commands
 
@@ -37,16 +36,12 @@ rail below 1060px, single-column grids on phones) was added here.
 
 ## Design source
 
-The page is an implementation of `Herden Landing.dc.html` in the Claude Design
-project [项目落地页制作](https://claude.ai/design/p/eebe1402-ef74-4c67-9a76-c8ca5d6124c6).
-Copy changes should stay in sync with `README.md` at the repo root, which is
-where the content came from.
+Copy changes should stay in sync with `README.md` at the repo root.
 
-`src/styles/substrate/` is the Substrate design system from that project
-(`substrate-design-system-4f544429-9771-4068-8ef1-7d18a69e56c0`), vendored
-verbatim but trimmed to what this page renders: every token file plus the
+`src/styles/substrate/` is a vendored design-system snapshot, trimmed to what
+this page renders: every token file plus the
 Button and Badge rules from `components/core/core.css`. Re-sync those files from
-the design project rather than editing them; page-specific CSS belongs in
+the maintained design source rather than editing them; page-specific CSS belongs in
 `landing.css` or a component's `<style>` block.
 
 The Geist and Geist Mono variable fonts in
@@ -58,6 +53,5 @@ symlinks. Refresh them here when the app screenshots change.
 
 ## Deployment
 
-GitHub Actions only typechecks and builds. Deployment is intentionally absent
-from this repository: the fleet repository owns the nidavellir workload,
-Traefik router, split-DNS alias, Headscale policy, secrets, and verification.
+Deployment is intentionally absent from this repository. Operators own their
+hosting, DNS, TLS, secrets and production verification separately.

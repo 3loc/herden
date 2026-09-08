@@ -40,8 +40,9 @@ fork relationship.
 
 Everything goes through `make`; run `make help` for the list. The Xcode
 project is generated from `project.yml` (XcodeGen; `brew install xcodegen`).
-Run `make generate` after changing the YAML. CI builds the *committed*
-`Herden.xcodeproj`, so commit the regenerated project alongside the change.
+Run `make generate` after changing the YAML. The committed
+`Herden.xcodeproj` is part of the source, so commit the regenerated project
+alongside the change.
 
 - `make test`: the full app suite plus the `Packages/HerdenSSH` package
   suites (those run through `scripts/run-herdenssh-package-tests.sh`, not
@@ -54,14 +55,14 @@ Run `make generate` after changing the YAML. CI builds the *committed*
   (Node >= 20, no install step).
 
 A few suites exercise a real SSH server; they skip cleanly on machines
-without a local sshd and seeded key, and CI provisions disposable sshd
-instances to run them for you.
+without a local sshd and seeded key. Maintainers can run
+`scripts/run-ci-ios-tests.sh` on macOS for the exhaustive disposable-sshd gate.
 
 Two artifact families are generated or shared. Never hand-edit them:
 
 - `Sources/Herden/Transport/Generated/` comes from
-  `scripts/generate-wire-types.py --schema scripts/herdr-schema.json`; CI
-  fails on drift.
+  `scripts/generate-wire-types.py --schema scripts/herdr-schema.json`; verify
+  it with the generator's `--check` mode.
 - `plugin/test-vectors/` is consumed by both the Swift and Node suites, and
   changes in lockstep with `docs/agents/live-activity-contract.md`.
 
