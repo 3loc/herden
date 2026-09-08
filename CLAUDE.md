@@ -28,6 +28,25 @@ eliminating several dead ends.
   vectors in `plugin/test-vectors/` are consumed by both Node and Swift suites;
   change them in lockstep.
 
+### Map
+
+| Path | Responsibility |
+| --- | --- |
+| `Sources/Herden/Terminal/SharedTerminalKeyboard.swift` | The single Agent/Space control deck, including dictation, language selection, attachments and Paste. |
+| `Sources/Herden/Transport/SSHTransportSettings.swift` | Host command defaults and injectable SSH environment boundaries. |
+| `Sources/Herden/Sharing/` | Durable Share Extension transfer ingestion and delivery. |
+| `runtime/` | Rust Herden Host, CLI and built-in `herden pair`. |
+| `plugin/` | Optional Node notification extension. |
+| `relay/` | Stateless APNs relay. |
+| `landing/` | Static Herden site and public installer copy. |
+| `.github/workflows/ci.yml` | macOS iOS and HerdenSSH validation. |
+| `.github/workflows/ci-linux.yml` | Linux Host, Node and wire-codegen validation. |
+| `UPSTREAM.md` | Heeler/herdr provenance and update policy. |
+
+Both Agent and Space terminal views feed the shared keyboard into the same
+terminal input controller; attachment paths and pasted text therefore reach
+the live PTY through one guarded input path.
+
 ## Load-bearing Host facts
 
 Rediscovering these is expensive. Versioned observations below refer to the
@@ -45,7 +64,8 @@ designed; they are compatibility surfaces, not public branding.
 - herdr 0.7.5 tightened `agent.start` (verified against a live 0.7.5 server): the kind must be on its supported-agent list (arbitrary commands like `bash -i` are rejected with `unsupported interactive agent kind`), and a freshly created pane is rejected with `agent_pane_busy` ("not an available shell") until its shell reaches the interactive prompt — a few seconds. The transport retries on that code; see `SSHTransport.startAgentAwaitingShell`. On 0.8.0 `agent.start` is asynchronous instead: it returns `launch_pending: true` immediately (verified live 6ms after pane creation) and `agent_pane_busy` no longer occurs — the retry path stays as harmless 0.7.5 compat.
 - Default remote socket: `~/.config/herden/herden.sock`; named sessions live
   under `~/.config/herden/sessions/<name>/herden.sock`. Resolve `$HOME` over
-  exec once per Host.
+  exec once per Host. Run that probe explicitly through `/bin/sh`; login shells
+  such as Nushell do not share POSIX expansion syntax.
 - If the Herden Host is not running, connecting to the socket fails outright; there is no auto-start on the socket path. Fallback: run a Herden Host CLI command over exec (verify auto-spawn behavior — open question).
 - `herden agent attach` resolves its target against **agents only**: attaching a plain shell pane fails with `agent_not_found` (verified against a live 0.7.5 server; resolution unchanged in the 0.8.2 source). Ordinary terminals attach with `herden terminal attach <terminal_id> [--takeover]` instead (0.8.2, verified against the installed CLI and the `v0.8.2` source tag): after resolving the Agent's `terminal_id`, `agent attach` enters this exact same client path (`src/cli/agent.rs` → `run_terminal_attach`). It targets a **terminal id** (from e.g. `tab.create`'s root pane), speaks the client socket derived from `HERDR_SOCKET_PATH` by inserting `-client` before `.sock` — distinct from both the JSON API socket and `remote-client-bridge` — supports raw input, resize, and takeover, allows **one writable attach owner per terminal** (a second attach without `--takeover` is refused; takeover displaces the previous owner), and is Unix-only in the inspected source (`#[cfg(unix)]`). Run it over exec with a PTY, as with `agent attach` — the 0.8.2 client puts the real terminal into raw mode. Interacting with a shell pane over the JSON API still means `pane.send_text`/`pane.send_keys` plus `pane.read`. Note `pane_output_changed` is emitted but **not subscribable** (0.8.0: the one emitted kind missing from the `Subscription` oneOf), so there is no output-change push — see the read/refresh facts below.
 - `pane.send_text` types into any pane's PTY; a trailing `\n` presses Enter and the shell executes the line (verified live). `tab.create`/`workspace.create` accept `cwd`, `env`, and `label`, and `workspace.create` already returns a root pane running the user's shell — a plain terminal pane needs no `agent.start`.
@@ -67,7 +87,7 @@ designed; they are compatibility surfaces, not public branding.
 - All builds, Swift tests, device installs, archives, and TestFlight uploads run on `studio`; never attempt them from the Linux checkout. They all go through `make` (see `make help`). An interim TestFlight build is `make bump && make testflight` — App Store Connect rejects reused build numbers.
 - Cutting a release is `make publish` (`scripts/publish.sh`, documented in `docs/guides/releasing.md`): it cuts `CHANGELOG.md`'s `[Unreleased]`, bumps `MARKETING_VERSION` in `project.yml`, builds and uploads to TestFlight, then tags and creates the GitHub release. `CHANGELOG.md` is the source of both the version and the notes; never hand-edit `MARKETING_VERSION` or create a `vX.Y.Z` tag by hand. Preview with `make publish DRY_RUN=1`.
 - A single suite runs with `xcodebuild test -project Herden.xcodeproj -scheme Herden -destination 'platform=iOS Simulator,name=iPhone 17' -only-testing:HerdenTests/<SuiteTypeName>`; `make test` runs everything. The `Packages/HerdenSSH` package suites are a separate test plan run by `scripts/run-herdenssh-package-tests.sh` — changes under `Packages/HerdenSSH` need that runner, not `-only-testing:HerdenTests/...`.
-- CI (`.github/workflows/ci.yml`) builds the committed `Herden.xcodeproj` and never runs xcodegen, so run `make generate` and commit the regenerated project alongside any `project.yml` change. `scripts/run-ci-ios-tests.sh` provisions disposable sshd instances and asserts executed test counts for the mandatory real-SSH suites; the remaining locally-gated suites skip cleanly on machines without a local sshd and seeded key.
+- iOS CI (`.github/workflows/ci.yml`) builds the committed `Herden.xcodeproj` and never runs xcodegen, so run `make generate` and commit the regenerated project alongside any `project.yml` change. Linux Host, Node and wire-codegen checks live in `.github/workflows/ci-linux.yml`; keep their path filters and concurrency groups separate. `scripts/run-ci-ios-tests.sh` provisions disposable sshd instances and asserts executed test counts for the mandatory real-SSH suites; the remaining locally-gated suites skip cleanly on machines without a local sshd and seeded key.
 
 - Swift 6 strict concurrency. No force unwraps or `try!` outside tests.
 - Private keys never leave the Keychain and are generated on device (CryptoKit Ed25519) where possible. Per-Host Notification Keys are symmetric keys: the app retains each one in the shared Keychain and copies it over SSH to that Host so the plugin can encrypt notifications. Host key policy is TOFU with fingerprint confirmation.
