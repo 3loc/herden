@@ -71,6 +71,24 @@ The Host began from pristine herdr 0.8.2, not the separate customised
 `3loc/herdr` fork. The exact source baseline is recorded in
 [runtime/UPSTREAM.md](runtime/UPSTREAM.md).
 
+## Upstream policy
+
+Herden treats its two upstream projects differently:
+
+- **Heeler is a historical source, not a maintained upstream.** Herden keeps
+  Heeler's native iOS foundation and attribution, but does not plan to merge or
+  track later Heeler development.
+- **herdr is the active upstream.** Herden intends to keep the Host close to
+  herdr so routine upstream changes can be adopted with little or no conflict.
+  Herden-specific Host changes should stay small, explicit and covered by tests.
+
+The repository is currently standalone on GitHub and places herdr under
+`runtime/`, so GitHub's **Sync fork** button is not available today. Merely
+adding a Git remote cannot enable it. Before public launch, using that button
+requires Herden to become a real GitHub fork of herdr and to share a compatible
+default-branch history and tree layout. Until that migration is complete, do
+not describe Herden as automatically synchronised with herdr.
+
 ## Install
 
 On a Linux or macOS Host:

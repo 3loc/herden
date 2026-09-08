@@ -19,11 +19,22 @@ Read these before changing anything non-trivial:
   matter. Coding agents are first-class contributors here; the repo is
   deliberately structured for them.
 
-The repo carries four deliverables: the iOS app (`Sources/`,
-`Packages/HerdenSSH`), the herdr plugin that renders Pairing Codes and posts
-notifications (`plugin/`, dependency-free Node), the stateless Push Relay
-(`relay/`, dependency-free Node), and the marketing site (`landing/`,
-Astro).
+The repo carries the Host runtime (`runtime/`), the iOS app (`Sources/`,
+`Packages/HerdenSSH`), the optional notification extension (`plugin/`), the
+stateless Push Relay (`relay/`), and the marketing site (`landing/`). Pairing is
+built into the Host and is not a plugin action.
+
+## Upstream policy
+
+Heeler is historical provenance for the iOS app. Herden does not plan to merge
+or track later Heeler changes. herdr is the active Host upstream; keep Herden's
+runtime delta narrow and make routine upstream updates easy to review.
+
+The current repository is standalone and nests herdr under `runtime/`. GitHub's
+Sync fork button therefore cannot update it. Enabling that workflow requires a
+repository migration to a real herdr fork with compatible default-branch
+history and layout. Do not confuse a Git remote named `upstream` with GitHub's
+fork relationship.
 
 ## Building and testing
 

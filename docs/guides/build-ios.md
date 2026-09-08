@@ -1,135 +1,210 @@
 # Build Herden for iOS
 
-Herden builds on a Mac with Xcode 26 or newer. Install Xcode from the Mac App
-Store, open it once, and let it install the iOS platform tools. In Xcode
-Settings, confirm an iOS Simulator runtime is installed. The Simulator needs
-no paid Apple developer membership.
+Herden is a native iPhone app. Build it on a Mac with Xcode 26 or newer. The
+Mac that builds the app and the Host that runs your coding agents may be
+different computers.
 
-The full physical-device build includes an App Group shared with the Share
-Extension. Use an Apple Developer Program team with that capability. A free
-Personal Team is not a supported signing path for the full app. See
-[Apple's account and capability guidance](https://developer.apple.com/help/account/basics/about-your-developer-account/).
+## Choose a build route
 
-The Mac builds the app; the Host runs your Agents. These may be different
-computers. Tailscale connects the installed iPhone app to the Host and does
-not replace Xcode's device-pairing process.
+| Goal | Apple membership | What to run |
+| --- | --- | --- |
+| Try the interface in Simulator | None | `make sim` |
+| Install the complete app on an iPhone | Apple Developer Program team | Configure signing, then run from Xcode once |
+| Repeat installs on the same iPhone | Same configured team | `make install` |
+| Publish through TestFlight | Maintainer access to App Store Connect | Follow the release guide, not this guide |
 
-## Run in the simulator
+A free Personal Team is not a supported path for the complete app. Herden and
+its Share Extension use an App Group to share Hosts and credentials, and the
+group must belong to the signing team.
 
-```bash
-git clone https://github.com/3loc/herden.git
-cd herden
+## Prepare the Mac
+
+1. Install Xcode from the Mac App Store.
+2. Open Xcode once and allow it to install the iOS platform components.
+3. In **Xcode → Settings → Platforms**, install an iOS Simulator runtime.
+4. Point command-line tools at that Xcode installation when necessary:
+
+   ```sh
+   sudo xcode-select --switch /Applications/Xcode.app/Contents/Developer
+   xcodebuild -version
+   ```
+
+5. Clone Herden and inspect the available commands:
+
+   ```sh
+   git clone https://github.com/3loc/herden.git
+   cd herden
+   make help
+   ```
+
+The repository contains the generated Xcode project and reviewed native SSH
+artifacts. XcodeGen is not required merely to run the committed project.
+
+## Run in Simulator
+
+List the Simulator devices installed on the Mac:
+
+```sh
+xcrun simctl list devices available
+```
+
+Then build and launch Herden. The default device is `iPhone 17`:
+
+```sh
 make sim
 ```
 
-`make sim` builds the `Herden` scheme, boots the `iPhone 17` simulator, installs
-`Herden.app`, and launches it. Choose another installed simulator with, for
-example, `make sim SIM='iPhone 17 Pro'`.
+Choose another installed device by its exact name:
 
-Run the complete Swift and HerdenSSH test suites with:
-
-```bash
-make test
+```sh
+make sim SIM='iPhone 17 Pro'
 ```
+
+The Simulator proves the interface and local behaviour. Pairing to a real Host
+is intended for a physical iPhone because it depends on the device's network,
+camera and Keychain identity.
 
 ## Install on a physical iPhone
 
-In **Xcode → Settings → Apple Accounts**, sign in to the account that owns your
-development team. You do not need to sign in as the person who owns the phone.
-One authorised team can build onto multiple registered devices.
+There are four stages: choose identifiers, regenerate the project, prepare the
+phone, then perform the first signed build in Xcode.
 
-The committed signing values belong to 3LOC. Before building your own signed
-copy, install XcodeGen and replace the following values with identifiers owned
-by your Apple developer team:
+### 1. Choose identifiers you own
 
-| File | Setting | Example |
-| --- | --- | --- |
-| `project.yml` | `DEVELOPMENT_TEAM` | your ten-character Apple team ID |
-| `project.yml` | app `PRODUCT_BUNDLE_IDENTIFIER` | `com.example.herden` |
-| `project.yml` | Share Extension `PRODUCT_BUNDLE_IDENTIFIER` | `com.example.herden.share` |
-| `project.yml` | tests `PRODUCT_BUNDLE_IDENTIFIER` | `com.example.herden.tests` |
-| `project.yml` | both application-group entries | `group.com.example.herden` |
-| `Sources/Herden/Support/SharedAppStorage.swift` | `appGroup` | the same application group |
-| `Sources/HerdenNotificationCore/NotificationKeyStore.swift` | `sharedAccessGroup` | the same application group |
+Pick a reverse-DNS identifier controlled by your Apple development team. This
+guide uses `com.example.herden`; replace `example` with your own value.
 
-Install XcodeGen with Homebrew, regenerate the project, then connect and trust
-the iPhone:
+Use the following related identifiers consistently:
 
-```bash
+| Purpose | Example |
+| --- | --- |
+| App | `com.example.herden` |
+| Share Extension | `com.example.herden.share` |
+| Test bundle | `com.example.herden.tests` |
+| App Group | `group.com.example.herden` |
+
+### 2. Configure the project for your Apple team
+
+Install XcodeGen:
+
+```sh
 brew install xcodegen
+```
+
+Edit `project.yml`:
+
+1. Replace `DEVELOPMENT_TEAM` with your ten-character Apple team ID.
+2. Replace the three `PRODUCT_BUNDLE_IDENTIFIER` values with the app, Share
+   Extension and test identifiers above.
+3. Replace `group.com.3loc.herden` in both targets with your App Group.
+4. Remove `group.com.fansvine.founderterminal`. It is a compatibility group for
+   an old 3LOC development build and another team cannot sign it.
+
+Then update the two runtime constants to the same App Group:
+
+- `Sources/Herden/Support/SharedAppStorage.swift`: `appGroup`
+- `Sources/HerdenNotificationCore/NotificationKeyStore.swift`:
+  `sharedAccessGroup`
+
+Regenerate the Xcode project and review the result:
+
+```sh
 make generate
+git diff -- project.yml Herden.xcodeproj \
+  Sources/Herden/Support/SharedAppStorage.swift \
+  Sources/HerdenNotificationCore/NotificationKeyStore.swift
+```
+
+`project.yml` is the source of truth. Do not edit
+`Herden.xcodeproj/project.pbxproj` by hand.
+
+### 3. Prepare the iPhone
+
+1. Connect the unlocked iPhone by USB.
+2. Accept **Trust This Computer** on the phone.
+3. Open **Xcode → Window → Devices and Simulators** and wait until preparation
+   finishes.
+4. On the phone, enable **Settings → Privacy & Security → Developer Mode**,
+   restart it and confirm the setting. If Developer Mode is absent, finish the
+   Xcode pairing first.
+
+### 4. Perform the first signed build
+
+Open the project:
+
+```sh
 open Herden.xcodeproj
 ```
 
-In Xcode, select both **Herden** and **HerdenShareExtension** in turn. Under
-**Signing & Capabilities**, confirm the same Team and automatic signing, and
-check that the same App Group is enabled. Resolve any signing error there
-before using the command line. Do not remove the App Group to silence a signing
-error: sharing Hosts and credentials with the extension depends on it. See
-[Apple's App Group setup](https://developer.apple.com/documentation/xcode/configuring-app-groups).
+In Xcode:
 
-Connect the iPhone by USB. Unlock it, accept **Trust This Computer**, and open
-Xcode's device manager (Window → Devices and Simulators, or Manage Devices in
-the run destination picker). Allow Xcode to finish preparing the device.
+1. Open **Xcode → Settings → Accounts** and sign in to an account authorised
+   for the development team.
+2. Select the **Herden** target, open **Signing & Capabilities**, choose the
+   team and leave automatic signing enabled.
+3. Confirm the App Group is present and uses the identifier chosen above.
+4. Repeat those checks for **HerdenShareExtension**.
+5. Select the connected iPhone as the run destination and press **Run**.
 
-On the phone, enable **Settings → Privacy & Security → Developer Mode**, restart,
-and confirm when prompted. If the setting is absent, pair with Xcode first.
-See [Apple's Developer Mode guide](https://developer.apple.com/documentation/xcode/enabling-developer-mode-on-a-device).
+Resolve every signing error before returning to the command line. Do not remove
+the App Group to silence an error. The Share Extension depends on it.
 
-Choose the phone as the run destination and press Run once. For subsequent
-builds from Terminal:
+Apple's relevant setup references are [App Groups](https://developer.apple.com/documentation/xcode/configuring-app-groups),
+[Developer Mode](https://developer.apple.com/documentation/xcode/enabling-developer-mode-on-a-device)
+and [developer accounts and capabilities](https://developer.apple.com/help/account/basics/about-your-developer-account/).
+
+## Repeat a physical-device install
+
+After the first successful Xcode build, list the devices visible to the Mac:
+
+```sh
+xcrun devicectl list devices
+```
+
+With one physical device connected, this normally suffices:
 
 ```sh
 make install APP_ID=com.example.herden
 ```
 
-`APP_ID` must match the app bundle identifier you chose; it tells the launch
-command which installed app to open. `make install` selects the first physical
-device reported by `devicectl`. For multiple phones, list and select one:
-
-```bash
-xcrun devicectl list devices
-make install DEVICE=00000000-0000-0000-0000-000000000000 APP_ID=com.example.herden
-```
-
-Xcode automatic signing creates or updates the development provisioning
-profiles. If a remote SSH shell cannot access the Apple account in the Mac's
-login keychain, run the same command from the logged-in Terminal application.
-
-If Xcode stays on “Updating provisioning” and times out, check that both targets
-use your team, the device is registered, and the App Group belongs to that team.
-Use Xcode's account settings to download manual profiles if requested. Keep
-the phone unlocked and complete any account or keychain prompts on the Mac.
-
-## Deploy over Wi-Fi
-
-Complete one USB pairing and successful install first. Put the Mac and iPhone
-on the same Wi-Fi, keep Developer Mode enabled, and confirm the phone remains
-available in Xcode's device manager after unplugging it. Enable **Connect via
-network** if that control is present in your Xcode version. Then use the same
-`make install DEVICE=... APP_ID=...` command. See
-[Apple's wireless deployment guide](https://help.apple.com/xcode/mac/current/en.lproj/dev3e2f4ee6d.html).
-
-After installation, Herden itself connects over SSH/Tailscale even when the
-phone is away from the Mac. Follow [Host pairing](install-host.md#start-and-pair).
-
-## Simulator with your own bundle ID
-
-After changing signing identifiers, also pass `APP_ID` to the Simulator target:
+With several devices, pass the selected device identifier:
 
 ```sh
-make sim APP_ID=com.example.herden
+make install \
+  DEVICE=00000000-0000-0000-0000-000000000000 \
+  APP_ID=com.example.herden
 ```
 
-## Work on the Xcode project
+`APP_ID` only tells `devicectl` which installed app to launch. It does not
+change the bundle identifier produced by the build. Configure that in
+`project.yml` first.
 
-`project.yml` is the source of truth. Run `make generate` after changing target,
-signing, package, or source membership settings, and commit the regenerated
-`Herden.xcodeproj` with the YAML change.
+If an SSH shell cannot use the Apple account in the Mac's login Keychain, run
+the build from the logged-in Terminal application. The repository also includes
+`scripts/build-ios-device.command` for opening a build in that GUI session.
 
-A focused Swift suite can be run directly on the Mac:
+## Install over Wi-Fi
 
-```bash
+Complete one USB install first. Keep the Mac and iPhone on the same Wi-Fi and
+enable **Connect via network** for the phone in Xcode's device manager if the
+option is shown. Once `xcrun devicectl list devices` sees the unplugged phone,
+use the same `make install DEVICE=... APP_ID=...` command.
+
+After installation, Herden connects from the phone to its Host over ordinary
+SSH, usually through Tailscale or Headscale. The Mac is no longer in that data
+path. Continue with the [Host pairing guide](install-host.md#start-and-pair).
+
+## Run the tests
+
+Run the app and HerdenSSH package suites on an installed `iPhone 17` Simulator:
+
+```sh
+make test
+```
+
+Choose a focused app suite with `xcodebuild`:
+
+```sh
 xcodebuild test \
   -project Herden.xcodeproj \
   -scheme Herden \
@@ -139,7 +214,33 @@ xcodebuild test \
 
 Changes under `Packages/HerdenSSH` use the separate package test plan:
 
-```bash
+```sh
 scripts/run-herdenssh-package-tests.sh \
   'platform=iOS Simulator,name=iPhone 17'
 ```
+
+Some real-SSH suites require disposable local SSH fixtures. They skip on a
+normal Mac when those fixtures are unavailable; merge CI provisions them.
+
+## Common failures
+
+| Symptom | Fix |
+| --- | --- |
+| Requested Simulator cannot be found | Run `xcrun simctl list devices available`, then pass an installed name with `SIM='…'`. |
+| Xcode selects the command-line tools package | Run `sudo xcode-select --switch /Applications/Xcode.app/Contents/Developer`. |
+| Bundle identifier is unavailable | Choose a unique reverse-DNS identifier owned by your team and regenerate the project. |
+| App Group capability fails | Create or select an App Group owned by the same team for both app targets; remove the retired 3LOC compatibility group. |
+| Provisioning remains on “Updating” | Keep the phone unlocked, confirm the team and identifiers, then resolve account or Keychain prompts in Xcode. |
+| `make install` builds but cannot launch | Pass the exact configured app bundle identifier as `APP_ID`. |
+| No physical device is selected | Run `xcrun devicectl list devices` and pass its UUID as `DEVICE`. |
+
+## Contributor project changes
+
+Run `make generate` after changing targets, signing settings, package links or
+source membership in `project.yml`. Commit the regenerated `Herden.xcodeproj`
+with the YAML change because CI builds the committed project and does not run
+XcodeGen.
+
+Maintainers cutting TestFlight or App Store releases must follow
+[the release guide](releasing.md). Do not run `make publish` merely to install a
+development build.
