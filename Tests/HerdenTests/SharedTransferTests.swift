@@ -50,6 +50,31 @@ struct SharedTransferTests {
         await #expect(throws: (any Error).self) { try await ShareItemLoader.load(providers: [provider, provider]) }
     }
 
+    @Test func discordImageShareIgnoresCaptionAndSourceLink() async throws {
+        let url = FileManager.default.temporaryDirectory.appendingPathComponent("\(UUID()).png")
+        let png = Data([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a])
+        try png.write(to: url)
+        defer { try? FileManager.default.removeItem(at: url) }
+
+        let image = NSItemProvider()
+        image.suggestedName = "discord-image.png"
+        image.registerFileRepresentation(forTypeIdentifier: UTType.png.identifier,
+            fileOptions: [], visibility: .all) { completion in
+            completion(url, false, nil)
+            return nil
+        }
+        let caption = NSItemProvider(item: "caption" as NSString,
+                                     typeIdentifier: UTType.plainText.identifier)
+        let source = NSItemProvider(item: NSURL(string: "https://discord.com/channels/example"),
+                                    typeIdentifier: UTType.url.identifier)
+
+        let loaded = try await ShareItemLoader.load(providers: [caption, image, source])
+        defer { try? FileManager.default.removeItem(at: loaded.url) }
+        #expect(loaded.displayName == "discord-image.png")
+        #expect(loaded.url.pathExtension == "png")
+        #expect(try Data(contentsOf: loaded.url) == png)
+    }
+
     private func fixture() throws -> (SharedTransferStore, SharedTransfer, URL) {
         let root = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
         try FileManager.default.createDirectory(at: root, withIntermediateDirectories: true)

@@ -127,10 +127,12 @@ struct TerminalPasteButton: View {
             guard let text = strings.first, !text.isEmpty else { return }
             paste(text)
         }
-        .labelStyle(.iconOnly)
+        .labelStyle(.titleOnly)
         .controlSize(.small)
         .tint(Brand.vine)
-        .frame(minWidth: 44, minHeight: 44)
+        .frame(width: 64, height: 44)
+        .clipped()
+        .contentShape(Rectangle())
         .accessibilityLabel("Paste")
         .accessibilityHint("Pastes clipboard text into this terminal")
         .accessibilityIdentifier("terminal-paste")

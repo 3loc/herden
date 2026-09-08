@@ -886,7 +886,7 @@ struct AgentDirectInputTests {
         await owner.leave().value
     }
 
-    @Test func directPasteRoutesThroughAttachReview() async throws {
+    @Test func directPasteInsertsImmediatelyWithoutReview() async throws {
         let transport = ScriptedTransport()
         let composer = AgentComposerStore(target: "w1:p1") { _ in
             Agent(.fixture(paneID: "w1:p1"))
@@ -912,16 +912,15 @@ struct AgentDirectInputTests {
         let terminal = try #require(Self.terminals(in: controller.view).first)
         #expect(terminal.isLocalInputEnabled)
         terminal.requestPaste("git status\ngit diff")
-        let pending = try #require(owner.pendingPaste)
-        #expect(pending.preview == "git status\ngit diff")
-        #expect(pending.lineCount == 2)
-        #expect(pending.characterCount == "git status\ngit diff".count)
-        #expect(
-            await transport.attachInputs.allSatisfy {
-                if case .keystrokes = $0 { false } else { true }
-            })
-
-        owner.confirmPaste()
+        // SwiftUI exposes these accessibility elements to in-process tests on iOS 27+.
+        if #available(iOS 27, *) {
+            for label in ["Documents", "Media", "Paste", "Dictation Language"] {
+                #expect(Self.firstAccessible(in: controller.view, matching: {
+                    $0.accessibilityLabel == label
+                }) != nil)
+            }
+        }
+        #expect(owner.pendingPaste == nil)
         try #require(await Self.eventually {
             await transport.attachInputs.contains {
                 if case .keystrokes(let data) = $0 {
@@ -1616,7 +1615,7 @@ struct AgentDirectInputTests {
         return count
     }
 
-    private static func firstAccessible(
+    static func firstAccessible(
         in root: UIView, matching: (NSObject) -> Bool
     ) -> NSObject? {
         var match: NSObject?

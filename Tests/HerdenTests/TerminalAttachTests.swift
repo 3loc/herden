@@ -871,8 +871,8 @@ struct TerminalAttachTests {
         let terminal = TerminalScreenView.makeConfiguredTerminal()
         #expect(terminal.keyboardMode == .text)
         #expect(terminal.inputView == nil)
-        // The input row is app content (see `ShellTerminalInputRow`); an
-        // accessory here would ride the keyboard and die with a mode switch.
+        // The shared Herden control deck is app content; an accessory here
+        // would ride the system keyboard and disappear when it is dismissed.
         #expect(terminal.inputAccessoryView == nil)
     }
 

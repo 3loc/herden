@@ -105,7 +105,9 @@ struct AgentDetailView: View {
                     activity: activity,
                     isReturning: openTerminal.isReturning,
                     isClosingTerminal: openTerminal.isClosingTerminal,
-                    onCloseTerminal: { openTerminal.closeTerminal() }
+                    onCloseTerminal: { openTerminal.closeTerminal() },
+                    stageImage: console.imageStager(for: agent.hostID),
+                    stageFile: console.fileStager(for: agent.hostID)
                 ) {
                     await openTerminal.returnToAgent()
                 }

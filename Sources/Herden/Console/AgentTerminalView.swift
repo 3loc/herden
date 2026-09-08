@@ -333,7 +333,7 @@ struct AgentTerminalView: View {
             attach.scroll(sequence, rows: rows)
         }
         screen.onPaste = { text, bracketed in
-            attach.requestPaste(text, bracketedPaste: bracketed)
+            attach.requestPaste(text, bracketedPaste: bracketed, reviewMultiline: !isDirectInput)
         }
         screen.keyboardControl = keyboardControl
         screen.scrollControl = messageJump.scrollControl
@@ -1496,7 +1496,7 @@ private struct AttachLinksView: View {
     }
 }
 
-private struct AttachmentStatusBar<Actions: View>: View {
+struct AttachmentStatusBar<Actions: View>: View {
     let icon: String
     let title: String
     let accessibilityLabel: String

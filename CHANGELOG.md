@@ -10,9 +10,14 @@ Entries reference the issue that motivated them.
 
 ### Added
 
-- Add a paperclip beside the compact Paste control for files and photos. Agent
-  terminals receive uploaded paths without Return; the Share picker now uses
-  Herden's dark theme and prioritises Agent names and Space labels.
+- Use one shared terminal keyboard for Agents and Spaces, including dictation
+  and an on-keyboard language picker. Add German and French on-device dictation.
+
+- Add a compact Documents, Media and Paste row in one shared keyboard for Agent and Space
+  keyboard, with orange upload controls and a matching yellow Paste button. Direct Input pastes
+  immediately without a preview dialog. Uploaded paths never press Return.
+  The Share picker uses Herden's dark theme and prioritises Agent names and
+  Space labels.
 
 - Show shared-file progress and the destination Agent in Herden, retain interrupted
   transfers for retry, and leave the uploaded path in the Agent prompt without
@@ -21,7 +26,7 @@ Entries reference the issue that motivated them.
 
 - Add a visible Paste button to Agent terminals and keyboard-hidden shell
   terminals, plus Select and Copy Text for copying visible terminal output.
-  Pasting uses the existing review and bracketed-paste safeguards.
+  Direct Input pastes immediately while retaining terminal bracketed-paste framing.
 
 - Add the Herden Host runtime, derived from pristine upstream herdr 0.8.2, to
   the same project as the iOS app.
@@ -39,13 +44,18 @@ Entries reference the issue that motivated them.
 - Relicense the combined Herden repository from AGPL-3.0 to Apache License
   2.0, following Heeler's contributor-approved relicense and matching herdr.
 
+- Use public GitHub releases for Host installation and public repository
+  documents for CLI help; the private Headscale site remains an optional mirror.
+
 - Restore Host catalogs and device keys from the retired Founder Terminal app
   identity, attach to still-running sessions at their legacy
   `~/.config/herdr` sockets, and standardize Host labels as `user@hostname`
   while keeping network addresses as secondary connection details. New Space
-  forms and Space terminals now raise the keyboard immediately and use the same
-  standard iOS keyboard profile as Agents, while New Agent remembers the last
-  Host, Workspace, and Agent kind per Host.
+  forms and Space terminals now raise the keyboard immediately and use the exact
+  same persistent Herden control deck as Agents, including the green Return,
+  Esc, Ctrl-B, Ctrl-C, vi keys, and dictation; paste remains available in the
+  terminal toolbar. New Agent remembers the last Host, Workspace, and Agent
+  kind per Host.
 - Simplify Spaces and Agents to one list with Add and Settings menus; remove
   presentation switching and directory-path clutter from Agent rows.
 - Support horizontal navigation across terminal output and the picker, with
@@ -97,6 +107,12 @@ Entries reference the issue that motivated them.
   never submit a terminal prompt.
 
 ### Fixed
+
+- Show Herden for Discord image shares that include caption or source-link
+  metadata, and ignore that metadata while loading the shared file.
+
+- Resolve the remote home directory through POSIX `sh`, so Hosts using Nushell
+  or another non-POSIX login shell can connect.
 
 - Keep the editing cursor after text inserted in the middle of a prompt, track
   dictation backspace corrections, and move by characters instead of UTF-16 units.

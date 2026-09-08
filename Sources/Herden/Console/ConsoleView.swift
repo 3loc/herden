@@ -191,7 +191,9 @@ struct ConsoleView: View {
                             activity: activity,
                             isReturning: false,
                             title: opened.label,
-                            backLabel: "Back to Spaces"
+                            backLabel: "Back to Spaces",
+                            stageImage: console.imageStager(for: opened.hostID),
+                            stageFile: console.fileStager(for: opened.hostID)
                         ) {
                             openedSpace = nil
                         }

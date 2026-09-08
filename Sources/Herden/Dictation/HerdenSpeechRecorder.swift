@@ -7,7 +7,7 @@ import OSLog
 /// regional recognisers Apple exposes. Unavailable on-device models stay out
 /// of the picker instead of falling back to sending audio to a server.
 enum HerdenDictationLanguages {
-    static let identifiers = ["zh_TW", "zh_CN", "sv_SE", "pt_PT", "en_US"]
+    static let identifiers = ["zh_TW", "zh_CN", "sv_SE", "pt_PT", "en_US", "de_DE", "fr_FR"]
 
     private static func canonical(_ locale: Locale) -> String {
         let language = locale.language.languageCode?.identifier ?? ""
@@ -43,6 +43,8 @@ enum HerdenDictationLanguages {
         case "sv_SE": "Svenska"
         case "pt_PT": "Português"
         case "en_US": "English (US)"
+        case "de_DE": "Deutsch"
+        case "fr_FR": "Français"
         default: locale.identifier
         }
     }
@@ -84,11 +86,15 @@ final class HerdenSpeechRecorder: ObservableObject {
     }
 
     func prepareLocales() {
+        // Returning to an existing Agent/Space view must pick up a language
+        // selected on the other terminal, not restore this recorder's old one.
+        let savedLocale = defaults.string(forKey: Self.selectedLocaleDefaultsKey)
+            .map(Locale.init(identifier:)) ?? selectedLocale
         supportedLocales = HerdenDictationLanguages.available(in:
             SFSpeechRecognizer.supportedLocales()
                 .filter { SFSpeechRecognizer(locale: $0)?.supportsOnDeviceRecognition == true })
         if let selected = HerdenDictationLanguages.selection(
-            saved: selectedLocale, current: .current, available: supportedLocales) {
+            saved: savedLocale, current: .current, available: supportedLocales) {
             selectedLocale = selected
             defaults.set(selected.identifier, forKey: Self.selectedLocaleDefaultsKey)
         }

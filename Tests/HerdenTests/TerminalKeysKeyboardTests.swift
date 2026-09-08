@@ -118,27 +118,29 @@ struct TerminalKeysKeyboardTests {
         #expect(withSkills.tabs == [.controls, .skills, .snippets, .appearance])
     }
 
-    /// The in-place swap back to Text passes through a transient will-hide
-    /// that zeroes the measured inset while the terminal keeps first
-    /// responder. Reading hidden off the height alone tore the input row down
-    /// for a frame and let it ride back up with the keyboard.
-    @Test func aTransientZeroInsetDoesNotHideTheInputRowMidSwap() {
-        // The regression: height dipped to zero mid-swap, responder retained.
+    /// UIKit can briefly zero the measured inset while Ghostty remains first
+    /// responder. The shared deck stays mounted, and the terminal must retain
+    /// its system-keyboard layout through that frame.
+    @Test func aTransientZeroInsetKeepsTheSystemKeyboardLayout() {
         #expect(
             ShellTerminalView.keyboardPresentation(
-                mode: .text, insetHeight: 0, keyboardIsUp: true) == .system)
+                insetHeight: 0, keyboardIsUp: true) == .system)
 
         #expect(
             ShellTerminalView.keyboardPresentation(
-                mode: .text, insetHeight: 336, keyboardIsUp: true) == .system)
+                insetHeight: 336, keyboardIsUp: true) == .system)
         // A real dismissal resigns first responder before its will-hide.
         #expect(
             ShellTerminalView.keyboardPresentation(
-                mode: .text, insetHeight: 0, keyboardIsUp: false) == .hidden)
-        // Keys mode is the tools presentation no matter what the inset says.
-        #expect(
-            ShellTerminalView.keyboardPresentation(
-                mode: .controls, insetHeight: 0, keyboardIsUp: true) == .tools)
+                insetHeight: 0, keyboardIsUp: false) == .hidden)
+    }
+
+    @Test func agentAndSpaceTerminalsShareTheFullControlDeck() {
+        #expect(Set(TerminalDirectInputDeck.controlNames) == Set([
+            "Esc", "Ctrl-B", "Control C", "Backspace",
+            "h", "j", "k", "l", "/", "$",
+            "i", "a", "v", "Keyboard", "Dictate", "Dictation Language", "Return",
+        ]))
     }
 
     @Test func everyTabHasItsOwnIconAndLabel() {

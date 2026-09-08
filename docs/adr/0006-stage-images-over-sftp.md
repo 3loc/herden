@@ -1,6 +1,7 @@
 # Stage attachments over SFTP and insert their paths without submitting
 
-Direct Input now exposes Files and Photos through a paperclip beside Paste.
+Direct Input exposes Files and Photos through separate Documents and Media
+buttons in the bottom keyboard row, alongside immediate Paste.
 It reuses the staging module below, but supplies a per-operation insertion
 callback to the live terminal paste path. The callback checks that the Agent
 screen and terminal generation are still current. If either changed during

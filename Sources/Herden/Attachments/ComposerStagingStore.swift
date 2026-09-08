@@ -175,7 +175,7 @@ final class ComposerStagingStore {
     private let imageAdapter: ImageAdapter
     private let fileAdapter: FileAdapter
     private let clipboard: any AttachmentClipboard
-    private let composer: any ComposerDraftOperations
+    private let composer: (any ComposerDraftOperations)?
     private var insertPath: ((String) -> Bool)?
 
     private var preparedSource: PreparedSource?
@@ -189,7 +189,7 @@ final class ComposerStagingStore {
         stageImage: @escaping ImageStager,
         stageFile: @escaping FileStager,
         clipboard: any AttachmentClipboard = SystemAttachmentClipboard(),
-        composer: any ComposerDraftOperations
+        composer: (any ComposerDraftOperations)? = nil
     ) {
         imageAdapter = ImageAdapter(preparer: imagePreparer, stage: stageImage)
         fileAdapter = FileAdapter(preparer: filePreparer, stage: stageFile)
@@ -368,9 +368,11 @@ final class ComposerStagingStore {
         let inserted: Bool
         if let insertPath {
             inserted = insertPath("\(staged.path) ")
-        } else {
+        } else if let composer {
             composer.insertIntoDraft("\(staged.path) ")
             inserted = true
+        } else {
+            inserted = false
         }
         insertPath = nil
         state = .completed(

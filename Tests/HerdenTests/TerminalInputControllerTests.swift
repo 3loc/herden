@@ -6,6 +6,25 @@ import Testing
 @MainActor
 @Suite("Terminal input controller")
 struct TerminalInputControllerTests {
+    @Test func immediateMultilinePasteWritesOnceWithoutReviewOrExtraReturn() {
+        var writes: [Data] = []
+        let controller = TerminalInputController()
+        _ = controller.beginSession { writes.append($0) }
+        let text = "first line\nsecond line"
+        #expect(controller.requestPaste(text, bracketedPaste: true, reviewMultiline: false) == .inserted)
+        #expect(controller.pendingPaste == nil)
+        #expect(writes == [Data("\u{1B}[200~first line\nsecond line\u{1B}[201~".utf8)])
+    }
+
+    @Test func immediatePasteStillRejectsTerminalControlCharacters() {
+        var writes: [Data] = []
+        let controller = TerminalInputController()
+        _ = controller.beginSession { writes.append($0) }
+        #expect(controller.requestPaste("bad\u{1B}[31m", reviewMultiline: false) == .rejected)
+        #expect(writes.isEmpty)
+        #expect(controller.pendingPaste == nil)
+    }
+
     @Test func singleLinePasteInsertsImmediately() {
         var writes: [Data] = []
         let controller = TerminalInputController()

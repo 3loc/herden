@@ -10,7 +10,8 @@ struct SSHTransportSettings: Sendable {
     static let defaultWakeCommand = "herden remote-client-bridge"
     static let defaultAttachCommand = "herden agent attach"
     static let defaultTerminalAttachCommand = "herden terminal attach"
-    static let defaultHomeCommand = "printf '__HERDEN_HOME__=%s\\n' \"$HOME\""
+    static let defaultHomeCommand =
+        "/bin/sh -c 'printf \"__HERDEN_HOME__=%s\\n\" \"$HOME\"'"
     static let defaultPluginListCommand = "herden plugin list --json"
     static let agentAvailabilityMarker = "__HERDEN_AGENT_KIND__="
 
@@ -96,8 +97,11 @@ struct SSHTransportSettings: Sendable {
     /// fixtures can exercise command selection without teaching UI code how
     /// herden spells either attach command.
     var terminalAttachCommand: String = Self.defaultTerminalAttachCommand
-    /// Command used to print a marker-delimited remote home directory. It is
-    /// injectable only at the environment boundary for real-SSH tests.
+    /// Command used to print a marker-delimited remote home directory. Runs
+    /// under POSIX sh because login shells do not share substitution syntax
+    /// (nushell never expands `$HOME` inside double quotes); the
+    /// marker makes login-shell noise harmless. Injectable only at the
+    /// environment boundary for real-SSH tests.
     var homeCommand: String = Self.defaultHomeCommand
     /// Creates one private directory beneath the Host operating system's
     /// selected temporary root. The marker makes login-shell noise harmless;

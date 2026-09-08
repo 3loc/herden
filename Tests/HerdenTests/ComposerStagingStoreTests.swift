@@ -6,6 +6,29 @@ import Testing
 @MainActor
 @Suite("Composer staging store")
 struct ComposerStagingStoreTests {
+    @Test func shellAttachmentWorksWithoutComposer() async throws {
+        let fixture = try await makeFixture(.file, usesComposer: false)
+        defer { fixture.cleanup() }
+        var inserted: [String] = []
+        fixture.store.begin(.file(URL(fileURLWithPath: "/provider/report.txt")), insertPath: {
+            inserted.append($0)
+            return true
+        })
+        try await waitUntil("shell attachment should complete") { fixture.store.state.isCompleted }
+        #expect(inserted == ["\(remotePath(for: .file)) "])
+        #expect(fixture.composer.draft.isEmpty)
+    }
+
+    @Test func uploadWithoutInsertionDestinationRetainsPath() async throws {
+        let fixture = try await makeFixture(.file, usesComposer: false)
+        defer { fixture.cleanup() }
+        fixture.begin(.file)
+        try await waitUntil("upload should complete") { fixture.store.state.isCompleted }
+        guard case .completed(let outcome) = fixture.store.state else { return }
+        #expect(!outcome.inserted)
+        #expect(fixture.store.presentation?.commands == [.copyPath, .dismiss])
+    }
+
     @Test func directAttachmentPastesPathWithoutEditingComposer() async throws {
         let fixture = try await makeFixture(.file)
         defer { fixture.cleanup() }
@@ -402,6 +425,7 @@ struct ComposerStagingStoreTests {
 
     private func makeFixture(
         _ selectedMedium: StagingTestMedium,
+        usesComposer: Bool = true,
         stagePlans: [StagingPlan]? = nil,
         gates: StagingGates = StagingGates(),
         nonCooperativeStager: NonCooperativeStager? = nil
@@ -467,7 +491,7 @@ struct ComposerStagingStoreTests {
                 }
             },
             clipboard: clipboard,
-            composer: composer)
+            composer: usesComposer ? composer : nil)
         return StagingFixture(
             store: store,
             transport: transport,

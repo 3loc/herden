@@ -13,6 +13,7 @@ enum Brand {
     static let vineLight = Color(herdenHex: 0xCFF87A)
     static let vineDark = Color(herdenHex: 0x8FD413)
     static let amber = Color(herdenHex: 0xF0CE7A)
+    static let uploadOrange = Color(herdenHex: 0xFF9F43)
     static let fault = Color(herdenHex: 0xEF4E4E)
     static let hairline = Color.white.opacity(0.08)
 

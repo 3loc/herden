@@ -327,7 +327,7 @@ final class ShellTerminalStore {
     }
 
     func requestPaste(_ text: String, bracketedPaste: Bool) {
-        _ = input.requestPaste(text, bracketedPaste: bracketedPaste)
+        _ = input.requestPaste(text, bracketedPaste: bracketedPaste, reviewMultiline: false)
     }
 
     func cancelPaste() { input.cancelPaste() }

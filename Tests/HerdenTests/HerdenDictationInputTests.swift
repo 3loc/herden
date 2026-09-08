@@ -5,11 +5,21 @@ import Testing
 
 @Suite("Herden terminal dictation")
 struct HerdenDictationInputTests {
-    @Test func offersOnlyTheFiveRequestedLanguagesInAStableOrder() {
+    @Test func offersTheSevenRequestedLanguagesInAStableOrder() {
         let locales = ["en_GB", "fr_FR", "pt_BR", "zh_TW", "en_US", "de_DE", "sv_SE", "pt_PT", "zh_CN"]
             .map(Locale.init(identifier:))
         #expect(HerdenDictationLanguages.available(in: locales).map(\.identifier)
-            == ["zh_TW", "zh_CN", "sv_SE", "pt_PT", "en_US"])
+            == ["zh_TW", "zh_CN", "sv_SE", "pt_PT", "en_US", "de_DE", "fr_FR"])
+    }
+
+    @Test func germanAndFrenchHaveNativeNamesAndKeepTheirSelection() {
+        let locales = ["de-DE", "fr-FR"].map(Locale.init(identifier:))
+        #expect(HerdenDictationLanguages.available(in: locales) == locales)
+        #expect(locales.map(HerdenDictationLanguages.displayName) == ["Deutsch", "Français"])
+        for locale in locales {
+            #expect(HerdenDictationLanguages.selection(
+                saved: locale, current: .current, available: locales) == locale)
+        }
     }
 
     @Test func migratesRemovedEnglishVariantsToUSAndFallsBackToAnAvailableModel() {

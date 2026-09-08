@@ -21,13 +21,14 @@ enum ShareItemLoader {
     }
 
     static func load(providers: [NSItemProvider]) async throws -> LoadedShareItem {
-        guard providers.count == 1, let provider = providers.first else {
+        // Apps such as Discord commonly add a caption or source URL beside the
+        // actual image. Treat those providers as metadata instead of rejecting
+        // an otherwise valid one-file share.
+        let fileProviders = providers.filter(isFileProvider)
+        guard fileProviders.count == 1, let provider = fileProviders.first else {
             throw ShareItemLoaderError.unsupportedItem
         }
-        if let typeIdentifier = provider.registeredTypeIdentifiers.first(where: { identifier in
-                guard let type = UTType(identifier) else { return false }
-                return type.conforms(to: .data) && !type.conforms(to: .url)
-            }) {
+        if let typeIdentifier = preferredTypeIdentifier(for: provider) {
             do { return try await loadFile(provider, typeIdentifier: typeIdentifier) }
             catch {
                 guard provider.hasItemConformingToTypeIdentifier(UTType.fileURL.identifier) else { throw error }
@@ -46,6 +47,36 @@ enum ShareItemLoader {
                 } catch { continuation.resume(throwing: error) }
             }
         }
+    }
+
+    private static func isFileProvider(_ provider: NSItemProvider) -> Bool {
+        if provider.hasItemConformingToTypeIdentifier(UTType.fileURL.identifier) {
+            return true
+        }
+        return provider.registeredTypeIdentifiers.contains { identifier in
+            guard let type = UTType(identifier) else { return false }
+            if type.conforms(to: .image) || type.conforms(to: .movie) || type.conforms(to: .audio) {
+                return true
+            }
+            return type.conforms(to: .data)
+                && !type.conforms(to: .url)
+                && !type.conforms(to: .text)
+        }
+    }
+
+    private static func preferredTypeIdentifier(for provider: NSItemProvider) -> String? {
+        let identifiers = provider.registeredTypeIdentifiers
+        let types = identifiers.compactMap { identifier -> (String, UTType)? in
+            guard let type = UTType(identifier),
+                  type.conforms(to: .data),
+                  !type.conforms(to: .url) else { return nil }
+            return (identifier, type)
+        }
+        return types.first(where: { _, type in
+            type.conforms(to: .image) || type.conforms(to: .movie) || type.conforms(to: .audio)
+        })?.0 ?? types.first(where: { _, type in
+            !type.conforms(to: .text)
+        })?.0 ?? types.first?.0
     }
 
     private static func loadFile(_ provider: NSItemProvider, typeIdentifier: String) async throws -> LoadedShareItem {

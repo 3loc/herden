@@ -141,7 +141,8 @@ final class TerminalInputController {
     }
 
     @discardableResult
-    func requestPaste(_ text: String, bracketedPaste: Bool = false) -> PasteRequestResult {
+    func requestPaste(_ text: String, bracketedPaste: Bool = false,
+                      reviewMultiline: Bool = true) -> PasteRequestResult {
         pasteErrorMessage = nil
         guard writer != nil else { return .blocked }
         guard TerminalTextSafety.containsOnlySafeScalars(text) else {
@@ -149,9 +150,12 @@ final class TerminalInputController {
             pasteErrorMessage = "The clipboard contains unsafe terminal control characters."
             return .rejected
         }
-        guard TerminalTextSafety.isMultiline(text) else {
+        guard reviewMultiline, TerminalTextSafety.isMultiline(text) else {
+            cancelPaste()
             if !text.isEmpty, let writer {
-                write(Data(text.utf8), using: writer, source: .paste)
+                write(TerminalBracketedPaste.encode(text,
+                    bracketed: bracketedPaste && TerminalTextSafety.isMultiline(text)),
+                    using: writer, source: .paste)
             }
             return .inserted
         }

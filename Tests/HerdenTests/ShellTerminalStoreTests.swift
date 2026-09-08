@@ -118,9 +118,24 @@ struct ShellTerminalStoreTests {
 
         #expect(terminal.isLocalInputEnabled)
         #expect(terminal.isFirstResponder)
-        // No Snippets or Skills on a shell terminal: its Keys dock offers the
-        // control pad and Appearance alone.
-        #expect(ShellTerminalKeysDock.tabs == [.controls, .appearance])
+        // SwiftUI exposes these accessibility elements to in-process tests on iOS 27+.
+        if #available(iOS 27, *) {
+            for label in ["Documents", "Media", "Paste", "Dictation Language"] {
+                #expect(AgentDirectInputTests.firstAccessible(in: controller.view, matching: {
+                    $0.accessibilityLabel == label
+                }) != nil)
+            }
+        }
+        // A plain Space terminal exposes the same compact direct-input deck as
+        // an Agent terminal, rather than its old Text/Keys-specific chrome.
+        #expect(TerminalDirectInputDeck.controlNames.contains("Ctrl-B"))
+        #expect(TerminalDirectInputDeck.controlNames.contains("Control C"))
+        #expect(TerminalDirectInputDeck.controlNames.contains("Return"))
+        terminal.requestPaste("first line\nsecond line")
+        #expect(store.pendingPaste == nil)
+        try #require(await eventually {
+            await transport.attachInputs.contains(.keystrokes(Data("first line\nsecond line".utf8)))
+        })
         terminal.sendControlKey(.enter)
         try #require(
             await eventually {

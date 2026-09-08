@@ -1,16 +1,16 @@
 import SwiftUI
 import UIKit
+import PhotosUI
+import UniformTypeIdentifiers
 
 /// Local Agent Detail destination for one ordinary herden shell terminal.
 /// Ghostty owns direct keyboard input, output, scrollback and resize. There is
-/// intentionally no Composer, Agent switcher, staging, notification, or Agent
+/// intentionally no Composer, Agent switcher, notification, or Agent
 /// operation on this surface.
 ///
-/// The keyboard chrome is app-owned, the Composer's arrangement: the input row
-/// sits above the keyboard as ordinary content, and Keys mode suppresses the
-/// system keyboard behind an app-side dock at the measured keyboard footprint.
-/// Nothing rides the keyboard itself, so switching modes cannot tear the row
-/// down, and the IME's composition survives a round trip through Keys.
+/// Its app-owned keyboard chrome is the exact same direct-input deck used by an
+/// Agent terminal. The deck remains visible above the system keyboard and when
+/// that keyboard is dismissed.
 struct ShellTerminalView: View {
     let store: ShellTerminalStore
     let terminal: TerminalSettings
@@ -21,12 +21,18 @@ struct ShellTerminalView: View {
     /// Nil hides the Close Terminal action entirely (previews, tests).
     var isClosingTerminal: Bool = false
     var onCloseTerminal: (@MainActor () -> Void)? = nil
+    var stageImage: ImageStager? = nil
+    var stageFile: FileStager? = nil
     let onBack: @MainActor () async -> Void
 
     @State private var keyboardControl = TerminalKeyboardControl()
-    @State private var keyboardMode: TerminalKeyboardMode = .text
     @State private var keyboardInset = TerminalKeyboardInset()
     @State private var isConfirmingClose = false
+    @State private var staging: ComposerStagingStore?
+    @State private var isSelectingFile = false
+    @State private var isSelectingPhoto = false
+    @State private var selectedPhoto: PhotosPickerItem?
+    @State private var isOnStage = false
     @Environment(\.colorScheme) private var colorScheme
 
     private var terminalScreen: TerminalScreenView {
@@ -59,30 +65,21 @@ struct ShellTerminalView: View {
         return screen
     }
 
-    /// The Composer's keyboard arithmetic, reused verbatim: Keys mode is the
-    /// tools presentation, a raised system keyboard is the system one.
+    /// A raised system keyboard gets its measured footprint; the Herden deck
+    /// itself is ordinary app content and therefore needs no keyboard mode.
     private var keyboardPresentation: AgentComposerKeyboardPresentation {
         Self.keyboardPresentation(
-            mode: keyboardMode,
             insetHeight: keyboardInset.height,
             keyboardIsUp: keyboardControl.isKeyboardUp)
     }
 
-    /// Switching back to Text re-presents the system keyboard in place, and
-    /// UIKit passes through a transient will-hide that zeroes the measured
-    /// inset on the way — while the terminal keeps first responder the whole
-    /// time. Deriving hidden from the height alone tore the input row down
-    /// for that beat and let it ride back up with the keyboard. A real
-    /// dismissal (a sheet, leaving the screen) resigns first responder before
-    /// its will-hide, so the responder is what tells the two apart. Every
-    /// transition that matters arrives with a height change, so rendering
-    /// keyed off the observable inset still re-reads the responder in time.
+    /// UIKit can briefly publish a zero keyboard inset while Ghostty remains
+    /// first responder. Preserve the system-keyboard presentation through
+    /// that transient so terminal output does not jump.
     static func keyboardPresentation(
-        mode: TerminalKeyboardMode,
         insetHeight: CGFloat,
         keyboardIsUp: Bool
     ) -> AgentComposerKeyboardPresentation {
-        if mode == .controls { return .tools }
         if insetHeight > 0 || keyboardIsUp { return .system }
         return .hidden
     }
@@ -94,42 +91,38 @@ struct ShellTerminalView: View {
             presentation: keyboardPresentation)
     }
 
-    private var isKeysDockPresented: Bool {
-        keyboardMode == .controls
-    }
-
     var body: some View {
         terminalScreen
             .id(store.terminalID)
             .overlay { statusOverlay }
             .safeAreaInset(edge: .bottom, spacing: 0) {
-                if keyboardPresentation != .hidden {
-                    ShellTerminalInputRow(
-                        mode: Binding(
-                            get: { keyboardMode },
-                            set: { setKeyboardMode($0) }),
-                        paste: { keyboardControl.paste($0) },
-                        insertNewLine: {
-                            UIDevice.current.playInputClick()
-                            keyboardControl.sendNewLine()
-                        })
+                VStack(alignment: .leading, spacing: 6) {
+                    if let staging, let presentation = staging.presentation {
+                        AttachmentStatusBar(
+                            icon: presentation.icon,
+                            title: presentation.title,
+                            accessibilityLabel: presentation.accessibilityLabel
+                        ) {
+                            ForEach(presentation.commands, id: \.self) { command in
+                                Button(commandTitle(command)) { staging.perform(command) }
+                            }
+                        }
+                    }
+                    TerminalKeyboard(
+                        keyboardControl: keyboardControl,
+                        isKeyboardUp: keyboardControl.isKeyboardUp,
+                        canUpload: staging?.canBegin == true,
+                        documents: { isSelectingFile = true },
+                        media: { isSelectingPhoto = true },
+                        toggleSystemKeyboard: { keyboardControl.toggleKeyboard() },
+                        dismissSystemKeyboard: { keyboardControl.dismissKeyboard() },
+                        sendQuickKey: { keyboardControl.sendQuickKey($0) },
+                        sendInput: { keyboardControl.sendInput($0) })
                 }
+                .padding(.vertical, 8)
+                .background(Brand.elevated)
             }
             .padding(.bottom, keyboardLayout.contentInset)
-            // This dock is always present at the system keyboard's last
-            // complete height. In Text mode it is transparent behind the
-            // system keyboard; in Keys mode it is already in place when UIKit
-            // removes its native candidate row, so no intermediate gap is
-            // ever exposed. See the Composer's tools dock, which this mirrors.
-            .overlay(alignment: .bottom) {
-                ShellTerminalKeysDock(
-                    settings: terminal,
-                    height: keyboardLayout.availableToolsHeight,
-                    sendControlKey: { keyboardControl.sendControlKey($0) })
-                .opacity(isKeysDockPresented ? 1 : 0)
-                .allowsHitTesting(isKeysDockPresented)
-                .accessibilityHidden(!isKeysDockPresented)
-            }
             // Keyboard avoidance is owned by `TerminalKeyboardInset`; UIKit's
             // keyboard safe area would resize Ghostty a second time.
             .ignoresSafeArea(.keyboard, edges: .bottom)
@@ -169,9 +162,7 @@ struct ShellTerminalView: View {
                         keyboardControl.selectText()
                     }
                     .accessibilityIdentifier("terminal-copy")
-                    if keyboardPresentation == .hidden {
-                        TerminalPasteButton { keyboardControl.paste($0) }
-                    }
+
                 }
             }
             .confirmationDialog(
@@ -207,32 +198,52 @@ struct ShellTerminalView: View {
                 store.didBecomeActive(
                     afterPossibleSuspension: activity.lastAbsenceMayHaveSuspended)
             }
-            // A recovered terminal is a fresh surface with no keyboard raised;
-            // app-side mode state has to follow it back to Text.
-            .onChange(of: store.terminalID) { _, _ in
-                setKeyboardMode(.text)
+            .onAppear {
+                isOnStage = true
+                if staging == nil, let stageImage, let stageFile {
+                    staging = ComposerStagingStore(stageImage: stageImage, stageFile: stageFile)
+                }
+                store.rejoin()
             }
-            .onAppear { store.rejoin() }
-            .onDisappear { store.leave() }
+            .onDisappear {
+                isOnStage = false
+                if let staging { Task { await staging.leave() } }
+                store.leave()
+            }
+            .photosPicker(isPresented: $isSelectingPhoto, selection: $selectedPhoto, matching: .images)
+            .fileImporter(isPresented: $isSelectingFile, allowedContentTypes: [.data]) { result in
+                guard case .success(let url) = result else { return }
+                beginAttachment(.file(url))
+            }
+            .onChange(of: selectedPhoto) { _, item in
+                guard let item else { return }
+                selectedPhoto = nil
+                beginAttachment(.photo(PhotosPickerImageSelection(item: item)))
+            }
+            .onChange(of: activity.phase) { _, phase in
+                if phase == .suspended { staging?.didEnterBackground() }
+            }
     }
 
-    private func setKeyboardMode(_ mode: TerminalKeyboardMode) {
-        guard mode != keyboardMode else { return }
-        switch mode {
-        case .controls:
-            // Candidate bars publish transition-only frames while UIKit
-            // removes the system keyboard; the dock keeps the last complete
-            // measurement instead.
-            keyboardInset.pauseHeightCapture()
-        case .text:
-            keyboardInset.resumeHeightCapture()
+    private func beginAttachment(_ source: ComposerStagingStore.Source) {
+        let generation = store.input.liveGeneration
+        staging?.begin(source, insertPath: { [weak store, weak keyboardControl] path in
+            guard isOnStage, let store, let generation,
+                store.input.liveGeneration == generation,
+                let keyboardControl, keyboardControl.terminal != nil
+            else { return false }
+            keyboardControl.paste(path)
+            return true
+        })
+    }
+
+    private func commandTitle(_ command: ComposerStagingStore.Command) -> String {
+        switch command {
+        case .cancel: "Cancel"
+        case .retry: "Retry"
+        case .copyPath: "Copy Path"
+        case .dismiss: "Dismiss"
         }
-        var transaction = Transaction()
-        transaction.disablesAnimations = true
-        withTransaction(transaction) {
-            keyboardMode = mode
-        }
-        keyboardControl.setKeyboardMode(mode)
     }
 
     private var themePalette: TerminalThemePalette {
@@ -298,128 +309,4 @@ struct ShellTerminalView: View {
             .presentationDetents([.medium, .large])
         }
     }
-}
-
-/// The input row above the keyboard: paste, the Text/Keys mode control, and
-/// new line. App content rather than a keyboard accessory, so a mode switch
-/// never tears it down and UIKit's candidate-row teardown never moves it.
-struct ShellTerminalInputRow: View {
-    @Binding var mode: TerminalKeyboardMode
-    let paste: (String) -> Void
-    let insertNewLine: () -> Void
-    /// Matches the Composer chrome's small glyphs, or the row's icons read as
-    /// borrowed from a different set.
-    private static let glyphPointSize: CGFloat = 12
-    @Environment(\.displayScale) private var displayScale
-
-    var body: some View {
-        HStack(spacing: 0) {
-            PasteButton(payloadType: String.self) { strings in
-                guard let text = strings.first else { return }
-                paste(text)
-            }
-            .labelStyle(.iconOnly)
-            .buttonBorderShape(.capsule)
-            // The system default is an accent-tinted tile, which shouts next
-            // to the mode control. Painting the fill with the row's own
-            // background leaves the glyph reading as a bare icon.
-            .tint(Color(uiColor: .secondarySystemBackground))
-            .frame(width: 44, height: 44)
-
-            Spacer(minLength: 4)
-
-            Picker("Terminal keyboard mode", selection: $mode) {
-                Text("Text").tag(TerminalKeyboardMode.text)
-                Text("Keys").tag(TerminalKeyboardMode.controls)
-            }
-            .pickerStyle(.segmented)
-            .frame(maxWidth: 184)
-
-            Spacer(minLength: 4)
-
-            Button(action: insertNewLine) {
-                Image(systemName: "text.append")
-                    .font(.system(size: Self.glyphPointSize))
-                    .foregroundStyle(Color(uiColor: .label))
-                    .frame(width: 44, height: 44)
-            }
-            .accessibilityLabel("Insert New Line")
-            .accessibilityHint("Adds a line break without submitting")
-        }
-        .padding(.horizontal, 8)
-        .frame(height: 48)
-        .background(alignment: .top) {
-            Rectangle()
-                .fill(Color(uiColor: .separator))
-                .frame(height: 1 / max(displayScale, 1))
-        }
-        .background(Color(uiColor: .secondarySystemBackground))
-    }
-}
-
-/// The shell terminal's Keys dock: the full control pad and the Appearance
-/// pane. No Snippets or Skills — those belong to the Agent Composer.
-struct ShellTerminalKeysDock: View {
-    let settings: TerminalSettings
-    let height: CGFloat
-    let sendControlKey: (TerminalControlKey) -> Void
-    @State private var selectedTab: TerminalKeysTab = .controls
-
-    static let tabs: [TerminalKeysTab] = [.controls, .appearance]
-
-    var body: some View {
-        VStack(spacing: 0) {
-            Group {
-                switch selectedTab {
-                case .controls:
-                    TerminalControlPadRepresentable(send: sendControlKey)
-                case .appearance:
-                    TerminalAppearancePane(
-                        themes: settings.themes,
-                        zoom: settings.zoom,
-                        fonts: settings.fonts)
-                case .skills, .snippets:
-                    EmptyView()
-                }
-            }
-            .frame(maxWidth: .infinity, maxHeight: .infinity)
-
-            Divider()
-            HStack(spacing: 4) {
-                ForEach(Self.tabs) { tab in
-                    Button {
-                        selectedTab = tab
-                    } label: {
-                        Image(systemName: tab.systemImageName)
-                            .font(.body)
-                            .foregroundStyle(selectedTab == tab ? Color.accentColor : .secondary)
-                            .frame(maxWidth: .infinity, minHeight: 40)
-                            .background(
-                                selectedTab == tab ? Color(uiColor: .secondarySystemFill) : .clear,
-                                in: .rect(cornerRadius: 8))
-                            .contentShape(.rect)
-                    }
-                    .buttonStyle(.plain)
-                    .accessibilityLabel(tab.accessibilityLabel)
-                    .accessibilityAddTraits(selectedTab == tab ? .isSelected : [])
-                }
-            }
-            .padding(.horizontal, 10)
-            .padding(.vertical, 2)
-        }
-        .frame(height: height)
-        .background(Color(uiColor: .systemBackground).ignoresSafeArea(edges: .bottom))
-    }
-}
-
-/// Hosts the UIKit control pad — key repeat and touch handling included —
-/// inside the SwiftUI dock.
-private struct TerminalControlPadRepresentable: UIViewRepresentable {
-    let send: (TerminalControlKey) -> Void
-
-    func makeUIView(context _: Context) -> TerminalControlPadView {
-        TerminalControlPadView(send: send)
-    }
-
-    func updateUIView(_: TerminalControlPadView, context _: Context) {}
 }

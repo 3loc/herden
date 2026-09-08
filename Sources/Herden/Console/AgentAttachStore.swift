@@ -260,8 +260,8 @@ final class AgentAttachStore {
         input.scroll(sequence, rows: rows)
     }
 
-    func requestPaste(_ text: String, bracketedPaste: Bool) {
-        _ = input.requestPaste(text, bracketedPaste: bracketedPaste)
+    func requestPaste(_ text: String, bracketedPaste: Bool, reviewMultiline: Bool = true) {
+        _ = input.requestPaste(text, bracketedPaste: bracketedPaste, reviewMultiline: reviewMultiline)
     }
 
     func insertSnippet(_ text: String, bracketedPaste: Bool) {
