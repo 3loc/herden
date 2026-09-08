@@ -22,7 +22,7 @@ npm run preview      # serve dist/ locally
 
 | Path | What it holds |
 | --- | --- |
-| `src/pages/index.astro` | The page: composes the section components in order. |
+| `src/pages/index.astro` | Public product page, setup commands and section layout. |
 | `public/install.sh` | Exact copy of the root Host installer, published at `/install.sh`. |
 | `src/pages/404.astro` | Not-found page for unmatched paths. |
 | `src/layouts/Layout.astro` | `<head>` metadata, header, footer, global CSS imports. |
