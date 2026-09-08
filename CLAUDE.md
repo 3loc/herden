@@ -43,6 +43,7 @@ eliminating several dead ends.
 | `.github/workflows/ci.yml` | macOS iOS and HerdenSSH validation. |
 | `.github/workflows/ci-linux.yml` | Linux Host, Node and wire-codegen validation. |
 | `UPSTREAM.md` | Heeler/herdr provenance and update policy. |
+| `.agents/skills/herden-testflight/` | TestFlight source verification, build/upload, beta review and invitations. |
 
 Both Agent and Space terminal views feed the shared keyboard into the same
 terminal input controller; attachment paths and pasted text therefore reach
@@ -101,6 +102,12 @@ designed; they are compatibility surfaces, not public branding.
 - Update `CONTEXT.md` when domain terms change; add an ADR only for hard-to-reverse, surprising trade-offs.
 
 ## Agent skills
+
+### TestFlight
+
+Use `.agents/skills/herden-testflight/SKILL.md` for the source-to-archive-to-beta-review
+workflow. An upload does not submit a build for review, and a newer device install
+can share an older upload's build number; compare source before selecting a build.
 
 ### Issue tracker
 
