@@ -35,7 +35,7 @@ install -m 0755 "target/$target/release/herden" "$output_dir/$asset"
 
 case "$target" in
     *-unknown-linux-musl)
-        file "$output_dir/$asset" | grep -q 'statically linked' \
+        file "$output_dir/$asset" | grep -Eq 'statically linked|static-pie linked' \
             || fail "$asset is not statically linked"
         ;;
 esac
