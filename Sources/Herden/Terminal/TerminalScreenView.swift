@@ -115,30 +115,6 @@ final class TerminalKeyboardControl {
     }
 }
 
-/// The interactive Ghostty surface. PTY bytes flow into an in-memory Ghostty
-/// session, while its write and resize callbacks flow back to Attach.
-/// A user-initiated system paste control: clipboard access belongs to iOS,
-/// and delivery still goes through the terminal's reviewed paste path.
-struct TerminalPasteButton: View {
-    let paste: (String) -> Void
-
-    var body: some View {
-        PasteButton(payloadType: String.self) { strings in
-            guard let text = strings.first, !text.isEmpty else { return }
-            paste(text)
-        }
-        .labelStyle(.titleOnly)
-        .controlSize(.small)
-        .tint(Brand.vine)
-        .frame(width: 64, height: 44)
-        .clipped()
-        .contentShape(Rectangle())
-        .accessibilityLabel("Paste")
-        .accessibilityHint("Pastes clipboard text into this terminal")
-        .accessibilityIdentifier("terminal-paste")
-    }
-}
-
 enum TerminalKeyboardHandoffOutcome: Equatable {
     case settled
     case timedOut
