@@ -675,6 +675,23 @@ enum HerdenSocketLocation: Sendable, Equatable {
             return path
         }
     }
+
+    /// Ordered compatibility candidates. Herden's path always wins; the
+    /// retired herdr path keeps already-running sessions attachable during
+    /// the product-name migration without moving or restarting their sockets.
+    func candidatePaths(homeDirectory: String) -> [String] {
+        let preferred = path(homeDirectory: homeDirectory)
+        let home =
+            homeDirectory.hasSuffix("/") ? String(homeDirectory.dropLast()) : homeDirectory
+        switch self {
+        case .defaultSession:
+            return [preferred, "\(home)/.config/herdr/herdr.sock"]
+        case .namedSession(let name):
+            return [preferred, "\(home)/.config/herdr/sessions/\(name)/herdr.sock"]
+        case .absolutePath:
+            return [preferred]
+        }
+    }
 }
 
 /// Transport-level failures: a closed taxonomy so every screen maps errors to

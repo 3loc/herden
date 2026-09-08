@@ -4,6 +4,8 @@ import UIKit
 final class ShareViewController: UIViewController {
     override func viewDidLoad() {
         super.viewDidLoad()
+        Brand.registerFonts()
+        overrideUserInterfaceStyle = .dark
         let model = ShareViewModel(extensionContext: extensionContext)
         let controller = UIHostingController(rootView: ShareRootView(model: model))
         addChild(controller)

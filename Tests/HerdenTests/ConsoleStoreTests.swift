@@ -156,7 +156,7 @@ struct ConsoleStoreTests {
 
         // Blocked > Done > Working > Idle, flat across both Hosts.
         #expect(store.agents.map(\.agent.paneID) == ["w2:p1", "w2:p2", "w1:p2", "w1:p1"])
-        #expect(store.agents.first?.hostName == "beta")
+        #expect(store.agents.first?.hostName == "dev@beta")
         // Workspace rides along as a context tag.
         #expect(store.agents.first?.workspaceLabel == "Api")
         #expect(store.agents[1].workspaceLabel == "Api")

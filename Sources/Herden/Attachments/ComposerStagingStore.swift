@@ -72,6 +72,7 @@ final class ComposerStagingStore {
         let medium: Medium
         let path: String
         var copied: Bool
+        var inserted: Bool = true
     }
 
     struct Presentation: Sendable, Equatable {
@@ -175,6 +176,7 @@ final class ComposerStagingStore {
     private let fileAdapter: FileAdapter
     private let clipboard: any AttachmentClipboard
     private let composer: any ComposerDraftOperations
+    private var insertPath: ((String) -> Bool)?
 
     private var preparedSource: PreparedSource?
     private var operationTask: Task<Void, Never>?
@@ -195,8 +197,9 @@ final class ComposerStagingStore {
         self.composer = composer
     }
 
-    func begin(_ source: Source) {
+    func begin(_ source: Source, insertPath: ((String) -> Bool)? = nil) {
         guard !state.isBusy, operationTask == nil else { return }
+        self.insertPath = insertPath
         discardRetainedPreparedSource()
         cancellationDisposition = nil
         operationID &+= 1
@@ -236,6 +239,7 @@ final class ComposerStagingStore {
         await task?.value
         discardRetainedPreparedSource()
         state = .idle
+        insertPath = nil
     }
 
     private func cancel() {
@@ -361,9 +365,16 @@ final class ComposerStagingStore {
             try clipboard.copy(staged.path)
             copied = true
         } catch {}
-        composer.insertIntoDraft("\(staged.path) ")
+        let inserted: Bool
+        if let insertPath {
+            inserted = insertPath("\(staged.path) ")
+        } else {
+            composer.insertIntoDraft("\(staged.path) ")
+            inserted = true
+        }
+        insertPath = nil
         state = .completed(
-            Outcome(medium: staged.medium, path: staged.path, copied: copied))
+            Outcome(medium: staged.medium, path: staged.path, copied: copied, inserted: inserted))
     }
 
     private func finish(error: any Error, medium: Medium, operationID: UInt64) {
@@ -492,6 +503,11 @@ final class ComposerStagingStore {
                 accessibilityLabel: failure.message,
                 commands: failure.isRetryable ? [.retry, .dismiss] : [.dismiss])
         case .completed(let outcome):
+            if !outcome.inserted {
+                let title = "\(outcome.medium.displayName) uploaded. Reconnect and paste its path."
+                return Presentation(icon: "info.circle", title: title, accessibilityLabel: title,
+                    commands: [.copyPath, .dismiss])
+            }
             let title =
                 outcome.copied
                 ? "\(outcome.medium.displayName) path inserted and copied."

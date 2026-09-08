@@ -337,10 +337,8 @@ struct AgentTerminalView: View {
         }
         screen.keyboardControl = keyboardControl
         screen.scrollControl = messageJump.scrollControl
-        // Composer and Direct Input share lowercase, correction-free traits so
-        // UIKit retains one keyboard context across the responder transfer.
-        // Deliberate Shift input still passes through unchanged.
-        screen.textInputStyle = .agent
+        // Composer and Direct Input share one lowercase, correction-free iOS
+        // keyboard profile. Deliberate Shift input still passes unchanged.
         // Keep the destination terminal enabled until Composer-to-Direct has
         // fully settled. The reverse handoff must disable this outgoing
         // terminal as soon as Composer accepts first responder.
@@ -422,7 +420,7 @@ struct AgentTerminalView: View {
             allowedContentTypes: [.data]
         ) { result in
             guard case .success(let url) = result else { return }
-            attach.staging.begin(.file(url))
+            beginAttachment(.file(url))
         }
         .popover(isPresented: $isShowingAttachLinks) {
             AttachLinksView(
@@ -565,7 +563,7 @@ struct AgentTerminalView: View {
         .onChange(of: selectedPhoto) { _, item in
             guard let item else { return }
             selectedPhoto = nil
-            attach.staging.begin(.photo(PhotosPickerImageSelection(item: item)))
+            beginAttachment(.photo(PhotosPickerImageSelection(item: item)))
         }
         // Follows the grace period, not the raw scene phase: a staging operation
         // is exactly the work worth finishing while the app is briefly out of
@@ -732,6 +730,22 @@ struct AgentTerminalView: View {
             currentHeight: keyboardInset.height,
             lastPresentedHeight: keyboardInset.lastPresentedHeight,
             presentation: composerKeyboardPresentation)
+    }
+
+    private func beginAttachment(_ source: ComposerStagingStore.Source) {
+        guard isDirectInput else {
+            attach.staging.begin(source)
+            return
+        }
+        let generation = attach.input.liveGeneration
+        let control = keyboardControl
+        let onStage = isOnStage
+        attach.staging.begin(source, insertPath: { [weak attach, weak control] path in
+            guard let attach, let generation, attach.input.liveGeneration == generation,
+                  let control, control.terminal != nil, onStage() else { return false }
+            control.paste(path)
+            return true
+        })
     }
 
     private var composerActions: AgentComposerActions {

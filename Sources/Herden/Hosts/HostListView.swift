@@ -290,8 +290,7 @@ private struct HostRow: View {
     }
 
     private var subtitle: String {
-        var text = "\(host.username)@\(host.address)"
-        if host.port != 22 { text += ":\(host.port)" }
+        var text = host.connectionIdentity
         if case .namedSession(let session) = host.socketLocation {
             text += " · session \(session)"
         }

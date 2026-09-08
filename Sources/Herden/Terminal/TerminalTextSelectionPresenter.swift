@@ -4,13 +4,17 @@ import UIKit
 @MainActor
 enum TerminalTextSelectionPresenter {
     static func present(_ request: TerminalTextSelectionRequest, from sourceView: UIView) {
+        present(text: request.text, anchorRange: request.anchorRange, from: sourceView)
+    }
+
+    static func present(text: String, anchorRange: NSRange? = nil, from sourceView: UIView) {
         guard let presentingViewController = sourceView.nearestPresentingViewController else {
             return
         }
 
         let selection = TerminalTextSelectionViewController(
-            text: request.text,
-            anchorRange: request.anchorRange)
+            text: text,
+            anchorRange: anchorRange)
         let navigation = UINavigationController(rootViewController: selection)
         navigation.modalPresentationStyle = .pageSheet
         navigation.sheetPresentationController?.detents = [.large()]
@@ -19,14 +23,20 @@ enum TerminalTextSelectionPresenter {
 }
 
 @MainActor
-final class TerminalTextSelectionViewController: UIViewController {
+final class TerminalTextSelectionViewController: UIViewController, UITextViewDelegate {
     private let text: String
     private let anchorRange: NSRange?
     private let textView = UITextView()
+    private let writeClipboard: (String) -> Void
 
-    init(text: String, anchorRange: NSRange?) {
+    init(
+        text: String,
+        anchorRange: NSRange?,
+        writeClipboard: @escaping (String) -> Void = { UIPasteboard.general.string = $0 }
+    ) {
         self.text = text
         self.anchorRange = anchorRange
+        self.writeClipboard = writeClipboard
         super.init(nibName: nil, bundle: nil)
     }
 
@@ -39,6 +49,8 @@ final class TerminalTextSelectionViewController: UIViewController {
         super.viewDidLoad()
         title = "Select Text"
         view.backgroundColor = .systemBackground
+        navigationItem.leftBarButtonItem = UIBarButtonItem(
+            title: "Copy", style: .plain, target: self, action: #selector(copySelection))
         navigationItem.rightBarButtonItem = UIBarButtonItem(
             barButtonSystemItem: .done,
             target: self,
@@ -50,6 +62,7 @@ final class TerminalTextSelectionViewController: UIViewController {
         textView.font = .monospacedSystemFont(ofSize: 14, weight: .regular)
         textView.isEditable = false
         textView.isSelectable = true
+        textView.delegate = self
         textView.alwaysBounceVertical = true
         textView.textContainerInset = UIEdgeInsets(top: 16, left: 12, bottom: 16, right: 12)
         textView.text = text
@@ -66,6 +79,7 @@ final class TerminalTextSelectionViewController: UIViewController {
         textView.selectedRange = Self.normalizedSelectionRange(
             anchorRange,
             textLength: (text as NSString).length)
+        textViewDidChangeSelection(textView)
     }
 
     override func viewDidAppear(_ animated: Bool) {
@@ -75,12 +89,25 @@ final class TerminalTextSelectionViewController: UIViewController {
 
     static func normalizedSelectionRange(_ range: NSRange?, textLength: Int) -> NSRange {
         guard let range,
+            range.location >= 0,
+            range.length >= 0,
             range.location <= textLength,
             range.length <= textLength - range.location
         else {
             return NSRange(location: 0, length: textLength)
         }
         return range
+    }
+
+    func textViewDidChangeSelection(_ textView: UITextView) {
+        navigationItem.leftBarButtonItem?.isEnabled = textView.selectedRange.length > 0
+    }
+
+    @objc func copySelection() {
+        let range = textView.selectedRange
+        guard range.length > 0 else { return }
+        writeClipboard((textView.text as NSString).substring(with: range))
+        dismiss(animated: true)
     }
 
     @objc private func dismissSelection() {

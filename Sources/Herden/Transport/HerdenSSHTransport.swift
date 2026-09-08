@@ -308,6 +308,9 @@ actor HerdenSSHTransport: Transport {
     private let homeDirectory = SharedAsyncOperation<String>(cachesSuccess: true)
     private let notificationConfigDirectory = SharedAsyncOperation<String>(cachesSuccess: true)
     private let wake = SharedAsyncOperation<Void>(cachesSuccess: false)
+    /// Actor-isolated after resolution. A home-relative Host probes Herden's
+    /// socket and the retired herdr socket once per Transport connection.
+    private var resolvedSocketPathCache: String?
     private var connected = true
 
     private enum EventsChannelState: Equatable {
@@ -1679,6 +1682,7 @@ actor HerdenSSHTransport: Transport {
             let result = try await runExec(
                 "/bin/sh -c 'test -S \"$1\"' herden \(quotedPath)")
             if result.exitStatus == 1 {
+                resolvedSocketPathCache = nil
                 return .socketNotFound(path: socketPath)
             }
             return .streamLocalOpenFailed(path: socketPath)
@@ -1692,8 +1696,31 @@ actor HerdenSSHTransport: Transport {
     }
 
     private func resolvedSocketPath() async throws -> String {
-        if case .absolutePath(let path) = socketLocation { return path }
-        return socketLocation.path(homeDirectory: try await remoteHomeDirectory())
+        if let resolvedSocketPathCache { return resolvedSocketPathCache }
+        let candidates = socketLocation.candidatePaths(
+            homeDirectory: try await remoteHomeDirectory())
+        guard let preferred = candidates.first else {
+            throw TransportError.channelFailed(detail: "No remote socket path was available.")
+        }
+        guard candidates.count > 1 else {
+            resolvedSocketPathCache = preferred
+            return preferred
+        }
+        let command = try Self.socketSelectionCommand(candidates: candidates)
+        let result = try await runExec(command)
+        guard
+            result.exitStatus == 0,
+            result.reachedEOF,
+            let selected = Self.markerValue(
+                in: result.stdout,
+                prefix: Self.socketSelectionOutputPrefix),
+            candidates.contains(selected)
+        else {
+            throw TransportError.channelFailed(
+                detail: "The Host could not resolve its Herden socket path.")
+        }
+        resolvedSocketPathCache = selected
+        return selected
     }
 
     private func remoteHomeDirectory() async throws -> String {
@@ -1832,6 +1859,7 @@ actor HerdenSSHTransport: Transport {
     #endif
 
     private static let homeOutputPrefix = "__HERDEN_HOME__="
+    private static let socketSelectionOutputPrefix = "__HERDEN_SOCKET__="
     private static let stageDirectoryOutputPrefix = "__HERDEN_STAGE_DIR__="
     private static let pluginConfigDirOutputPrefix = "__HERDEN_PLUGIN_CONFIG_DIR__="
 
@@ -1853,6 +1881,28 @@ actor HerdenSSHTransport: Transport {
 
     private static func cLocaleCommand(_ command: String) -> String {
         "LC_ALL=C \(command)"
+    }
+
+    /// Selects the first live socket from an app-owned ordered list. Paths are
+    /// positional shell arguments, never interpolated into the script body.
+    static func socketSelectionCommand(candidates: [String]) throws -> String {
+        guard
+            let preferred = candidates.first,
+            let quotedPreferred = RemoteShellPath.quotedAbsolute(preferred)
+        else {
+            throw TransportError.channelFailed(
+                detail: "The remote socket path cannot be quoted safely.")
+        }
+        let legacy = candidates.dropFirst().first ?? preferred
+        guard let quotedLegacy = RemoteShellPath.quotedAbsolute(legacy) else {
+            throw TransportError.channelFailed(
+                detail: "The legacy remote socket path cannot be quoted safely.")
+        }
+        return cLocaleCommand(
+            "/bin/sh -c 'if test -S \"$1\"; then selected=$1; "
+                + "elif test -S \"$2\"; then selected=$2; else selected=$1; fi; "
+                + "printf \"\(socketSelectionOutputPrefix)%s\\n\" \"$selected\"' socket "
+                + "\(quotedPreferred) \(quotedLegacy)")
     }
 
     /// The exec command that wakes a stopped herden server (#6). A named

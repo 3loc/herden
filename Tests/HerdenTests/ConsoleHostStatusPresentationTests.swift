@@ -21,11 +21,11 @@ struct ConsoleHostStatusPresentationTests {
                     host: host,
                     status: .reconnecting(attempt: 1, delay: .seconds(1), failure: failure),
                     syncError: nil))
-            #expect(presentation.message == "Reconnecting to studio: \(summary)")
+            #expect(presentation.message == "Reconnecting to \(host.displayName): \(summary)")
             #expect(presentation.systemImage == "wifi.exclamationmark")
             #expect(presentation.severity == .warning)
             #expect(presentation.navigates)
-            #expect(presentation.hostName == "studio")
+            #expect(presentation.hostName == host.displayName)
         }
     }
 
@@ -37,7 +37,9 @@ struct ConsoleHostStatusPresentationTests {
                     attempt: 2, delay: .seconds(2),
                     failure: .jumpHostFailed(.timedOut)),
                 syncError: nil))
-        #expect(presentation.message == "Reconnecting to studio: The Jump Host did not answer in time")
+        #expect(
+            presentation.message
+                == "Reconnecting to \(host.displayName): The Jump Host did not answer in time")
         #expect(!presentation.message.contains("connection failed"))
         #expect(presentation.navigates)
         #expect(presentation.severity == .warning)
@@ -50,7 +52,7 @@ struct ConsoleHostStatusPresentationTests {
                 host: host,
                 status: .failed(failure),
                 syncError: nil))
-        #expect(presentation.message == "studio: \(failure.presentation.message)")
+        #expect(presentation.message == "\(host.displayName): \(failure.presentation.message)")
         #expect(presentation.systemImage == "exclamationmark.triangle.fill")
         #expect(presentation.severity == .warning)
         #expect(presentation.navigates)
@@ -91,7 +93,9 @@ struct ConsoleHostStatusPresentationTests {
                 host: host,
                 status: .connected,
                 syncError: "Could not sync this Host's Agents. Retrying…"))
-        #expect(presentation.message == "studio: Could not sync this Host's Agents. Retrying…")
+        #expect(
+            presentation.message
+                == "\(host.displayName): Could not sync this Host's Agents. Retrying…")
         #expect(presentation.systemImage == "arrow.trianglehead.2.clockwise")
         #expect(presentation.severity == .warning)
         #expect(presentation.navigates)
@@ -112,14 +116,14 @@ struct ConsoleHostStatusPresentationTests {
         let paused = try #require(
             ConsoleHostStatusPresentation(
                 host: host, status: .suspended, syncError: nil))
-        #expect(paused.message == "Connection to studio is paused.")
+        #expect(paused.message == "Connection to \(host.displayName) is paused.")
         #expect(paused.severity == .informational)
         #expect(!paused.navigates)
 
         let connecting = try #require(
             ConsoleHostStatusPresentation(
                 host: host, status: .connecting, syncError: nil))
-        #expect(connecting.message == "Connecting to studio…")
+        #expect(connecting.message == "Connecting to \(host.displayName)…")
         #expect(connecting.severity == .informational)
         #expect(!connecting.navigates)
 
@@ -129,7 +133,7 @@ struct ConsoleHostStatusPresentationTests {
                 status: .connected,
                 isAwaitingSnapshot: true,
                 syncError: nil))
-        #expect(loading.message == "Loading Agents from studio…")
+        #expect(loading.message == "Loading Agents from \(host.displayName)…")
         #expect(loading.severity == .informational)
         #expect(!loading.navigates)
     }
@@ -142,7 +146,7 @@ struct ConsoleHostStatusPresentationTests {
                 status: .connecting,
                 standingFailure: failure,
                 syncError: nil))
-        #expect(presentation.message == "studio: \(failure.presentation.message)")
+        #expect(presentation.message == "\(host.displayName): \(failure.presentation.message)")
         #expect(presentation.severity == .warning)
         #expect(presentation.navigates)
     }

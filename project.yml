@@ -56,6 +56,9 @@ targets:
         # this identifier for Ted's 3LOC Apple team.
         com.apple.security.application-groups:
           - group.com.3loc.herden
+          # One-way compatibility read for the development build that used
+          # the retired Founder Terminal bundle identity.
+          - group.com.fansvine.founderterminal
     settings:
       base:
         GENERATE_INFOPLIST_FILE: YES
@@ -105,6 +108,12 @@ targets:
       - Sources/Herden/Hosts/TransportConnector.swift
       - Sources/Herden/Notifications/NotificationRegistrationError.swift
       - Sources/Herden/Support/SharedAppStorage.swift
+      - Sources/Herden/Support/HerdenBrand.swift
+      - Sources/Herden/Resources/Fonts/Inter-Regular.ttf
+      - Sources/Herden/Resources/Fonts/InstrumentSerif-Regular.ttf
+      - path: Sources/Herden/Sharing
+        excludes:
+          - SharedTransfersView.swift
       - Sources/HerdenActivityCore/TerminalTitleGlyphs.swift
       - Sources/Herden/Terminal/TerminalTextSafety.swift
     entitlements:

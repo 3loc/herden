@@ -656,6 +656,10 @@ final class AgentComposerUITextView: UITextView {
     }
 
     private func installKeyboardObservers() {
+        keyboardType = .default
+        keyboardAppearance = .default
+        returnKeyType = .default
+        enablesReturnKeyAutomatically = false
         autocapitalizationType = .none
         autocorrectionType = .no
         spellCheckingType = .no

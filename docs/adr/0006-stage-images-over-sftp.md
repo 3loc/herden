@@ -1,5 +1,12 @@
 # Stage attachments over SFTP and insert their paths without submitting
 
+Direct Input now exposes Files and Photos through a paperclip beside Paste.
+It reuses the staging module below, but supplies a per-operation insertion
+callback to the live terminal paste path. The callback checks that the Agent
+screen and terminal generation are still current. If either changed during
+upload, completion retains Copy Path and does not claim insertion. It never
+presses Return. Composer mode keeps its local draft insertion behaviour.
+
 The Composer's Add menu accepts one image from Photos or one document from Files. Images are decoded, bounded, stripped of metadata, and re-encoded into protected app-owned temporary storage. Files are copied into protected app-owned temporary storage while the document provider's security scope is active, capped at 64 MiB, and given a private random local name. The original safe extension is retained so the Agent can identify the staged file type.
 
 `Transport.stageImage(_:)` and `Transport.stageFile(_:)` share the same SFTP implementation: private Host temporary directories, restrictive permissions, partial-file compensation, atomic completion, and the shared SSH session-channel budget. The resulting absolute Host path is copied to the local-only expiring clipboard and appended to the local Composer draft with a trailing space. It never submits the draft.

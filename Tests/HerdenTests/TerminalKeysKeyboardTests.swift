@@ -7,14 +7,14 @@ import UIKit
 @MainActor
 @Suite("Keys keyboard")
 struct TerminalKeysKeyboardTests {
-    @Test func agentInputsDefaultToLowercaseWithoutCorrectionsOrPredictions() {
+    @Test func spacesAndAgentsUseTheSameStandardIOSKeyboardProfile() {
         let composer = AgentComposerUITextView()
         let terminal = TerminalScreenView.makeConfiguredTerminal(
             notificationCenter: NotificationCenter())
-        terminal.setTextInputStyle(.agent)
 
         let inputs: [any UITextInputTraits] = [composer, terminal]
         for input in inputs {
+            #expect(input.keyboardType == .default)
             #expect(input.autocapitalizationType == UITextAutocapitalizationType.none)
             #expect(input.autocorrectionType == .no)
             #expect(input.spellCheckingType == .no)

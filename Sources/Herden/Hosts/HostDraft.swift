@@ -49,8 +49,10 @@ struct HostDraft: Equatable, Sendable {
     }
 
     var isValid: Bool {
+        let trimmedName = name.trimmingCharacters(in: .whitespaces)
         let trimmedSessionName = sessionName.trimmingCharacters(in: .whitespaces)
-        return !address.trimmingCharacters(in: .whitespaces).isEmpty
+        return !trimmedName.isEmpty
+            && !address.trimmingCharacters(in: .whitespaces).isEmpty
             && !username.trimmingCharacters(in: .whitespaces).isEmpty
             && portNumber != nil
             && (trimmedSessionName.isEmpty || HerdrSessionName.isValid(trimmedSessionName))

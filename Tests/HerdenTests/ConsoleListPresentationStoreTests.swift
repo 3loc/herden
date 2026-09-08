@@ -112,7 +112,9 @@ struct ConsoleListPresentationStoreTests {
             hostsAwaitingSnapshot: [host.id])
         #expect(loading[0].agents.map(\.id) == [working.id])
         #expect(loading[0].isAwaitingSnapshot)
-        #expect(loading[0].statusPresentation?.message == "Loading Agents from studio…")
+        #expect(
+            loading[0].statusPresentation?.message
+                == "Loading Agents from \(host.displayName)…")
 
         let refreshed = store.sections(
             hosts: [host],

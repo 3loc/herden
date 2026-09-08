@@ -103,6 +103,9 @@ final class StartAgentStore {
                 worktreeBranch = ""
                 worktreeBase = ""
             }
+            if let selectedHostID {
+                recents.rememberHost(selectedHostID)
+            }
         }
     }
 
@@ -144,7 +147,12 @@ final class StartAgentStore {
     /// `claude-2`, …), mirroring how the herden TUI labels unnamed agents.
     var name: String = ""
     /// The canonical kind selected from the Host availability probe.
-    var selectedAgentKind: SupportedAgentKind?
+    var selectedAgentKind: SupportedAgentKind? {
+        didSet {
+            guard let selectedHostID, let selectedAgentKind else { return }
+            recents.rememberAgentKind(selectedAgentKind, for: selectedHostID)
+        }
+    }
     /// Optional native arguments, parsed into argv without invoking a shell.
     /// The editor disables smart punctuation at the UIKit input-trait layer;
     /// parsing still normalizes any smart characters supplied by paste or a
@@ -223,8 +231,11 @@ final class StartAgentStore {
         self.start = start
         self.awaitAgentVisible = awaitAgentVisible
         self.recents = recents
-        // Pre-select when there is no choice to make.
-        self.selectedHostID = origin?.hostID ?? (hosts.count == 1 ? hosts.first?.id : nil)
+        let rememberedHostID = recents.hostID.flatMap { remembered in
+            hosts.contains(where: { $0.id == remembered }) ? remembered : nil
+        }
+        self.selectedHostID =
+            origin?.hostID ?? rememberedHostID ?? (hosts.count == 1 ? hosts.first?.id : nil)
     }
 
     /// Whether the fresh-worktree variant is offered. An origin launch is
@@ -323,7 +334,9 @@ final class StartAgentStore {
             let kinds = try await discoverAgentKinds(hostID)
             guard selectedHostID == hostID else { return }
             availableAgentKinds = kinds
-            selectedAgentKind = kinds.first
+            selectedAgentKind = recents.agentKind(for: hostID).flatMap { remembered in
+                kinds.contains(remembered) ? remembered : nil
+            } ?? kinds.first
             agentDiscoveryState = .loaded
         } catch is CancellationError {
             guard selectedHostID == hostID else { return }

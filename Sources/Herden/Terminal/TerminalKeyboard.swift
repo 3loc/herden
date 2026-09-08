@@ -404,7 +404,6 @@ extension HerdenTerminalView {
     /// There is nothing to balance: the center drops an observer that
     /// deallocates.
     func installKeyboardSwitcher(notificationCenter: NotificationCenter = .default) {
-        installInputAssistantStyle()
         notificationCenter.addObserver(
             self, selector: #selector(textKeyboardFrameDidChange(_:)),
             name: UIResponder.keyboardDidChangeFrameNotification, object: nil)

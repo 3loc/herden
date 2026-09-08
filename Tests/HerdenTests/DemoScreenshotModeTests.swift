@@ -20,7 +20,7 @@
             let profiles = DemoScreenshotFixture.profiles
             let agents = hosts.flatMap { profiles[$0.id]?.snapshot.agents ?? [] }
 
-            #expect(hosts.map(\.displayName) == ["Studio Mac", "Build Server"])
+            #expect(hosts.map(\.displayName) == ["developer@Studio Mac", "builder@Build Server"])
             #expect(
                 hosts.map(\.id) == [
                     DemoScreenshotFixture.studioHostID,
@@ -46,7 +46,7 @@
 
             #expect(composition.console.agents.count == 5)
             #expect(composition.console.agents.first?.agent.status == .blocked)
-            #expect(composition.console.agents.first?.hostName == "Build Server")
+            #expect(composition.console.agents.first?.hostName == "builder@Build Server")
             #expect(composition.console.hostStatuses.values.allSatisfy { $0 == .connected })
 
             composition.console.setHosts([])

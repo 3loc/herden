@@ -6,6 +6,32 @@ import Testing
 @MainActor
 @Suite("Composer staging store")
 struct ComposerStagingStoreTests {
+    @Test func directAttachmentPastesPathWithoutEditingComposer() async throws {
+        let fixture = try await makeFixture(.file)
+        defer { fixture.cleanup() }
+        var pasted: [String] = []
+        fixture.store.begin(.file(URL(fileURLWithPath: "/provider/report.txt")), insertPath: { text in
+            pasted.append(text)
+            return true
+        })
+        try await waitUntil("attachment should complete") { fixture.store.state.isCompleted }
+        #expect(pasted == ["\(remotePath(for: .file)) "])
+        #expect(!pasted.joined().contains("\n"))
+        #expect(!pasted.joined().contains("\r"))
+        #expect(fixture.composer.draft.isEmpty)
+    }
+
+    @Test func lostTerminalLeavesUploadedPathAvailableWithoutClaimingInsertion() async throws {
+        let fixture = try await makeFixture(.file)
+        defer { fixture.cleanup() }
+        fixture.store.begin(.file(URL(fileURLWithPath: "/provider/report.txt")), insertPath: { _ in false })
+        try await waitUntil("attachment should complete") { fixture.store.state.isCompleted }
+        guard case .completed(let result) = fixture.store.state else { return }
+        #expect(!result.inserted)
+        #expect(fixture.composer.draft.isEmpty)
+        #expect(fixture.store.presentation?.commands == [.copyPath, .dismiss])
+    }
+
     @Test(arguments: StagingTestMedium.allCases)
     func successfulUploadCopiesThenInsertsIntoComposer(_ medium: StagingTestMedium) async throws {
         let fixture = try await makeFixture(medium)

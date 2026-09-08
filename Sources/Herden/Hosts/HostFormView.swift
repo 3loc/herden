@@ -29,8 +29,11 @@ struct HostFormView: View {
     var body: some View {
         NavigationStack {
             Form {
-                Section("Host") {
-                    TextField("Name (optional)", text: $draft.name)
+                Section {
+                    TextField("Hostname", text: $draft.name)
+                        .textContentType(.URL)
+                        .autocorrectionDisabled()
+                        .textInputAutocapitalization(.never)
                     TextField("Address", text: $draft.address)
                         .textContentType(.URL)
                         .autocorrectionDisabled()
@@ -41,6 +44,10 @@ struct HostFormView: View {
                         .textContentType(.username)
                         .autocorrectionDisabled()
                         .textInputAutocapitalization(.never)
+                } header: {
+                    Text("Host")
+                } footer: {
+                    Text("Hostname is required and appears as user@hostname. Address is used only to connect.")
                 }
 
                 Section {

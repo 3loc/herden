@@ -92,7 +92,13 @@ final class NewSpaceStore {
 }
 
 struct NewSpaceView: View {
+    private enum Field: Hashable {
+        case directory
+        case label
+    }
+
     @State private var store: NewSpaceStore
+    @FocusState private var focusedField: Field?
     private let onCreated: (Host.ID, CreatedSpace) -> Void
     @Environment(\.dismiss) private var dismiss
 
@@ -142,6 +148,7 @@ struct NewSpaceView: View {
                         .font(.callout.monospaced())
                         .autocorrectionDisabled()
                         .textInputAutocapitalization(.never)
+                        .focused($focusedField, equals: .directory)
                 } header: {
                     Text("Directory")
                 } footer: {
@@ -156,6 +163,7 @@ struct NewSpaceView: View {
                     TextField("Optional", text: $store.label)
                         .autocorrectionDisabled()
                         .textInputAutocapitalization(.never)
+                        .focused($focusedField, equals: .label)
                 } header: {
                     Text("Space Name")
                 } footer: {
@@ -192,6 +200,14 @@ struct NewSpaceView: View {
                 }
             }
             .interactiveDismissDisabled(!store.canDismiss)
+            .task {
+                // Wait until the sheet's NavigationStack is in its window;
+                // assigning focus during construction is too early for UIKit
+                // to present the software keyboard.
+                await Task.yield()
+                guard store.state == .editing else { return }
+                focusedField = .directory
+            }
         }
     }
 }

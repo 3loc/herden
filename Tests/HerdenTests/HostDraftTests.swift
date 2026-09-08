@@ -30,6 +30,7 @@ struct HostDraftTests {
 
     @Test func blankJumpAddressMeansDirectConnection() throws {
         var draft = HostDraft()
+        draft.name = "box"
         draft.address = "box.example"
         draft.username = "dev"
 
@@ -43,6 +44,7 @@ struct HostDraftTests {
     // value must not block saving a Host that connects directly.
     @Test func jumpPortOnlyHasToParseWhenAJumpHostIsSet() throws {
         var draft = HostDraft()
+        draft.name = "box"
         draft.address = "box.example"
         draft.username = "dev"
         draft.jumpPort = "not-a-port"
@@ -57,6 +59,7 @@ struct HostDraftTests {
 
     @Test func blankJumpUsernameFallsBackToTheHostAccount() throws {
         var draft = HostDraft()
+        draft.name = "box"
         draft.address = "127.0.0.1"
         draft.username = "dev"
         draft.jumpAddress = "jump.example"
@@ -83,8 +86,9 @@ struct HostDraftTests {
         #expect(host.port == 22)
     }
 
-    @Test func rejectsBlankAddressOrUsername() {
+    @Test func rejectsBlankHostnameAddressOrUsername() {
         var draft = HostDraft()
+        draft.name = "box"
         draft.address = ""
         draft.username = "dev"
         #expect(!draft.isValid)
@@ -93,11 +97,16 @@ struct HostDraftTests {
         draft.address = "box.example"
         draft.username = "   "
         #expect(!draft.isValid)
+
+        draft.username = "dev"
+        draft.name = "   "
+        #expect(!draft.isValid)
     }
 
     @Test(arguments: ["", "0", "65536", "abc", "-1"])
     func rejectsInvalidPorts(port: String) {
         var draft = HostDraft()
+        draft.name = "box"
         draft.address = "box.example"
         draft.username = "dev"
         draft.port = port
@@ -111,6 +120,7 @@ struct HostDraftTests {
 
         for sessionName in invalidNames {
             var draft = HostDraft()
+            draft.name = "host"
             draft.address = "host.example"
             draft.username = "dev"
             draft.sessionName = sessionName
@@ -121,6 +131,7 @@ struct HostDraftTests {
 
     @Test func acceptsHerdrSessionNameCharacterSetAndLengthLimit() {
         var draft = HostDraft()
+        draft.name = "host"
         draft.address = "host.example"
         draft.username = "dev"
         draft.sessionName = String(repeating: "a", count: 60) + "._-9"
@@ -146,6 +157,7 @@ struct HostDraftTests {
 
     @Test func newPasswordHostRequiresAPassword() {
         var draft = HostDraft()
+        draft.name = "host"
         draft.address = "host.example"
         draft.username = "dev"
         draft.authMethod = .password
@@ -157,8 +169,8 @@ struct HostDraftTests {
     }
 
     @Test func blankPasswordOnlyKeepsAnExistingPasswordCredential() {
-        let passwordHost = Host.fixture(authMethod: .password)
-        let keyHost = Host.fixture(authMethod: .deviceKey)
+        let passwordHost = Host.fixture(name: "host", authMethod: .password)
+        let keyHost = Host.fixture(name: "host", authMethod: .deviceKey)
         var draft = HostDraft(host: passwordHost)
 
         #expect(draft.canSave(editing: passwordHost))

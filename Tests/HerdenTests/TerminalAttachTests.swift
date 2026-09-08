@@ -15,6 +15,58 @@ import UIKit
 @Suite("Terminal attach")
 struct TerminalAttachTests {
     @MainActor
+    @Test func copySheetCopiesOnlyTheSelectedText() {
+        var copied: [String] = []
+        let selection = TerminalTextSelectionViewController(
+            text: "hello 世界", anchorRange: NSRange(location: 6, length: 2),
+            writeClipboard: { copied.append($0) })
+        selection.loadViewIfNeeded()
+        #expect(selection.navigationItem.leftBarButtonItem?.title == "Copy")
+        selection.copySelection()
+        #expect(copied == ["世界"])
+    }
+
+    @MainActor
+    @Test func copySheetDefaultsToAllTextAndDisablesCopyForEmptySelection() {
+        var copied: [String] = []
+        let selection = TerminalTextSelectionViewController(
+            text: "first\nsecond", anchorRange: nil,
+            writeClipboard: { copied.append($0) })
+        selection.loadViewIfNeeded()
+        selection.copySelection()
+        #expect(copied == ["first\nsecond"])
+
+        let empty = TerminalTextSelectionViewController(
+            text: "", anchorRange: nil, writeClipboard: { copied.append($0) })
+        empty.loadViewIfNeeded()
+        #expect(empty.navigationItem.leftBarButtonItem?.isEnabled == false)
+        empty.copySelection()
+        #expect(copied.count == 1)
+    }
+
+    @MainActor
+    @Test func toolbarPastePreservesTextAndUsesBracketedPasteReview() async {
+        var pastes: [String] = []
+        var brackets: [Bool] = []
+        var rawInput: [Data] = []
+        let terminal = TerminalScreenView.makeConfiguredTerminal(
+            onSend: { rawInput.append($0) },
+            onPaste: { text, bracketed in
+                pastes.append(text)
+                brackets.append(bracketed)
+            })
+        let control = TerminalKeyboardControl()
+        control.terminal = terminal
+        terminal.receive(Data("\u{1B}[?2004h".utf8))
+        let text = "你好 🙂\nsecond line"
+        control.paste(text)
+        await Task.yield()
+        #expect(pastes == [text])
+        #expect(brackets == [true])
+        #expect(rawInput.isEmpty)
+    }
+
+    @MainActor
     @Test func insertingInTheMiddleLeavesTheCursorAfterTheInsertion() async throws {
         let terminal = TerminalScreenView.makeConfiguredTerminal()
         terminal.sendReliableExternalInput(Data("blue file".utf8))
@@ -913,6 +965,19 @@ struct TerminalAttachTests {
                 "paste:keyboard suggestion",
                 "textDidChange",
             ])
+    }
+
+    @MainActor
+    @Test func visiblePasteButtonSynchronizesTheTextInputContext() {
+        var events: [String] = []
+        let terminal = TerminalScreenView.makeConfiguredTerminal(
+            onPaste: { text, _ in events.append("paste:\(text)") })
+        let inputDelegate = TextInputDelegateRecorder(events: { events.append($0) })
+        terminal.inputDelegate = inputDelegate
+        let control = TerminalKeyboardControl()
+        control.terminal = terminal
+        control.paste("你好")
+        #expect(events == ["textWillChange", "paste:你好", "textDidChange"])
     }
 
     @MainActor

@@ -104,6 +104,10 @@ final class TerminalKeyboardControl {
         terminal?.requestPaste(text)
     }
 
+    func selectText() {
+        terminal?.selectViewportText()
+    }
+
     private func syncFirstResponder() {
         let next = terminal?.isFirstResponder ?? false
         guard isFirstResponder != next else { return }
@@ -113,9 +117,24 @@ final class TerminalKeyboardControl {
 
 /// The interactive Ghostty surface. PTY bytes flow into an in-memory Ghostty
 /// session, while its write and resize callbacks flow back to Attach.
-enum TerminalTextInputStyle: Equatable {
-    case terminal
-    case agent
+/// A user-initiated system paste control: clipboard access belongs to iOS,
+/// and delivery still goes through the terminal's reviewed paste path.
+struct TerminalPasteButton: View {
+    let paste: (String) -> Void
+
+    var body: some View {
+        PasteButton(payloadType: String.self) { strings in
+            guard let text = strings.first, !text.isEmpty else { return }
+            paste(text)
+        }
+        .labelStyle(.iconOnly)
+        .controlSize(.small)
+        .tint(Brand.vine)
+        .frame(minWidth: 44, minHeight: 44)
+        .accessibilityLabel("Paste")
+        .accessibilityHint("Pastes clipboard text into this terminal")
+        .accessibilityIdentifier("terminal-paste")
+    }
 }
 
 enum TerminalKeyboardHandoffOutcome: Equatable {
@@ -158,7 +177,6 @@ struct TerminalScreenView: UIViewRepresentable {
     /// drive remote scroll without holding the UIKit view itself.
     var scrollControl: TerminalScrollControl?
     var isLocalInputEnabled = true
-    var textInputStyle = TerminalTextInputStyle.terminal
     var theme: TerminalTheme = .default
     var fontSize: Float = TerminalZoomSettings.defaultFontSize
     var fontFamily: String?
@@ -189,7 +207,6 @@ struct TerminalScreenView: UIViewRepresentable {
             if let keyboardControl, keyboardControl.terminal !== view { return }
             onKeyboardHandoffEnded?(id, outcome)
         }
-        view.setTextInputStyle(textInputStyle)
         view.setLocalInputEnabled(isLocalInputEnabled)
         // The feed holds the surface weakly so a replaced UIKit view cannot be
         // kept alive by an obsolete terminal pipeline.
@@ -249,7 +266,6 @@ struct TerminalScreenView: UIViewRepresentable {
         let claimsKeyboardOnEnable = !view.isLocalInputEnabled
             && isLocalInputEnabled
             && (claimsKeyboard?() ?? false)
-        view.setTextInputStyle(textInputStyle)
         view.setLocalInputEnabled(isLocalInputEnabled)
         if claimsKeyboardOnEnable, let keyboardHandoffID {
             DispatchQueue.main.async { [weak view, weak keyboardControl] in
@@ -618,9 +634,6 @@ final class HerdenTerminalView: UITerminalView, TerminalByteSink {
     private var responderGate = TerminalKeyboardResponderGate()
     private var viewportSnapshotTask: Task<Void, Never>?
     private(set) var isLocalInputEnabled = true
-    private var textInputStyle = TerminalTextInputStyle.terminal
-    private var defaultLeadingAssistantGroups: [UIBarButtonItemGroup]?
-    private var defaultTrailingAssistantGroups: [UIBarButtonItemGroup]?
     // Ghostty keeps only marked text in its UITextInput document. UIKit needs
     // committed text to remain in that document so Backspace can observe a
     // shrinking selection and continue its native key repeat.
@@ -689,6 +702,14 @@ final class HerdenTerminalView: UITerminalView, TerminalByteSink {
     @available(iOS 17.0, *)
     override var inlinePredictionType: UITextInlinePredictionType {
         get { .no }
+        set {}
+    }
+
+    /// Keep the terminal on the same ordinary iOS keyboard family as the
+    /// Agent composer. Ghostty's base view must not choose a terminal-specific
+    /// ASCII layout: Spaces and Agents are both places where people write.
+    override var keyboardType: UIKeyboardType {
+        get { .default }
         set {}
     }
 
@@ -1061,6 +1082,13 @@ final class HerdenTerminalView: UITerminalView, TerminalByteSink {
         callbackBridge.viewportTextDidChange(text)
     }
 
+    func selectViewportText() {
+        guard let text = terminalSession.readViewportText(),
+              !text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+        else { return }
+        TerminalTextSelectionPresenter.present(text: text, from: self)
+    }
+
     private func scheduleViewportSnapshot() {
         viewportSnapshotTask?.cancel()
         viewportSnapshotTask = Task { @MainActor [weak self] in
@@ -1150,34 +1178,15 @@ final class HerdenTerminalView: UITerminalView, TerminalByteSink {
         }
     }
 
-    func setTextInputStyle(_ style: TerminalTextInputStyle) {
-        guard textInputStyle != style else { return }
-        textInputStyle = style
-        applyInputAssistantStyle()
-    }
-
-    func installInputAssistantStyle() {
-        defaultLeadingAssistantGroups = inputAssistantItem.leadingBarButtonGroups
-        defaultTrailingAssistantGroups = inputAssistantItem.trailingBarButtonGroups
-        applyInputAssistantStyle()
-    }
-
-    private func applyInputAssistantStyle() {
-        switch textInputStyle {
-        case .terminal:
-            inputAssistantItem.leadingBarButtonGroups = []
-            inputAssistantItem.trailingBarButtonGroups = []
-        case .agent:
-            inputAssistantItem.leadingBarButtonGroups = defaultLeadingAssistantGroups ?? []
-            inputAssistantItem.trailingBarButtonGroups = defaultTrailingAssistantGroups ?? []
-        }
-    }
-
     func requestPaste(_ text: String?) {
         guard isLocalInputEnabled, let text else { return }
         reliableInputDidBegin()
+        // Both the visible Paste button and UIKit's standard paste action
+        // must refresh the IME context before the user continues typing.
+        inputDelegate?.textWillChange(self)
         recordCommittedText(text)
         callbackBridge.paste(text, bracketed: usesBracketedPaste)
+        inputDelegate?.textDidChange(self)
     }
 
     func sendExternalInput(_ data: Data) {
@@ -1298,14 +1307,7 @@ final class HerdenTerminalView: UITerminalView, TerminalByteSink {
 
     override func paste(_ sender: Any?) {
         guard isLocalInputEnabled, let text = clipboard.string() else { return }
-
-        // The keyboard's clipboard suggestion invokes this standard action
-        // directly, bypassing Ghostty's text-input handler. Tell UIKit about
-        // the external document change or the IME keeps its pre-paste context
-        // and subsequent phonetic input can remain Latin marked text.
-        inputDelegate?.textWillChange(self)
         requestPaste(text)
-        inputDelegate?.textDidChange(self)
     }
 
     override func paste(itemProviders: [NSItemProvider]) {

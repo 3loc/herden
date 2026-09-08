@@ -10,6 +10,19 @@ Entries reference the issue that motivated them.
 
 ### Added
 
+- Add a paperclip beside the compact Paste control for files and photos. Agent
+  terminals receive uploaded paths without Return; the Share picker now uses
+  Herden's dark theme and prioritises Agent names and Space labels.
+
+- Show shared-file progress and the destination Agent in Herden, retain interrupted
+  transfers for retry, and leave the uploaded path in the Agent prompt without
+  pressing Return. Uncertain path delivery requires checking the Agent before
+  pasting again.
+
+- Add a visible Paste button to Agent terminals and keyboard-hidden shell
+  terminals, plus Select and Copy Text for copying visible terminal output.
+  Pasting uses the existing review and bracketed-paste safeguards.
+
 - Add the Herden Host runtime, derived from pristine upstream herdr 0.8.2, to
   the same project as the iOS app.
 - Add built-in `herden pair`, which creates a short-lived restricted Bootstrap
@@ -23,6 +36,13 @@ Entries reference the issue that motivated them.
 
 ### Changed
 
+- Restore Host catalogs and device keys from the retired Founder Terminal app
+  identity, attach to still-running sessions at their legacy
+  `~/.config/herdr` sockets, and standardize Host labels as `user@hostname`
+  while keeping network addresses as secondary connection details. New Space
+  forms and Space terminals now raise the keyboard immediately and use the same
+  standard iOS keyboard profile as Agents, while New Agent remembers the last
+  Host, Workspace, and Agent kind per Host.
 - Simplify Spaces and Agents to one list with Add and Settings menus; remove
   presentation switching and directory-path clutter from Agent rows.
 - Support horizontal navigation across terminal output and the picker, with

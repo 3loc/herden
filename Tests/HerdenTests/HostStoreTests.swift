@@ -38,13 +38,77 @@ struct HostTests {
         #expect(fields["socatPath"] == nil)
     }
 
-    @Test func displayNameFallsBackToUserAtAddress() {
+    @Test func displayNameIsAlwaysUserAtHostname() {
         var host = Host.fixture(name: "", address: "box.example", username: "dev")
         #expect(host.displayName == "dev@box.example")
         host.name = "Workbox"
-        #expect(host.displayName == "Workbox")
-        #expect(host.pickerIdentity == "Workbox — box.example")
-        #expect(host.connectionIdentity == "dev@box.example:22")
+        #expect(host.hostname == "Workbox")
+        #expect(host.displayName == "dev@Workbox")
+        #expect(host.pickerIdentity == "dev@Workbox")
+        #expect(host.connectionIdentity == "box.example")
+        host.port = 2222
+        #expect(host.connectionIdentity == "box.example:2222")
+    }
+}
+
+@Suite("Shared app storage migration")
+struct SharedAppStorageTests {
+    private func makeDefaults(_ prefix: String) throws -> (UserDefaults, cleanup: () -> Void) {
+        let suiteName = "\(prefix)-\(UUID().uuidString)"
+        let defaults = try #require(UserDefaults(suiteName: suiteName))
+        return (defaults, { defaults.removePersistentDomain(forName: suiteName) })
+    }
+
+    @Test func copiesLegacyCatalogFingerprintsAndSecrets() throws {
+        let (legacy, cleanupLegacy) = try makeDefaults("hm-legacy")
+        let (destination, cleanupDestination) = try makeDefaults("hm-current")
+        defer {
+            cleanupLegacy()
+            cleanupDestination()
+        }
+        let catalog = Data("catalog".utf8)
+        let fingerprints = ["host": "fingerprint"]
+        legacy.set(catalog, forKey: "hosts")
+        legacy.set(fingerprints, forKey: "knownHostFingerprints")
+        let legacySecrets = InMemorySecretStore()
+        let destinationSecrets = InMemorySecretStore()
+        try legacySecrets.write(Data("private-key".utf8), account: "device-ed25519-private-key")
+
+        SharedAppStorage.migrateState(
+            from: [legacy], sourceSecrets: [legacySecrets], to: destination,
+            destinationSecrets: destinationSecrets)
+
+        #expect(destination.data(forKey: "hosts") == catalog)
+        #expect(
+            destination.dictionary(forKey: "knownHostFingerprints") as? [String: String]
+                == fingerprints)
+        #expect(
+            try destinationSecrets.read(account: "device-ed25519-private-key")
+                == Data("private-key".utf8))
+    }
+
+    @Test func neverOverwritesCurrentState() throws {
+        let (legacy, cleanupLegacy) = try makeDefaults("hm-legacy")
+        let (destination, cleanupDestination) = try makeDefaults("hm-current")
+        defer {
+            cleanupLegacy()
+            cleanupDestination()
+        }
+        legacy.set(Data("old".utf8), forKey: "hosts")
+        destination.set(Data("new".utf8), forKey: "hosts")
+        let legacySecrets = InMemorySecretStore()
+        let destinationSecrets = InMemorySecretStore()
+        try legacySecrets.write(Data("old-key".utf8), account: "device-ed25519-private-key")
+        try destinationSecrets.write(Data("new-key".utf8), account: "device-ed25519-private-key")
+
+        SharedAppStorage.migrateState(
+            from: [legacy], sourceSecrets: [legacySecrets], to: destination,
+            destinationSecrets: destinationSecrets)
+
+        #expect(destination.data(forKey: "hosts") == Data("new".utf8))
+        #expect(
+            try destinationSecrets.read(account: "device-ed25519-private-key")
+                == Data("new-key".utf8))
     }
 }
 
@@ -152,7 +216,7 @@ struct HostStoreTests {
         #expect(store.hosts == [host])
         #expect(try store.password(for: host) == "hunter2")
         let request = try #require(removal.pendingRequest)
-        #expect(request.title == "Remove Workbox?")
+        #expect(request.title == "Remove dev@Workbox?")
         #expect(request.message.contains("Keychain"))
         #expect(request.message.contains("cannot be undone"))
 

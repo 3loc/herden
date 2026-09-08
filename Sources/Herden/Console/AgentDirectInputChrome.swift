@@ -50,6 +50,29 @@ struct AgentDirectInputChrome: View {
                     status: presentation.status,
                     hostTelemetry: presentation.hostTelemetry,
                     chromeColorScheme: presentation.chromeColorScheme)
+                TerminalPasteButton { text in
+                    finishDictation()
+                    interactions.keyboardControl?.paste(text)
+                }
+                .disabled(interactions.keyboardControl?.terminal == nil)
+                Menu {
+                    Button("Add File", systemImage: "doc") {
+                        finishDictation()
+                        interactions.actions.addFile()
+                    }
+                    Button("Add Photo", systemImage: "photo") {
+                        finishDictation()
+                        interactions.actions.addImage()
+                    }
+                } label: {
+                    Image(systemName: "paperclip")
+                        .font(.system(size: 16, weight: .medium))
+                        .frame(width: 44, height: 44)
+                }
+                .disabled(!interactions.actions.canBegin || interactions.keyboardControl?.terminal == nil)
+                .accessibilityLabel("Add attachment")
+                .accessibilityHint("Uploads a file or photo and pastes its path without Return")
+                .accessibilityIdentifier("terminal-attachments")
                 moreMenu
                     .frame(width: 38, height: 30)
                     .padding(.trailing, 8)
@@ -90,112 +113,19 @@ struct AgentDirectInputChrome: View {
     }
 
     private var terminalControlDeck: some View {
-        VStack(spacing: 6) {
-            HStack(spacing: 6) {
-                key("Esc", bytes: [0x1B], tone: .modifier)
-                key("Ctrl-B", bytes: [0x02], tone: .modifier)
-                quickKey("Ctrl-C", key: .controlC, tone: .modifier)
-                key("⌫", accessibilityLabel: "Backspace", bytes: [0x7F], tone: .modifier)
-            }
-            HStack(spacing: 6) {
-                key("h", text: "h")
-                key("j", text: "j")
-                key("k", text: "k")
-                key("l", text: "l")
-                key("/", text: "/")
-                key("$", text: "$")
-            }
-            HStack(spacing: 6) {
-                key("i", text: "i")
-                key("a", text: "a")
-                key("v", text: "v")
-                deckButton(
-                    systemImage: presentation.isKeyboardUp
-                        ? "keyboard.chevron.compact.down" : "keyboard",
-                    accessibilityLabel: presentation.isKeyboardUp
-                        ? "Hide keyboard" : "Show keyboard",
-                    tone: .modifier,
-                    action: toggleKeyboard)
-                deckButton(
-                    systemImage: dictationInput.isActive ? "stop.fill" : "mic.fill",
-                    accessibilityLabel: dictationInput.isActive ? "Stop dictation" : "Dictate",
-                    tone: dictationInput.isActive ? .recording : .modifier,
-                    action: toggleDictation)
-                key("↵", accessibilityLabel: "Return", bytes: [0x0D], tone: .accent)
-            }
-        }
-        .padding(.horizontal, 8)
-        .padding(.top, 7)
-        .padding(.bottom, 9)
-        .background(Brand.elevated)
-        .accessibilityIdentifier("terminal-control-deck")
-    }
-
-    private func key(
-        _ label: String,
-        accessibilityLabel: String? = nil,
-        text: String,
-        tone: TerminalDeckKeyTone = .standard
-    ) -> some View {
-        deckButton(
-            label: label,
-            accessibilityLabel: accessibilityLabel ?? label,
-            tone: tone
-        ) { send(Data(text.utf8)) }
-    }
-
-    private func quickKey(
-        _ label: String,
-        key: AgentQuickKey,
-        tone: TerminalDeckKeyTone
-    ) -> some View {
-        deckButton(
-            label: label,
-            accessibilityLabel: key.accessibilityLabel,
-            tone: tone
-        ) {
-            finishDictation()
-            UIDevice.current.playInputClick()
-            interactions.sendQuickKey(key)
-        }
-    }
-
-    private func key(
-        _ label: String,
-        accessibilityLabel: String? = nil,
-        bytes: [UInt8],
-        tone: TerminalDeckKeyTone = .standard
-    ) -> some View {
-        deckButton(
-            label: label,
-            accessibilityLabel: accessibilityLabel ?? label,
-            tone: tone
-        ) { send(Data(bytes)) }
-    }
-
-    private func deckButton(
-        label: String? = nil,
-        systemImage: String? = nil,
-        accessibilityLabel: String,
-        tone: TerminalDeckKeyTone,
-        action: @escaping () -> Void
-    ) -> some View {
-        Button(action: action) {
-            Group {
-                if let label { Text(label) }
-                else if let systemImage { Image(systemName: systemImage) }
-            }
-            .font(Brand.mono(.caption, weight: .semibold))
-            .frame(maxWidth: .infinity, minHeight: 44)
-        }
-        .buttonStyle(TerminalDeckKeyButtonStyle(tone: tone))
-        .accessibilityLabel(accessibilityLabel)
-    }
-
-    private func send(_ data: Data) {
-        finishDictation()
-        UIDevice.current.playInputClick()
-        interactions.sendInput(data)
+        TerminalDirectInputDeck(
+            isKeyboardUp: presentation.isKeyboardUp,
+            isDictating: dictationInput.isActive,
+            toggleKeyboard: toggleKeyboard,
+            toggleDictation: toggleDictation,
+            sendQuickKey: { key in
+                finishDictation()
+                interactions.sendQuickKey(key)
+            },
+            sendInput: { data in
+                finishDictation()
+                interactions.sendInput(data)
+            })
     }
 
     private func showConsole() {
@@ -248,6 +178,12 @@ struct AgentDirectInputChrome: View {
 
     private var moreMenu: some View {
         Menu {
+            Button("Select and Copy Text", systemImage: "doc.on.doc") {
+                finishDictation()
+                interactions.keyboardControl?.selectText()
+            }
+            .disabled(interactions.keyboardControl?.terminal == nil)
+            Divider()
             if !speech.supportedLocales.isEmpty {
                 Picker("Dictation Language", selection: dictationLocaleBinding) {
                     ForEach(speech.supportedLocales, id: \.identifier) { locale in
@@ -276,6 +212,129 @@ struct AgentDirectInputChrome: View {
         Binding(
             get: { speech.selectedLocale.identifier },
             set: { speech.selectLocale(identifier: $0) })
+    }
+}
+
+/// The one direct-input deck used by both Agent and ordinary Space terminals.
+/// Keeping the actual controls shared prevents the two terminal surfaces from
+/// silently drifting into different keyboards again.
+struct TerminalDirectInputDeck: View {
+    let isKeyboardUp: Bool
+    let isDictating: Bool
+    let toggleKeyboard: () -> Void
+    let toggleDictation: () -> Void
+    let sendQuickKey: (AgentQuickKey) -> Void
+    let sendInput: (Data) -> Void
+
+    static let keyAccessibilityLabels = [
+        "Esc", "Ctrl-B", "Control C", "Backspace",
+        "h", "j", "k", "l", "/", "$",
+        "i", "a", "v", "Keyboard", "Dictate", "Return",
+    ]
+
+    var body: some View {
+        VStack(spacing: 6) {
+            HStack(spacing: 6) {
+                key("Esc", bytes: [0x1B], tone: .modifier)
+                key("Ctrl-B", bytes: [0x02], tone: .modifier)
+                quickKey("Ctrl-C", key: .controlC, tone: .modifier)
+                key("⌫", accessibilityLabel: "Backspace", bytes: [0x7F], tone: .modifier)
+            }
+            HStack(spacing: 6) {
+                key("h", text: "h")
+                key("j", text: "j")
+                key("k", text: "k")
+                key("l", text: "l")
+                key("/", text: "/")
+                key("$", text: "$")
+            }
+            HStack(spacing: 6) {
+                key("i", text: "i")
+                key("a", text: "a")
+                key("v", text: "v")
+                deckButton(
+                    systemImage: isKeyboardUp ? "keyboard.chevron.compact.down" : "keyboard",
+                    accessibilityLabel: isKeyboardUp ? "Hide keyboard" : "Show keyboard",
+                    tone: .modifier,
+                    action: toggleKeyboard)
+                deckButton(
+                    systemImage: isDictating ? "stop.fill" : "mic.fill",
+                    accessibilityLabel: isDictating ? "Stop dictation" : "Dictate",
+                    tone: isDictating ? .recording : .modifier,
+                    action: toggleDictation)
+                key("↵", accessibilityLabel: "Return", bytes: [0x0D], tone: .accent)
+            }
+        }
+        .padding(.horizontal, 8)
+        .padding(.top, 7)
+        .padding(.bottom, 9)
+        .background(Brand.elevated)
+        .accessibilityIdentifier("terminal-control-deck")
+    }
+
+    private func key(
+        _ label: String,
+        accessibilityLabel: String? = nil,
+        text: String,
+        tone: TerminalDeckKeyTone = .standard
+    ) -> some View {
+        deckButton(
+            label: label,
+            accessibilityLabel: accessibilityLabel ?? label,
+            tone: tone
+        ) { send(Data(text.utf8)) }
+    }
+
+    private func quickKey(
+        _ label: String,
+        key: AgentQuickKey,
+        tone: TerminalDeckKeyTone
+    ) -> some View {
+        deckButton(
+            label: label,
+            accessibilityLabel: key.accessibilityLabel,
+            tone: tone
+        ) {
+            UIDevice.current.playInputClick()
+            sendQuickKey(key)
+        }
+    }
+
+    private func key(
+        _ label: String,
+        accessibilityLabel: String? = nil,
+        bytes: [UInt8],
+        tone: TerminalDeckKeyTone = .standard
+    ) -> some View {
+        deckButton(
+            label: label,
+            accessibilityLabel: accessibilityLabel ?? label,
+            tone: tone
+        ) { send(Data(bytes)) }
+    }
+
+    private func deckButton(
+        label: String? = nil,
+        systemImage: String? = nil,
+        accessibilityLabel: String,
+        tone: TerminalDeckKeyTone,
+        action: @escaping () -> Void
+    ) -> some View {
+        Button(action: action) {
+            Group {
+                if let label { Text(label) }
+                else if let systemImage { Image(systemName: systemImage) }
+            }
+            .font(Brand.mono(.caption, weight: .semibold))
+            .frame(maxWidth: .infinity, minHeight: 44)
+        }
+        .buttonStyle(TerminalDeckKeyButtonStyle(tone: tone))
+        .accessibilityLabel(accessibilityLabel)
+    }
+
+    private func send(_ data: Data) {
+        UIDevice.current.playInputClick()
+        sendInput(data)
     }
 }
 

@@ -13,7 +13,8 @@ struct Host: Identifiable, Codable, Hashable, Sendable {
     }
 
     let id: UUID
-    /// Optional display label; blank falls back to `user@address`.
+    /// Hostname shown to the user. Pairing fills this from the remote machine;
+    /// manually entered DNS names may leave it blank and reuse `address`.
     var name: String
     var address: String
     var port: Int
@@ -98,19 +99,25 @@ struct Host: Identifiable, Codable, Hashable, Sendable {
     }
 
     var displayName: String {
-        let trimmed = name.trimmingCharacters(in: .whitespaces)
-        return trimmed.isEmpty ? "\(username)@\(address)" : trimmed
+        "\(username)@\(hostname)"
     }
 
-    /// Compact identity for pickers where the saved machine name must remain
-    /// distinguishable from another Host with the same account or address.
-    var pickerIdentity: String {
+    /// The machine part of the canonical `user@hostname` identity. An address
+    /// is only a last-resort compatibility fallback for old saved Hosts.
+    var hostname: String {
         let trimmed = name.trimmingCharacters(in: .whitespacesAndNewlines)
-        return trimmed.isEmpty ? "\(username)@\(address)" : "\(trimmed) — \(address)"
+        return trimmed.isEmpty ? address : trimmed
     }
 
+    /// Compact identity used in every Host picker.
+    var pickerIdentity: String {
+        displayName
+    }
+
+    /// Network coordinates are secondary connection detail, never the Host's
+    /// user-facing identity.
     var connectionIdentity: String {
-        "\(username)@\(address):\(port)"
+        port == 22 ? address : "\(address):\(port)"
     }
 
     /// The herden socket this Host's session name points at.

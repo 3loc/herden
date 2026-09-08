@@ -107,7 +107,7 @@ struct ConsoleHostSectionHeaderPresentationTests {
     @Test func accessibilityLabelNamesHostAndReadiness() {
         let presentation = ConsoleHostSectionHeaderPresentation(
             section: section(status: .connected))
-        #expect(presentation.accessibilityLabel.hasPrefix("studio, No Agents"))
+        #expect(presentation.accessibilityLabel.hasPrefix("dev@studio, No Agents"))
     }
 }
 

@@ -47,6 +47,11 @@ struct ShellTerminalView: View {
         }
         screen.keyboardControl = keyboardControl
         screen.isLocalInputEnabled = true
+        // A Space is a direct-input terminal, so entering it should be ready
+        // to type without the extra tap Agent surfaces historically needed.
+        // TerminalScreenView performs the claim only after the UIKit surface
+        // reaches a window, when becomeFirstResponder can actually succeed.
+        screen.claimsKeyboard = { true }
         screen.theme = terminal.themes.theme
         screen.fontSize = terminal.zoom.fontSize
         screen.fontFamily = terminal.fonts.familyName
@@ -157,6 +162,15 @@ struct ShellTerminalView: View {
                             Label("Close Terminal", systemImage: "trash")
                         }
                         .disabled(isClosingTerminal || isReturning)
+                    }
+                }
+                ToolbarItemGroup(placement: .navigationBarTrailing) {
+                    Button("Select and Copy Text", systemImage: "doc.on.doc") {
+                        keyboardControl.selectText()
+                    }
+                    .accessibilityIdentifier("terminal-copy")
+                    if keyboardPresentation == .hidden {
+                        TerminalPasteButton { keyboardControl.paste($0) }
                     }
                 }
             }

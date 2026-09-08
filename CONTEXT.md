@@ -53,6 +53,13 @@ _Avoid_: attachment, uploaded image
 A user-selected file that exists on a Host at a remote path, whether or not the Agent has used it from a prompt.
 _Avoid_: attachment, uploaded file
 
+**Shared File Transfer**:
+A document, image or video received through iOS Share, addressed to one Agent.
+The Share Extension stages it over SFTP and inserts its Host path without Return.
+Herden's Shared Files view shows the same durable progress and opens the Agent
+so the user can add instructions. Interrupted uploads support explicit retry;
+uncertain path insertion requires checking the Agent before pasting again.
+
 **Image Attachment**:
 A Staged Image that the Agent has accepted into its current prompt as image input.
 _Avoid_: staged image, image path

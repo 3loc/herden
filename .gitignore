@@ -52,3 +52,6 @@ __pycache__/
 # Agent workspace (research reports, scratch)
 .claude/
 .archive/
+.skill-archive/
+HANDOFF.md
+handoff.txt

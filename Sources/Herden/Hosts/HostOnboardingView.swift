@@ -37,6 +37,7 @@ struct HostOnboardingView: View {
     var body: some View {
         List {
             Section {
+                LabeledContent("Hostname", value: store.host.displayName)
                 LabeledContent("Address", value: addressLine)
                 LabeledContent("Session", value: sessionLine)
                 LabeledContent(
@@ -189,7 +190,7 @@ struct HostOnboardingView: View {
     }
 
     private var addressLine: String {
-        "\(store.host.username)@\(store.host.address):\(String(store.host.port))"
+        store.host.connectionIdentity
     }
 
     private var sessionLine: String {

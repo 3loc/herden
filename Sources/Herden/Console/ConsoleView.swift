@@ -210,6 +210,12 @@ struct ConsoleView: View {
         } detail: {
             detail
         }
+        .safeAreaInset(edge: .top, spacing: 0) {
+            SharedTransfersView { record in
+                notificationRouter.open(AgentNotificationTarget(
+                    hostID: record.host.id, paneID: record.paneID))
+            }
+        }
         .background(Brand.background.ignoresSafeArea())
         .modifier(
             ConsoleStatusBarModifier(

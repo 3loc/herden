@@ -237,6 +237,51 @@ struct StartAgentStoreTests {
         #expect(store.selectedAgentKind == .codex)
     }
 
+    @Test func remembersTheLastAgentKindForEachHost() async {
+        let host = Host.fixture()
+        let other = Host.fixture(address: "b.example")
+        let recents = makeRecents()
+        let kinds: (Host.ID) async throws -> [SupportedAgentKind] = { _ in
+            [.codex, .claude]
+        }
+        let first = makeStore(
+            hosts: [host], agentKinds: kinds, recents: recents,
+            recorder: StartRecorder())
+        await first.discoverAgents()
+        first.selectedAgentKind = .claude
+
+        let next = makeStore(
+            hosts: [host], agentKinds: kinds, recents: recents,
+            recorder: StartRecorder())
+        await next.discoverAgents()
+        #expect(next.selectedAgentKind == .claude)
+
+        let elsewhere = makeStore(
+            hosts: [other], agentKinds: kinds, recents: recents,
+            recorder: StartRecorder())
+        await elsewhere.discoverAgents()
+        #expect(elsewhere.selectedAgentKind == .codex)
+    }
+
+    @Test func remembersTheLastSelectedHostWhenItStillExists() {
+        let hostA = Host.fixture(address: "a.example")
+        let hostB = Host.fixture(address: "b.example")
+        let recents = makeRecents()
+        let first = makeStore(
+            hosts: [hostA, hostB], recents: recents, recorder: StartRecorder())
+        #expect(first.selectedHostID == nil)
+        first.selectedHostID = hostB.id
+
+        let next = makeStore(
+            hosts: [hostA, hostB], recents: recents, recorder: StartRecorder())
+        #expect(next.selectedHostID == hostB.id)
+
+        let withoutRememberedHost = makeStore(
+            hosts: [hostA, Host.fixture(address: "c.example")], recents: recents,
+            recorder: StartRecorder())
+        #expect(withoutRememberedHost.selectedHostID == nil)
+    }
+
     @Test func discoverySurfacesFailureAndSupportsAnEmptyResult() async {
         let host = Host.fixture()
         let failing = makeStore(
