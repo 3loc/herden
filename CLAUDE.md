@@ -43,6 +43,7 @@ eliminating several dead ends.
 | `scripts/test-install-docker.sh` | Debian shell PATH matrix and Alpine published-binary installer checks. |
 | `docs/guides/install-host.md` | Public Host setup and current-terminal PATH requirements. |
 | `Makefile` | Local build, test, Host release and TestFlight entrypoints. |
+| `docs/guides/releasing-host.md` | Four-platform build validation, public publication and fleet audit; shared Zig build-output hazards. |
 | `scripts/run-ci-ios-tests.sh` | Exhaustive local iOS and real-SSH validation runner. |
 | `UPSTREAM.md` | Heeler/herdr provenance and update policy. |
 | `.agents/skills/herden-testflight/` | TestFlight source verification, build/upload, beta review and invitations. |

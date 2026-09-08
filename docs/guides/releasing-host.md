@@ -1,57 +1,73 @@
 # Release the Herden Host
 
-Herden Host releases are built on Linux and macOS machines and published at
-`herden.3loc.ltd`. GitHub Actions are not part of this release path, and GitHub
-does not host the binary assets.
+Build and validate all four Host assets on macOS through the repository's Make
+targets. Publish the complete versioned bundle at `herden.3loc.ltd` and attach
+identical assets to a GitHub `host-vX.Y.Z` release. GitHub Actions are not part of
+this release path. App releases and interim TestFlight builds follow
+[releasing.md](releasing.md).
 
-Both builds use the repository Make target, which checks the pinned Zig version,
-builds the selected Rust target and writes a SHA-256 checksum beside the binary.
+## Build and validate
 
-For version `0.8.3`, create a release directory on the Linux build machine:
+Use a clean source snapshot. The build checks the pinned Zig version and writes
+a SHA-256 checksum beside each binary. Linux targets use `cargo-zigbuild` on the
+Mac; install both Rust musl targets and both Darwin targets first.
 
-```sh
-mkdir -p release/host-v0.8.3
-make host-release-asset \
-  TARGET=x86_64-unknown-linux-musl \
-  OUT_DIR=release/host-v0.8.3
-make host-release-asset \
-  TARGET=aarch64-unknown-linux-musl \
-  OUT_DIR=release/host-v0.8.3
-```
-
-Build both macOS assets from a clean checkout, placing their output in the same
-release directory (copy the Linux artifacts there first if the machines do not
-share storage):
+For Host 0.9.0:
 
 ```sh
-make host-release-asset \
-  TARGET=aarch64-apple-darwin \
-  OUT_DIR=release/host-v0.8.3
-make host-release-asset \
-  TARGET=x86_64-apple-darwin \
-  OUT_DIR=release/host-v0.8.3
+mkdir -p release/host-v0.9.0
+for target in x86_64-unknown-linux-musl aarch64-unknown-linux-musl \
+              aarch64-apple-darwin x86_64-apple-darwin; do
+  make host-release-asset TARGET="$target" OUT_DIR=release/host-v0.9.0
+done
+make host-release-assemble HOST_VERSION=0.9.0 OUT_DIR=release/host-v0.9.0
+make host-test
+make host-perf HOST_BASELINE=/path/to/previous-public-herden \
+  HOST_CANDIDATE="$PWD/release/host-v0.9.0/herden-macos-aarch64"
 ```
 
-Verify all four assets and assemble the release metadata:
+Keep the performance baseline binary from the previous public release. Run the Linux
+pairing/upgrade PTY checks with both the candidate and previous public binary,
+then compare the candidate's exported API schema with the committed snapshot.
 
-```sh
-make host-release-assemble \
-  HOST_VERSION=0.8.3 \
-  OUT_DIR=release/host-v0.8.3
-```
+Do not overlap cross builds or native tests sharing one source directory:
+`runtime/vendor/libghostty-vt/zig-out/lib` is shared even when Cargo target
+directories differ. After a cross build, invalidate the vendor build (touch its
+`VERSION` file without changing its contents) before running native tests.
+Timed shell tests need a clean temporary `HOME`; preserve the real `CARGO_HOME`
+and `RUSTUP_HOME` so shell plugins and user startup commands cannot skew them.
+The performance harness isolates scenario homes itself.
 
-Publish the assembled directory at
-`https://herden.3loc.ltd/releases/host-v0.8.3/` using the production deployment
-system. DNS, TLS, credentials and infrastructure configuration remain outside
-this repository.
+On Studio, Zig 0.15.2 required the Command Line Tools macOS 15.4 SDK for the
+Intel Darwin cross build; the Xcode 26 SDK's stubs failed target selection.
+Select the compatible SDK in the task's tool environment, without changing the
+machine-wide Xcode selection.
 
-After deployment, verify the installer on both operating systems:
+## Publish before fleet rollout
 
-```sh
-curl -fsSL https://herden.3loc.ltd/install.sh | sh
-herden --version
-```
+1. Verify all four binaries and checksums. Update root `install.sh` and its
+   identical `landing/public/install.sh` copy to the exact new Host version.
+2. Commit and push the release inputs. Preserve a source archive and build-input
+   hashes, including the commit used for the published `source.json` provenance.
+3. Publish the complete assembled directory under
+   `https://herden.3loc.ltd/releases/host-v0.9.0/`. Publish the matching root
+   `install.sh` and `latest.json`, deploy the current landing build, and invalidate
+   their CDN paths. Production infrastructure remains outside this repository.
+4. Create the GitHub `host-v0.9.0` release at the source commit and attach the same
+   bundle. Verify public downloads and GitHub asset digests against local hashes.
+5. Test the **public URL** in disposable Linux amd64 and arm64 containers: fresh
+   installation, idempotent repeat, and upgrade from the previous public release.
+   Check version, published checksum, pairing and shell command lookup. Run the
+   installer's Docker PATH suite too.
+6. From the `3loc` fleet controller, run `make herden LIMIT=3loc,studio`, then
+   `make herden`, followed by the independent `make herden-check` audit. The fleet
+   must use the public installer; `SOURCE`, `REF`, and snapshots are retired.
 
-Running the installer again verifies the published assets and leaves an
-identical installed binary in place. Existing Herden server processes continue
-running their current executable until they are restarted.
+The installer leaves existing servers running their current executable. The
+fleet rollout uses live handoff to upgrade stale Herden sessions while preserving
+panes, and the independent audit verifies their versions as well as the installed
+binary. Older attached clients still need reopening. Report unreachable Hosts as
+pending; a successful reachable rollout does not mean offline laptops upgraded.
+
+Save release assets, signed iOS archives when applicable, source provenance and
+validation evidence under `/vm-share/software/herden/` for the operator.
