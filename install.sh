@@ -132,6 +132,18 @@ main() {
         warn "\"${install_dir}/${binary}\" server live-handoff --import-exe \"${install_dir}/${binary}\""
     fi
 
+    current_runtime=${HERDR_BIN_PATH:-}
+    current_socket=${HERDR_SOCKET_PATH:-}
+    if [ "${HERDR_ENV:-0}" = "1" ] && {
+        [ "${current_runtime##*/}" = "herdr" ] \
+            || [ "${current_socket#*/.config/herdr/}" != "$current_socket" ];
+    }; then
+        warn "this installer is running inside an existing upstream Herdr session"
+        warn "installing Herden cannot rename or replace that running Herdr client"
+        warn "detach with Ctrl-B, then d; from the outer shell run:"
+        warn "\"${install_dir}/${binary}\""
+    fi
+
     printf '\nHerden %s is ready.\n\nStart or reattach:\n\n  "%s/herden"\n\nDisplay a Pairing Code from a shell:\n\n  "%s/herden" pair\n\nAlready inside Herden? Press Ctrl-B, then i.\n\n' \
         "$host_version" "$install_dir" "$install_dir"
 }

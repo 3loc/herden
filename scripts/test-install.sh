@@ -82,6 +82,7 @@ export PATH="$fixture/bin:/usr/bin:/bin"
 export HERDEN_INSTALL_DIR="$fixture/install"
 export HERDEN_DOC_DIR="$fixture/doc"
 export HERDEN_TEST_PLUGIN_LOG="$fixture/plugin.log"
+unset HERDR_ENV HERDR_BIN_PATH HERDR_SOCKET_PATH
 
 sh "$repo_root/install.sh" > "$fixture/install.out" 2> "$fixture/install.err"
 test -x "$fixture/install/herden"
@@ -93,6 +94,16 @@ grep -Fq "Start or reattach" "$fixture/install.out"
 grep -Fq "\"$fixture/install/herden\" pair" "$fixture/install.out"
 grep -Fq "Already inside Herden? Press Ctrl-B, then i." "$fixture/install.out"
 test "$("$fixture/install/herden" --version)" = 'herden 0.8.3'
+
+HERDR_ENV=1 \
+HERDR_BIN_PATH="$fixture/legacy/bin/herdr" \
+HERDR_SOCKET_PATH="$fixture/legacy/.config/herdr/herdr.sock" \
+    sh "$repo_root/install.sh" > "$fixture/legacy.out" 2> "$fixture/legacy.err"
+grep -Fq 'inside an existing upstream Herdr session' "$fixture/legacy.err"
+grep -Fq 'cannot rename or replace that running Herdr client' "$fixture/legacy.err"
+grep -Fq 'detach with Ctrl-B, then d' "$fixture/legacy.err"
+grep -Fq "\"$fixture/install/herden\"" "$fixture/legacy.err"
+
 if grep -Fq 'detach and relaunch' "$fixture/install.err"; then
   echo 'fresh install printed upgrade instructions' >&2
   exit 1
