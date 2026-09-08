@@ -2,7 +2,7 @@
   "name": "herden-landing",
   "version": "0.1.0",
   "private": true,
-  "license": "AGPL-3.0-only",
+  "license": "Apache-2.0",
   "description": "Static Herden site served privately through the 3loc Headscale tailnet",
   "type": "module",
   "engines": {

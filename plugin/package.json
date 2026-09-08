@@ -2,7 +2,7 @@
   "name": "herden-host-extension",
   "version": "0.4.0",
   "private": true,
-  "license": "AGPL-3.0-only",
+  "license": "Apache-2.0",
   "description": "Encrypted notification and Live Activity extension for Herden Hosts",
   "type": "module",
   "engines": {

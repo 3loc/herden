@@ -86,5 +86,5 @@ prefer a private report over a public issue.
 
 ## License
 
-Herden is licensed under AGPL-3.0 ([LICENSE](LICENSE)); contributions land
-under the same license.
+Herden is licensed under the Apache License 2.0 ([LICENSE](LICENSE));
+contributions land under the same license.

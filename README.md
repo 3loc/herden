@@ -8,6 +8,10 @@
 
 [Install](#install) · [Pair an iPhone](#pair-an-iphone) · [Host guide](docs/guides/install-host.md) · [Build the iOS app](docs/guides/build-ios.md)
 
+[![CI](https://github.com/3loc/herden/actions/workflows/ci.yml/badge.svg)](https://github.com/3loc/herden/actions/workflows/ci.yml)
+[![License: Apache 2.0](https://img.shields.io/badge/License-Apache_2.0-blue.svg)](LICENSE)
+[![GitHub stars](https://img.shields.io/github/stars/3loc/herden?style=flat)](https://github.com/3loc/herden/stargazers)
+
 </div>
 
 Herden is a persistent runtime for coding agents. It keeps their terminals,
@@ -172,7 +176,9 @@ transport live in [Sources/](Sources/) and
 
 ## Upstream and licence
 
-Herden exists because of both upstream projects. The Host runtime retains
-herdr's Apache License 2.0 and attribution in [runtime/LICENSE](runtime/LICENSE).
-The iOS application and the combined repository are licensed under the
-[GNU Affero General Public License v3](LICENSE).
+Herden exists because of both upstream projects. Heeler's contributors
+approved its Apache-2.0 relicense in
+[Heeler issue #282](https://github.com/ZingerLittleBee/Heeler/issues/282), and
+that relicense is preserved in this repository's history. The Host runtime
+retains herdr's attribution in [runtime/LICENSE](runtime/LICENSE). The combined
+Herden repository is licensed under the [Apache License 2.0](LICENSE).

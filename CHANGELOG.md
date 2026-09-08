@@ -36,6 +36,9 @@ Entries reference the issue that motivated them.
 
 ### Changed
 
+- Relicense the combined Herden repository from AGPL-3.0 to Apache License
+  2.0, following Heeler's contributor-approved relicense and matching herdr.
+
 - Restore Host catalogs and device keys from the retired Founder Terminal app
   identity, attach to still-running sessions at their legacy
   `~/.config/herdr` sockets, and standardize Host labels as `user@hostname`
