@@ -34,8 +34,14 @@ tester, or build ID in automation. Verify endpoint/schema changes against
    `publicLinkEnabled: false`; internal groups require App Store Connect users.
 3. Read `GET /v1/apps/APP_ID/betaAppReviewDetail` and
    `GET /v1/apps/APP_ID/betaAppLocalizations`. Ensure review instructions and URLs
-   match the current Host install guide. Herden is a client for a separately
-   installed SSH Host; do not invent a demo account or promise a hosted backend.
+   match the current Host install guide. Populate `privacyPolicyUrl` with the
+   public policy linked from the app; a policy present only in source is not a
+   populated TestFlight field. Herden is a client for a separately installed SSH
+   Host. Reviewer instructions should explain using the reviewer's own Mac or
+   Linux Host, including SSH, the current-shell PATH export, QR expiry, and the
+   ordinary-terminal path that needs no coding-provider account. Do not invent
+   demo credentials or provision a developer-hosted review server unless requested.
+   Keep third-party Agent CLI authentication prerequisites explicit.
    PATCH the individual resource IDs if corrections are necessary.
 4. Read `GET /v1/builds/BUILD_ID/betaBuildLocalizations` before writing testing
    notes. Apple can create an `en-US` resource with `whatsNew: null` automatically.
