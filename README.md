@@ -38,15 +38,25 @@ would run `herdr`, and run `herden pair` when you want to add the iPhone app.
   agent or its account.
 - **Terminal native:** The Host is one Rust binary. Use it from an ordinary
   terminal, locally or over SSH.
-- **Available from your phone:** The native iOS app shows Hosts, Spaces and
-  Agents, attaches to their real terminal sessions and lets you keep working
-  away from the computer.
+- **Available from your phone:** The native iOS app puts named Agents first,
+  attaches to their real terminal sessions and lets you keep working away
+  from the computer. Spaces and Hosts provide context.
 
 ## Opinionated changes from upstream
 
 Herden stays close to herdr where possible. These are the deliberate product
 differences:
 
+- **Agent-first iOS, by choice:** Herden deliberately diverges from its Heeler
+  origins. It targets vibecoders who want to work with coding agents
+  without needing to be fluent in terminals, tabs and workspace management.
+  The default is one Agent to one Space: tap New Agent and Herden creates its
+  backing Space automatically, so there is one thing to name, open and return
+  to, rather than two separate setup steps. This simplifies the iPhone app,
+  not the Host's capabilities. Existing Spaces with several Agents stay intact
+  and every Agent remains visible. Explicit Space reuse, linked Worktrees and
+  plain terminals remain available through secondary controls. See the
+  [Agent-first design decision](docs/adr/0020-agent-first-ios-console.md).
 - **One Herden product:** the Host runtime and iOS console live in one
   repository and are maintained as one product. Public commands, copy, state
   paths and sockets use the Herden name.

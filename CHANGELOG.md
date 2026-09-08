@@ -8,7 +8,18 @@ Entries reference the issue that motivated them.
 
 ## [Unreleased]
 
+### Fixed
+
+- Opening a Space selects its first existing Agent, or its first terminal when
+  it has no Agents. Reopening no longer creates a tab just because the app has
+  no remembered terminal.
+
 ### Added
+
+- Make Agents the primary iOS list and creation flow. New Agents get a backing
+  Space automatically; existing shared Spaces remain intact. Show Agent names
+  first, keep directory/Space/Host context, and move Spaces & Terminals to a
+  secondary browser with advanced location options for explicit Space reuse.
 
 - Open built-in iPhone pairing from a running Herden session with `Ctrl-B i`,
   using a full-screen QR popup and no plugin dependency.

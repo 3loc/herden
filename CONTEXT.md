@@ -85,11 +85,13 @@ _Avoid_: window, tile
 herdr's unit that groups tabs and panes around one working directory. New
 Agent can start in an existing Workspace, a new Worktree of one, or a new
 Workspace opened at a remote directory. The id is an opaque string.
-Herden labels Workspace rows as **Spaces** on its home screen, where they are
-listed above the Agents they contain. Creating a Space defaults to the Host's
-home directory and opens its root shell; an explicit directory remains optional.
-Tapping an existing Space opens a reusable ordinary shell tab in that Workspace.
-Starting an Agent is a separate, secondary action.
+Herden calls Workspaces **Spaces**, but treats them as Agent context rather
+than a second primary destination on iOS. New Agent creates a backing Space
+and starts in its root pane. An omitted directory resolves to the SSH account's
+home; launches from an Agent inherit its directory, not its Space. Advanced
+location options can explicitly reuse a Space or create a linked Worktree.
+Existing multi-agent Spaces remain unchanged. The secondary Spaces & Terminals
+browser preserves access to existing Spaces and shell-only work.
 _Avoid_: project, folder, window
 
 **Worktree**:
@@ -102,9 +104,11 @@ survives. Snapshot worktree metadata also describes the main checkout; only
 _Avoid_: sandbox, branch copy, checkout folder
 
 **Console**:
-The Spaces and Agents picker and the terminal selected from it. The picker
-uses one flat list with Spaces above Agents, an optional Host filter, and Add
-and Settings menus. Swipe right across terminal output to return; swipe left
+The Agent picker and the terminal selected from it. The picker uses one flat
+list of Agents, an optional Host filter, a New Agent button, and a Settings menu
+with a secondary Spaces & Terminals browser. Agent names lead; Space, directory,
+and Host provide context. Multiple Agents in one Space are never collapsed.
+Swipe right across terminal output to return; swipe left
 across the picker to reopen the last Agent or Space. Horizontal gestures that
 begin in the prompt move its cursor instead. The bottom Agent strip remains
 available for direct switching.
