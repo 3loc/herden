@@ -119,6 +119,10 @@ In an ordinary shell tab **inside that session**, run:
 herden pair
 ```
 
+From inside a running Herden session, press **Ctrl-B i** to show the same code
+in a full-screen popup. Press Ctrl-C to close it. The shortcut is configurable
+as `keys.pair`.
+
 The command belongs in a shell, not an Agent's message field. A second Terminal
 window under the same user also works. For a specific Tailscale address, use
 `herden pair --address 100.64.1.2`, replacing the example address with yours.

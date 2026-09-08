@@ -214,6 +214,35 @@ fn prefix_endpoint_action_uses_public_api_with_stable_ids() {
 }
 
 #[test]
+fn default_pairing_binding_invokes_the_endpoint_popup() {
+    let mut state = ClientShellState::new(ClientShellConfig::from_config(&Config::default()));
+    let mut projection = snapshot();
+    projection
+        .commands
+        .push(crate::protocol::ClientShellCommand {
+            command_id: "cmd_pair".into(),
+            binding_label: "prefix+i".into(),
+            binding_labels: vec!["prefix+i".into()],
+            action: crate::protocol::ClientShellCommandAction::Popup,
+            description: Some("pair iPhone".into()),
+        });
+    state.set_snapshot(Box::new(projection));
+
+    assert!(state.handle_input_bytes(&[0x02]).actions.is_empty());
+    let outcome = state.handle_input_bytes(b"i");
+    let [ClientShellAction::Endpoint { request, .. }] = &outcome.actions[..] else {
+        panic!(
+            "expected pairing popup endpoint action: {:?}",
+            outcome.actions
+        );
+    };
+    let crate::api::schema::Method::CommandInvoke(params) = &request.method else {
+        panic!("expected command invocation");
+    };
+    assert_eq!(params.command_id, "cmd_pair");
+}
+
+#[test]
 fn remote_keybinding_sources_keep_local_commands_off_endpoints_and_apply_server_profiles() {
     let local: Config = toml::from_str(
         r#"
@@ -251,10 +280,16 @@ command = "local-only"
             description: Some("loaded endpoint command".into()),
         });
     local_state.set_snapshot(Box::new(local_projection));
-    assert_eq!(
-        local_state.config.keybinds.keybinds.custom_commands[0].label,
-        "prefix+y"
-    );
+    let local_command = local_state
+        .config
+        .keybinds
+        .keybinds
+        .custom_commands
+        .iter()
+        .find(|command| command.label == "prefix+y")
+        .expect("local custom command")
+        .clone();
+    assert_eq!(local_command.label, "prefix+y");
     assert_eq!(
         local_state
             .config
@@ -267,9 +302,7 @@ command = "local-only"
     );
     let mut command_outcome = ClientShellInput::default();
     local_state.record_binding(
-        crate::input::KeybindMatch::Command(
-            local_state.config.keybinds.keybinds.custom_commands[0].clone(),
-        ),
+        crate::input::KeybindMatch::Command(local_command),
         &mut command_outcome,
     );
     let [ClientShellAction::Endpoint { request, .. }] = &command_outcome.actions[..] else {
@@ -295,7 +328,15 @@ command = "local-only"
     local_state.set_snapshot(Box::new(id_only_projection));
     assert_eq!(local_state.mode, ClientShellMode::Prefix);
     assert_eq!(
-        local_state.config.keybinds.keybinds.custom_commands[0].command,
+        local_state
+            .config
+            .keybinds
+            .keybinds
+            .custom_commands
+            .iter()
+            .find(|command| command.label == "prefix+y")
+            .expect("reloaded local custom command")
+            .command,
         "cmd_reloaded_endpoint"
     );
 
@@ -330,19 +371,30 @@ new_tab = "prefix+n"
         Some("prefix+n")
     );
     assert_eq!(
-        state.config.keybinds.keybinds.custom_commands[0].label,
+        state
+            .config
+            .keybinds
+            .keybinds
+            .custom_commands
+            .iter()
+            .find(|command| command.label == "prefix+z")
+            .expect("remote custom command")
+            .label,
         "prefix+z"
     );
+    let remote_command = state
+        .config
+        .keybinds
+        .keybinds
+        .custom_commands
+        .iter()
+        .find(|command| command.label == "prefix+z")
+        .expect("remote custom command");
     assert_eq!(
-        state.config.keybinds.keybinds.custom_commands[0]
-            .description
-            .as_deref(),
+        remote_command.description.as_deref(),
         Some("remote command")
     );
-    assert_eq!(
-        state.config.keybinds.keybinds.custom_commands[0].command,
-        "cmd_remote"
-    );
+    assert_eq!(remote_command.command, "cmd_remote");
 }
 
 #[test]

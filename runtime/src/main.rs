@@ -145,6 +145,7 @@ const DEFAULT_CONFIG: &str = r##"# herden configuration
 # Prefix-mode actions
 # help = "prefix+?"
 # settings = "prefix+s"
+# pair = "prefix+i"
 # detach = "prefix+q"
 # reload_config = "prefix+shift+r"
 # open_notification_target = "prefix+o"

@@ -53,7 +53,13 @@ pub(super) fn command() -> Command {
                         .action(ArgAction::Append)
                         .help("Advertise this SSH address (repeatable)"),
                 )
-                .arg(option("port", "PORT").help("Advertise this SSH port (default: 22)")),
+                .arg(option("port", "PORT").help("Advertise this SSH port (default: 22)"))
+                .arg(
+                    Arg::new("qr-only")
+                        .long("qr-only")
+                        .action(ArgAction::SetTrue)
+                        .help("Omit the copy/paste form below the QR code"),
+                ),
         )
         .subcommand(plugin_command());
     configure_help(command, 0)

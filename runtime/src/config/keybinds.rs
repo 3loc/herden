@@ -8,6 +8,8 @@ use super::Config;
 use crate::input::TerminalKey;
 use crate::popup_size::PopupSize;
 
+pub(crate) const BUILTIN_PAIRING_COMMAND: &str = "__herden_builtin_pairing__";
+
 pub type KeyCombo = (KeyCode, KeyModifiers);
 
 #[derive(Debug, Clone)]
@@ -320,6 +322,7 @@ pub struct Keybinds {
     pub navigate: NavigateKeybinds,
     pub help: ActionKeybinds,
     pub settings: ActionKeybinds,
+    pub pair: ActionKeybinds,
     pub new_workspace: ActionKeybinds,
     pub new_worktree: ActionKeybinds,
     pub open_worktree: ActionKeybinds,
@@ -488,6 +491,7 @@ impl Config {
             },
             help: empty_action!(),
             settings: empty_action!(),
+            pair: empty_action!(),
             new_workspace: empty_action!(),
             new_worktree: empty_action!(),
             open_worktree: empty_action!(),
@@ -616,6 +620,7 @@ impl Config {
             apply_navigate!(keybinds.navigate.pane_right, navigate_pane_right, source);
             apply_action!(keybinds.help, help, source);
             apply_action!(keybinds.settings, settings, source);
+            apply_action!(keybinds.pair, pair, source);
             apply_action!(keybinds.new_workspace, new_workspace, source);
             apply_action!(keybinds.new_worktree, new_worktree, source);
             apply_action!(keybinds.open_worktree, open_worktree, source);
@@ -720,6 +725,21 @@ impl Config {
                     &mut diagnostics,
                 );
             }
+        }
+
+        if !keybinds.pair.bindings.is_empty() {
+            keybinds.custom_commands.insert(
+                0,
+                CustomCommandKeybind {
+                    label: keybinds.pair.label().unwrap_or_else(|| "unset".to_owned()),
+                    bindings: keybinds.pair.clone(),
+                    command: BUILTIN_PAIRING_COMMAND.to_owned(),
+                    action: CustomCommandAction::Popup,
+                    description: Some("pair iPhone".to_owned()),
+                    width: Some(PopupSize::Percent(100)),
+                    height: Some(PopupSize::Percent(100)),
+                },
+            );
         }
 
         (prefix_diag, prefix, diagnostics, keybinds)
@@ -1489,6 +1509,14 @@ fn is_unmodified_printable(combo: KeyCombo) -> bool {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    fn configured_commands(keybinds: &Keybinds) -> Vec<&CustomCommandKeybind> {
+        keybinds
+            .custom_commands
+            .iter()
+            .filter(|command| command.command != BUILTIN_PAIRING_COMMAND)
+            .collect()
+    }
     use crate::{config::Config, input::TerminalKey};
 
     fn binding_triggers(bindings: &ActionKeybinds) -> Vec<BindingTrigger> {
@@ -1960,7 +1988,7 @@ command = "echo no"
         )
         .unwrap();
         let diagnostics = config.collect_diagnostics();
-        assert!(config.keybinds().custom_commands.is_empty());
+        assert!(configured_commands(&config.keybinds()).is_empty());
         assert!(diagnostics.iter().any(|diag| {
             diag.contains("reserved keybinding") && diag.contains("keys.command[0].key")
         }));
@@ -1979,7 +2007,7 @@ command = "echo no"
         )
         .unwrap();
         let diagnostics = config.collect_diagnostics();
-        assert!(config.keybinds().custom_commands.is_empty());
+        assert!(configured_commands(&config.keybinds()).is_empty());
         assert!(diagnostics.iter().any(|diag| {
             diag.contains("unsafe direct keybinding") && diag.contains("keys.command[0].key")
         }));
@@ -2001,7 +2029,7 @@ command = "echo no"
         let diagnostics = config.collect_diagnostics();
         let keybinds = config.keybinds();
         assert!(!keybinds.new_tab.bindings.is_empty());
-        assert!(keybinds.custom_commands.is_empty());
+        assert!(configured_commands(&keybinds).is_empty());
         assert!(diagnostics.iter().any(|diag| {
             diag.contains("kept keys.new_tab") && diag.contains("disabled keys.command[0].key")
         }));
@@ -2099,6 +2127,21 @@ switch_tab = "prefix+?"
     fn default_keymap_is_prefix_first_and_tab_centered() {
         let kb = Config::default().keybinds();
         assert_eq!(
+            binding_triggers(&kb.pair),
+            vec![BindingTrigger::Prefix((
+                KeyCode::Char('i'),
+                KeyModifiers::empty()
+            ))]
+        );
+        let pairing = kb
+            .custom_commands
+            .iter()
+            .find(|command| command.command == BUILTIN_PAIRING_COMMAND)
+            .expect("built-in pairing command");
+        assert_eq!(pairing.action, CustomCommandAction::Popup);
+        assert_eq!(pairing.width, Some(PopupSize::Percent(100)));
+        assert_eq!(pairing.height, Some(PopupSize::Percent(100)));
+        assert_eq!(
             binding_triggers(&kb.next_tab),
             vec![BindingTrigger::Prefix((
                 KeyCode::Char('n'),
@@ -2150,6 +2193,55 @@ switch_tab = "prefix+?"
                 KeyModifiers::SHIFT
             ))]
         );
+    }
+
+    #[test]
+    fn pairing_binding_can_be_rebound_or_disabled() {
+        let rebound: Config = toml::from_str(
+            r#"
+[keys]
+pair = "prefix+u"
+"#,
+        )
+        .unwrap();
+        assert_eq!(
+            binding_triggers(&rebound.keybinds().pair),
+            vec![BindingTrigger::Prefix((
+                KeyCode::Char('u'),
+                KeyModifiers::empty()
+            ))]
+        );
+
+        let disabled: Config = toml::from_str(
+            r#"
+[keys]
+pair = ""
+"#,
+        )
+        .unwrap();
+        let keybinds = disabled.keybinds();
+        assert!(keybinds.pair.bindings.is_empty());
+        assert!(keybinds
+            .custom_commands
+            .iter()
+            .all(|command| command.command != BUILTIN_PAIRING_COMMAND));
+    }
+
+    #[test]
+    fn user_custom_command_can_displace_default_pairing_binding() {
+        let config: Config = toml::from_str(
+            r#"
+[[keys.command]]
+key = "prefix+i"
+command = "echo custom"
+"#,
+        )
+        .unwrap();
+        let keybinds = config.keybinds();
+        assert!(keybinds.pair.bindings.is_empty());
+        let commands = configured_commands(&keybinds);
+        assert_eq!(commands.len(), 1);
+        assert_eq!(commands[0].command, "echo custom");
     }
 
     #[test]
@@ -2251,11 +2343,9 @@ description = "say hello"
         )
         .unwrap();
         let keybinds = config.keybinds();
-        assert_eq!(keybinds.custom_commands.len(), 1);
-        assert_eq!(
-            keybinds.custom_commands[0].description,
-            Some("say hello".to_string())
-        );
+        let commands = configured_commands(&keybinds);
+        assert_eq!(commands.len(), 1);
+        assert_eq!(commands[0].description, Some("say hello".to_string()));
     }
 
     #[test]
@@ -2272,19 +2362,11 @@ height = "80%"
         )
         .unwrap();
         let keybinds = config.keybinds();
-        assert_eq!(keybinds.custom_commands.len(), 1);
-        assert_eq!(
-            keybinds.custom_commands[0].action,
-            CustomCommandAction::Popup
-        );
-        assert_eq!(
-            keybinds.custom_commands[0].width,
-            Some(PopupSize::Cells(90))
-        );
-        assert_eq!(
-            keybinds.custom_commands[0].height,
-            Some(PopupSize::Percent(80))
-        );
+        let commands = configured_commands(&keybinds);
+        assert_eq!(commands.len(), 1);
+        assert_eq!(commands[0].action, CustomCommandAction::Popup);
+        assert_eq!(commands[0].width, Some(PopupSize::Cells(90)));
+        assert_eq!(commands[0].height, Some(PopupSize::Percent(80)));
     }
 
     #[test]
@@ -2301,7 +2383,8 @@ width = "80%"
         .unwrap();
 
         let keybinds = config.keybinds();
-        assert_eq!(keybinds.custom_commands[0].width, None);
+        let commands = configured_commands(&keybinds);
+        assert_eq!(commands[0].width, None);
         assert!(config
             .collect_diagnostics()
             .iter()

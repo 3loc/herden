@@ -214,6 +214,18 @@ impl App {
         binding: &crate::config::CustomCommandKeybind,
         selected_text: Option<String>,
     ) -> io::Result<()> {
+        if binding.command == crate::config::BUILTIN_PAIRING_COMMAND {
+            let executable = std::env::current_exe()?.to_string_lossy().into_owned();
+            return self.spawn_popup_argv_command(
+                &[executable, "pair".to_owned(), "--qr-only".to_owned()],
+                None,
+                self.custom_command_env().0,
+                crate::app::popup::PopupGeometry {
+                    width: binding.width,
+                    height: binding.height,
+                },
+            );
+        }
         match binding.action {
             crate::config::CustomCommandAction::Shell => self.spawn_custom_command(binding),
             crate::config::CustomCommandAction::Pane => {
@@ -612,6 +624,22 @@ mod tests {
                 .map(|binding| binding.command),
             Some("secret-command --token hidden".into())
         );
+    }
+
+    #[test]
+    fn default_manifest_advertises_builtin_pairing_without_exposing_its_sentinel() {
+        let app = test_app();
+        let manifest = app.client_shell_command_manifest();
+        let pairing = manifest
+            .iter()
+            .find(|command| command.description.as_deref() == Some("pair iPhone"))
+            .expect("pairing command");
+        assert_eq!(pairing.binding_label, "prefix+i");
+        assert_eq!(
+            pairing.action,
+            crate::protocol::ClientShellCommandAction::Popup
+        );
+        assert!(!format!("{manifest:?}").contains(crate::config::BUILTIN_PAIRING_COMMAND));
     }
 
     #[test]

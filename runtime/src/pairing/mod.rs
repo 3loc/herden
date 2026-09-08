@@ -121,7 +121,9 @@ fn display(args: &[String]) -> io::Result<i32> {
     println!("Pair this Host with Herden\n");
     print!("{rendered}");
     println!("Scan in Herden → Add Host. This code expires in two minutes.");
-    println!("\nPairing Code (for copy/paste):\n{pairing_code}\n");
+    if !options.qr_only {
+        println!("\nPairing Code (for copy/paste):\n{pairing_code}\n");
+    }
 
     let cancelled = Arc::new(AtomicBool::new(false));
     let signal = Arc::clone(&cancelled);
@@ -284,6 +286,7 @@ fn enrollment_error(code: &str, detail: &str) -> io::Result<i32> {
 struct PairOptions {
     addresses: Vec<String>,
     port: u16,
+    qr_only: bool,
 }
 
 #[cfg(unix)]
@@ -291,6 +294,7 @@ impl PairOptions {
     fn parse(args: &[String]) -> Result<Self, &'static str> {
         let mut addresses = Vec::new();
         let mut port = 22;
+        let mut qr_only = false;
         let mut index = 0;
         while index < args.len() {
             match args[index].as_str() {
@@ -313,11 +317,19 @@ impl PairOptions {
                     }
                     index += 2;
                 }
+                "--qr-only" => {
+                    qr_only = true;
+                    index += 1;
+                }
                 "--help" | "-h" => return Err(""),
                 _ => return Err("unrecognized `herden pair` argument"),
             }
         }
-        Ok(Self { addresses, port })
+        Ok(Self {
+            addresses,
+            port,
+            qr_only,
+        })
     }
 }
 
@@ -382,7 +394,7 @@ fn short_host_name() -> Option<String> {
 
 #[cfg(unix)]
 fn print_help() {
-    eprintln!("usage: herden pair [--address HOST]... [--port PORT]");
+    eprintln!("usage: herden pair [--address HOST]... [--port PORT] [--qr-only]");
 }
 
 pub(crate) fn unix_seconds() -> u64 {
@@ -410,6 +422,15 @@ mod tests {
         let parsed = PairOptions::parse(&args).expect("options");
         assert_eq!(parsed.addresses, ["100.64.1.2", "host.example"]);
         assert_eq!(parsed.port, 2222);
+        assert!(!parsed.qr_only);
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn pair_options_accept_qr_only_output() {
+        let args = ["--qr-only"].map(str::to_string);
+        let parsed = PairOptions::parse(&args).expect("options");
+        assert!(parsed.qr_only);
     }
 
     #[cfg(unix)]

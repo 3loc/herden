@@ -24,3 +24,7 @@ The production executable and all user-facing commands are named `herden`.
 The legacy `HERDR_*` protocol environment variables and wire field names are
 retained where changing them would break compatible integrations or existing
 iOS Pairing Codes.
+
+When already inside Herden, press `Ctrl-B i` to open a short-lived Pairing Code
+in a full-screen popup. Close the popup with `Ctrl-C`; change or disable the
+binding with `keys.pair`.

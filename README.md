@@ -124,6 +124,10 @@ In an ordinary shell on the Host, run:
 herden pair
 ```
 
+If Herden is already open, press **Ctrl-B i** instead. It opens the same
+short-lived Pairing Code over the current session in a full-screen popup;
+press Ctrl-C to close it.
+
 Then open **Herden → Hosts → Add Host** on the iPhone and scan the Pairing Code.
 Confirm the Host fingerprint when prompted. The code expires after two minutes
 and enrols one phone. Run the command again for another device.

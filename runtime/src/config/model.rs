@@ -337,6 +337,8 @@ pub struct KeysConfig {
     pub help: BindingConfig,
     /// Open settings. Default: "prefix+s"
     pub settings: BindingConfig,
+    /// Display an iOS Pairing Code in a popup. Default: "prefix+i"
+    pub pair: BindingConfig,
     /// Create a new workspace. Default: "prefix+shift+n"
     pub new_workspace: BindingConfig,
     /// Create a Git worktree from the selected workspace. Default: "prefix+shift+g"
@@ -468,6 +470,8 @@ pub(crate) struct KeysConfigOverlay {
     help: Option<BindingConfig>,
     #[serde(skip_serializing_if = "Option::is_none")]
     settings: Option<BindingConfig>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pair: Option<BindingConfig>,
     #[serde(skip_serializing_if = "Option::is_none")]
     new_workspace: Option<BindingConfig>,
     #[serde(skip_serializing_if = "Option::is_none")]
@@ -612,6 +616,7 @@ impl<'de> Deserialize<'de> for KeysConfig {
         apply_field!(prefix);
         apply_field!(help);
         apply_field!(settings);
+        apply_field!(pair);
         apply_field!(new_workspace);
         apply_field!(new_worktree);
         apply_field!(open_worktree);
@@ -716,6 +721,7 @@ impl KeysConfig {
         profile.prefix = Some(self.prefix.clone());
         copy_effective_action_field!(help, keybinds.help);
         copy_effective_action_field!(settings, keybinds.settings);
+        copy_effective_action_field!(pair, keybinds.pair);
         copy_effective_action_field!(new_workspace, keybinds.new_workspace);
         copy_effective_action_field!(new_worktree, keybinds.new_worktree);
         copy_effective_action_field!(open_worktree, keybinds.open_worktree);
@@ -1084,6 +1090,7 @@ impl Default for KeysConfig {
             prefix: "ctrl+b".into(),
             help: BindingConfig::one("prefix+?"),
             settings: BindingConfig::one("prefix+s"),
+            pair: BindingConfig::one("prefix+i"),
             new_workspace: BindingConfig::one("prefix+shift+n"),
             new_worktree: BindingConfig::one("prefix+shift+g"),
             open_worktree: BindingConfig::empty(),
