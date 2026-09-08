@@ -38,7 +38,8 @@ mkdir -p "$output_dir"
 install -m 0755 "target/$target/release/herden" "$output_dir/$asset"
 
 version=$(awk -F'"' '/^version = "/ { print $2; exit }' Cargo.toml)
-sh "$repo_dir/scripts/verify-host-release-asset.sh" "$output_dir/$asset" "$version"
+sh "$repo_dir/scripts/verify-host-release-asset.sh" \
+    "$output_dir/$asset" "$version" "$target"
 
 case "$target" in
     *-unknown-linux-musl)
