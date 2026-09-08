@@ -77,28 +77,30 @@ exit 0
 SH
 
 chmod 0755 "$fixture/bin/uname" "$fixture/bin/curl" "$fixture/bin/git" "$fixture/bin/npm"
-export HOME="$fixture/home"
+run_installer() {
+  env HOME="$fixture/home" SHELL=/bin/bash sh "$repo_root/install.sh"
+}
 export PATH="$fixture/bin:/usr/bin:/bin"
 export HERDEN_INSTALL_DIR="$fixture/install"
 export HERDEN_DOC_DIR="$fixture/doc"
 export HERDEN_TEST_PLUGIN_LOG="$fixture/plugin.log"
 unset HERDR_ENV HERDR_BIN_PATH HERDR_SOCKET_PATH
 
-sh "$repo_root/install.sh" > "$fixture/install.out" 2> "$fixture/install.err"
+run_installer > "$fixture/install.out" 2> "$fixture/install.err"
 test -x "$fixture/install/herden"
 test -s "$fixture/doc/LICENSE"
 test -s "$fixture/doc/NOTICE"
 test ! -e "$fixture/plugin.log"
 grep -Fq "Herden 0.8.3 is ready" "$fixture/install.out"
 grep -Fq "Start or reattach" "$fixture/install.out"
-grep -Fq "\"$fixture/install/herden\" pair" "$fixture/install.out"
+grep -Fq '  herden pair' "$fixture/install.out"
 grep -Fq "Already inside Herden? Press Ctrl-B, then i." "$fixture/install.out"
 test "$("$fixture/install/herden" --version)" = 'herden 0.8.3'
 
 HERDR_ENV=1 \
 HERDR_BIN_PATH="$fixture/legacy/bin/herdr" \
 HERDR_SOCKET_PATH="$fixture/legacy/.config/herdr/herdr.sock" \
-    sh "$repo_root/install.sh" > "$fixture/legacy.out" 2> "$fixture/legacy.err"
+    run_installer > "$fixture/legacy.out" 2> "$fixture/legacy.err"
 grep -Fq 'inside an existing upstream Herdr session' "$fixture/legacy.err"
 grep -Fq 'cannot rename or replace that running Herdr client' "$fixture/legacy.err"
 grep -Fq 'detach with Ctrl-B, then d' "$fixture/legacy.err"
@@ -109,13 +111,13 @@ if grep -Fq 'detach and relaunch' "$fixture/install.err"; then
   exit 1
 fi
 
-HERDEN_INSTALL_NOTIFICATIONS=1 sh "$repo_root/install.sh" > "$fixture/optional.out" 2> "$fixture/optional.err"
+HERDEN_INSTALL_NOTIFICATIONS=1 run_installer > "$fixture/optional.out" 2> "$fixture/optional.err"
 grep -Fq 'is already 0.8.3' "$fixture/optional.out"
 grep -Fqx 'plugin install 3loc/herden/plugin --ref host-v0.8.3 --yes' "$fixture/plugin.log"
 
 printf '%s\n' '#!/bin/sh' 'printf "%s\n" "herden 0.8.2"' > "$fixture/install/herden"
 chmod 0755 "$fixture/install/herden"
-sh "$repo_root/install.sh" > "$fixture/upgrade.out" 2> "$fixture/upgrade.err"
+run_installer > "$fixture/upgrade.out" 2> "$fixture/upgrade.err"
 grep -Fq 'detach and relaunch' "$fixture/upgrade.err"
 grep -Fq "server live-handoff --import-exe \"$fixture/install/herden\"" "$fixture/upgrade.err"
 test "$("$fixture/install/herden" --version)" = 'herden 0.8.3'
@@ -123,7 +125,7 @@ test "$("$fixture/install/herden" --version)" = 'herden 0.8.3'
 bad_install="$fixture/bad-install"
 mkdir -p "$bad_install"
 if HERDEN_INSTALL_DIR="$bad_install" HERDEN_TEST_BAD_CHECKSUM=1 \
-    sh "$repo_root/install.sh" > "$fixture/bad.out" 2> "$fixture/bad.err"; then
+    run_installer > "$fixture/bad.out" 2> "$fixture/bad.err"; then
   echo 'installer accepted a corrupt checksum' >&2
   exit 1
 fi
@@ -133,7 +135,7 @@ grep -Fq 'failed checksum verification' "$fixture/bad.err"
 wrong_version_install="$fixture/wrong-version-install"
 mkdir -p "$wrong_version_install"
 if HERDEN_INSTALL_DIR="$wrong_version_install" HERDEN_TEST_WRONG_VERSION=1 \
-    sh "$repo_root/install.sh" > "$fixture/wrong-version.out" 2> "$fixture/wrong-version.err"; then
+    run_installer > "$fixture/wrong-version.out" 2> "$fixture/wrong-version.err"; then
   echo 'installer accepted a binary with the wrong version' >&2
   exit 1
 fi

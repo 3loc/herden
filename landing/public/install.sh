@@ -28,11 +28,105 @@ checksum() {
     fi
 }
 
+# Quote a path as shell data, including spaces, apostrophes and metacharacters.
+shell_quote() {
+    printf "'%s'" "$(printf '%s' "$1" | sed "s/'/'\\\\''/g")"
+}
+
+configure_profile() {
+    profile=$1
+    # Recognize common existing PATH assignments without executing user startup
+    # files. A mention in a comment is not configuration. The block we append
+    # uses the same assignment, so repeated installation leaves the file alone.
+    if [ -f "$profile" ] && HERDEN_PATH_QUOTED="$quoted_install_dir" awk '
+        BEGIN {
+            dirs[1] = ENVIRON["HERDEN_PATH_QUOTED"]
+            if (ENVIRON["HERDEN_INSTALL_DIR"] == "" ||
+                ENVIRON["HERDEN_INSTALL_DIR"] == ENVIRON["HOME"] "/.local/bin") {
+                dirs[2] = "$HOME/.local/bin"
+                dirs[3] = "${HOME}/.local/bin"
+                dirs[4] = ENVIRON["HOME"] "/.local/bin"
+            }
+        }
+        {
+            sub(/^[ \t]+/, "")
+            sub(/[ \t]+$/, "")
+            sub(/^export[ \t]+/, "")
+            for (i in dirs) {
+                d = dirs[i]
+                if ($0 == "PATH=" d ":$PATH" ||
+                    $0 == "PATH=" d ":\"$PATH\"" ||
+                    $0 == "PATH=\"" d ":$PATH\"" ||
+                    $0 == "PATH=\"$PATH:" d "\"") found = 1
+            }
+        }
+        END { exit !found }
+    ' "$profile"; then
+        return
+    fi
+
+    mkdir -p "$(dirname "$profile")"
+    # shellcheck disable=SC2016 # Write literal variables for future shells.
+    {
+        printf '\n# Herden: make the Host command available in this shell.\n'
+        printf 'case ":$PATH:" in\n'
+        printf '    *:%s:*) ;;\n' "$quoted_install_dir"
+        printf '    *)\n        export PATH=%s:"$PATH"\n        ;;\n' "$quoted_install_dir"
+        printf 'esac\n'
+    } >> "$profile" || fail "could not add Herden to PATH in ${profile}"
+    log "configured PATH in ${profile}"
+}
+
+configure_path() {
+    quoted_install_dir=$(shell_quote "$install_dir")
+    case "${SHELL##*/}" in
+        bash)
+            # Bash reads only the first existing login file in this order.
+            if [ -f "$HOME/.bash_profile" ]; then
+                configure_profile "$HOME/.bash_profile"
+            elif [ -f "$HOME/.bash_login" ]; then
+                configure_profile "$HOME/.bash_login"
+            else
+                configure_profile "$HOME/.profile"
+            fi
+            configure_profile "$HOME/.bashrc"
+            ;;
+        zsh)
+            configure_profile "${ZDOTDIR:-$HOME}/.zprofile"
+            configure_profile "${ZDOTDIR:-$HOME}/.zshrc"
+            ;;
+        sh|dash|ash|ksh|'') configure_profile "$HOME/.profile" ;;
+        *) warn "automatic PATH setup supports bash, zsh and POSIX shells; configure PATH in your ${SHELL} startup file" ;;
+    esac
+
+    # A piped installer cannot export into its parent Terminal. The quick-start
+    # command sets PATH there; standalone callers get the same explicit step.
+    case ":${PATH}:" in
+        *":${install_dir}:"*) ;;
+        *)
+            # shellcheck disable=SC2016 # This command is for the parent shell.
+            printf '\nTo use Herden in this Terminal now, run:\n\n  export PATH=%s:"$PATH"\n' "$quoted_install_dir"
+            ;;
+    esac
+}
+
 main() {
     need curl
     need awk
     need uname
     need mktemp
+    need sed
+
+    # PATH cannot represent directories containing a colon or newline.
+    case "$install_dir" in
+        /*) ;;
+        *) fail "HERDEN_INSTALL_DIR must be an absolute path" ;;
+    esac
+    case "$install_dir" in
+        *:*|*'
+'*) fail "HERDEN_INSTALL_DIR cannot contain a colon or newline" ;;
+    esac
+    SHELL=${SHELL:-}
 
     case "$(uname -s)" in
         Linux) platform="linux" ;;
@@ -112,13 +206,7 @@ main() {
         fi
     fi
 
-    case ":${PATH}:" in
-        *":${install_dir}:"*) ;;
-        *)
-            warn "${install_dir} is not on PATH"
-            warn "add this to your shell profile: export PATH=\"${install_dir}:\$PATH\""
-            ;;
-    esac
+    configure_path
 
     if command -v sshd >/dev/null 2>&1; then
         log "OpenSSH Server is installed"
@@ -144,8 +232,7 @@ main() {
         warn "\"${install_dir}/${binary}\""
     fi
 
-    printf '\nHerden %s is ready.\n\nStart or reattach:\n\n  "%s/herden"\n\nDisplay a Pairing Code from a shell:\n\n  "%s/herden" pair\n\nAlready inside Herden? Press Ctrl-B, then i.\n\n' \
-        "$host_version" "$install_dir" "$install_dir"
+    printf '\nHerden %s is ready.\n\nStart or reattach:\n\n  herden\n\nDisplay a Pairing Code from a shell:\n\n  herden pair\n\nAlready inside Herden? Press Ctrl-B, then i.\n\n' "$host_version"
 }
 
 main "$@"
