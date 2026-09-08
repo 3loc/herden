@@ -1813,7 +1813,7 @@ assert_behavior "worktree remove stale authorization writes nothing" \
 assert_behavior "herden API rejection" HerdenSSHTransportBehaviorE2ETests \
     '"a herden error envelope surfaces as a typed API rejection"'
 assert_behavior "session API rejection mapping" HerdenSSHTransportBehaviorE2ETests \
-    '"the session maps a herdr rejection to apiRejected"'
+    '"the session maps a herden rejection to apiRejected"'
 # herdr 0.7.5's `agent_pane_busy` window, which 0.8.0 no longer opens: nothing
 # live exercises this any more, so a named assertion is the only thing standing
 # between a refactor and silently dropping a documented server behaviour (#128).
