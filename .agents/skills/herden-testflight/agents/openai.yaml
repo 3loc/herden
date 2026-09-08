@@ -1,0 +1,4 @@
+interface:
+  display_name: "Herden TestFlight"
+  short_description: "Build and submit Herden betas from Studio"
+  default_prompt: "Use $herden-testflight to upload the latest working Herden iOS build and submit it for beta review."
