@@ -92,7 +92,8 @@ The repository is currently standalone on GitHub and places herdr under
 adding a Git remote cannot enable it. Before public launch, using that button
 requires Herden to become a real GitHub fork of herdr and to share a compatible
 default-branch history and tree layout. Until that migration is complete, do
-not describe Herden as automatically synchronised with herdr.
+not describe Herden as automatically synchronised with herdr. This does not
+block publishing Herden; Host updates remain explicit, reviewed imports.
 
 ## Install
 

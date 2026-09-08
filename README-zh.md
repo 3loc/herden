@@ -58,7 +58,8 @@ Herden Host 从未经修改的 herdr 0.8.2 开始开发。准确的来源 commit
 
 目前仓库在 GitHub 上是独立项目，并把 herdr 放在 `runtime/` 下，因此不能使用
 GitHub 的 **Sync fork** 按钮。启用该工作流需要把仓库迁移成真正的 herdr fork，
-并采用兼容的默认分支历史和目录结构。
+并采用兼容的默认分支历史和目录结构。这不影响公开发布 Herden；Host 更新目前
+采用明确、经过审查的导入方式。
 
 ## 安装 Host
 
