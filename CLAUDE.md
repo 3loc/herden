@@ -32,6 +32,7 @@ eliminating several dead ends.
 
 | Path | Responsibility |
 | --- | --- |
+| `docs/agents/ios-console.md` | Agent-first navigation/creation map and Space compatibility boundaries (ADR 0020). |
 | `Sources/Herden/Terminal/SharedTerminalKeyboard.swift` | The single Agent/Space control deck, including dictation, language selection, attachments and Paste. |
 | `Sources/Herden/Transport/SSHTransportSettings.swift` | Host command defaults and injectable SSH environment boundaries. |
 | `Sources/Herden/Sharing/` | Durable Share Extension transfer ingestion and delivery. |
