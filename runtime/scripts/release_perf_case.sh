@@ -33,10 +33,10 @@ xdg="$state/xdg"
 runtime="$state/run"
 gate="$state/start-output"
 out="$out_root/$variant/$scenario/r$round"
-mkdir -p "$xdg" "$runtime" "$out"
+mkdir -p "$xdg" "$runtime" "$out" "$state/home"
 
-launch_env=(env -u HERDR_BIN_PATH -u HERDR_ENV -u HERDR_SOCKET_PATH -u HERDR_CLIENT_SOCKET_PATH -u HERDR_SESSION -u HERDR_STARTUP_CWD -u HERDR_WORKSPACE_ID -u HERDR_TAB_ID -u HERDR_PANE_ID XDG_CONFIG_HOME="$xdg" XDG_RUNTIME_DIR="$runtime" HERDR_DISABLE_SOUND=1 SHELL=/bin/sh)
-control_env=(env -u HERDR_BIN_PATH -u HERDR_ENV -u HERDR_SOCKET_PATH -u HERDR_CLIENT_SOCKET_PATH -u HERDR_STARTUP_CWD -u HERDR_WORKSPACE_ID -u HERDR_TAB_ID -u HERDR_PANE_ID XDG_CONFIG_HOME="$xdg" XDG_RUNTIME_DIR="$runtime" HERDR_DISABLE_SOUND=1 SHELL=/bin/sh HERDR_SESSION="$name")
+launch_env=(env -u HERDR_BIN_PATH -u HERDR_ENV -u HERDR_SOCKET_PATH -u HERDR_CLIENT_SOCKET_PATH -u HERDR_SESSION -u HERDR_STARTUP_CWD -u HERDR_WORKSPACE_ID -u HERDR_TAB_ID -u HERDR_PANE_ID HOME="$state/home" XDG_CONFIG_HOME="$xdg" XDG_RUNTIME_DIR="$runtime" HERDR_DISABLE_SOUND=1 SHELL=/bin/sh)
+control_env=(env -u HERDR_BIN_PATH -u HERDR_ENV -u HERDR_SOCKET_PATH -u HERDR_CLIENT_SOCKET_PATH -u HERDR_STARTUP_CWD -u HERDR_WORKSPACE_ID -u HERDR_TAB_ID -u HERDR_PANE_ID HOME="$state/home" XDG_CONFIG_HOME="$xdg" XDG_RUNTIME_DIR="$runtime" HERDR_DISABLE_SOUND=1 SHELL=/bin/sh HERDR_SESSION="$name")
 
 cleaned=0
 cleanup() {
@@ -88,7 +88,7 @@ while IFS= read -r pane_id; do
 done < "$pane_file"
 touch "$gate"
 
-socket="$xdg/herdr/sessions/$name/herdr.sock"
+socket=$("${control_env[@]}" "$bin" status --json | jq -er '.server.socket')
 server_pid=
 for _ in $(seq 1 80); do
   server_pid=$(lsof -t "$socket" 2>/dev/null | head -n1 || true)
@@ -106,7 +106,7 @@ if [[ $platform == linux ]]; then
   pid_csv=$(IFS=,; echo "${all_pids[*]}")
   LC_ALL=C pidstat -h -u -p "$pid_csv" 1 "$seconds" > "$raw"
 else
-  top_args=(top -l $((seconds + 1)) -s 1 -stats pid,cpu,time -n 2)
+  top_args=(top -l $((seconds + 1)) -s 1 -stats 'pid,cpu,time' -n 2)
   for pid in "${all_pids[@]}"; do top_args+=(-pid "$pid"); done
   LC_ALL=C "${top_args[@]}" > "$raw"
 fi

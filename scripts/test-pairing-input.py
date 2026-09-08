@@ -154,15 +154,19 @@ def check_popup_client(binary, previous_binary=None):
                                           stdin=slave, stdout=slave, stderr=slave,
                                           preexec_fn=controlling_terminal)
 
+                terminal_output = bytearray()
+
                 def pump():
                     if select.select([master], [], [], 0.05)[0]:
-                        os.read(master, 65536)
+                        terminal_output.extend(os.read(master, 65536))
                     assert client.poll() is None, "TUI exited unexpectedly"
 
                 # Let the client finish its initial handshake and frame.
                 until = time.monotonic() + 1
                 while time.monotonic() < until:
                     pump()
+                assert b"[herden]" in terminal_output, "persistent Herden sidebar identity is missing"
+                print("PASS real TUI: persistent [herden] identity is visible")
                 for name, key in (("q", b"q"), ("Escape", b"\x1b"), ("Ctrl+C", b"\x03")):
                     os.write(master, b"\x02i")
 

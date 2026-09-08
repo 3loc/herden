@@ -470,34 +470,34 @@ fn wait_for_replacement_server_pid(runtime_dir: &Path, old_pid: u32, timeout: Du
 }
 
 #[cfg(target_os = "macos")]
-fn wait_for_replacement_server_pid(_runtime_dir: &Path, old_pid: u32, timeout: Duration) -> u32 {
-    let handoff_socket_pattern = format!("herden-handoff-{old_pid}.sock");
+fn wait_for_replacement_server_pid(runtime_dir: &Path, old_pid: u32, timeout: Duration) -> u32 {
+    use std::os::fd::AsRawFd;
+
+    // The import process changes its argv after handoff. Ask the API socket for
+    // its actual peer rather than looking for the vanished handoff argv token.
     let deadline = Instant::now() + timeout;
-    let mut last_stdout = String::new();
     while Instant::now() < deadline {
-        if let Ok(output) = std::process::Command::new("pgrep")
-            .args(["-af", &handoff_socket_pattern])
-            .output()
-        {
-            last_stdout = String::from_utf8_lossy(&output.stdout).into_owned();
-            for line in last_stdout.lines() {
-                let Some(pid_text) = line.split_whitespace().next() else {
-                    continue;
-                };
-                let Ok(pid) = pid_text.parse::<u32>() else {
-                    continue;
-                };
-                if pid != old_pid {
-                    return pid;
-                }
+        if let Ok(stream) = UnixStream::connect(runtime_dir.join("herden.sock")) {
+            let mut pid: libc::pid_t = 0;
+            let mut size = std::mem::size_of_val(&pid) as libc::socklen_t;
+            let result = unsafe {
+                libc::getsockopt(
+                    stream.as_raw_fd(),
+                    libc::SOL_LOCAL,
+                    libc::LOCAL_PEERPID,
+                    (&mut pid as *mut libc::pid_t).cast(),
+                    &mut size,
+                )
+            };
+            if result == 0 && pid > 0 && pid as u32 != old_pid {
+                return pid as u32;
             }
         }
         thread::sleep(Duration::from_millis(25));
     }
     panic!(
-        "replacement server for {} did not appear; last pgrep output: {}",
-        _runtime_dir.display(),
-        last_stdout
+        "replacement server for {} did not appear",
+        runtime_dir.display()
     );
 }
 
@@ -985,7 +985,6 @@ fn live_handoff_preserves_pane_process_io() {
         &api_socket,
         serde_json::json!({"id":"test:handoff","method":"server.live_handoff","params":{}}),
     ));
-    drop(spawned);
     assert!(
         wait_for_message_variant(
             &mut client_stream,
@@ -995,6 +994,9 @@ fn live_handoff_preserves_pane_process_io() {
         .unwrap(),
         "connected client shell should receive live-handoff shutdown"
     );
+    // Dropping the PTY owner kills its child. Let the old server flush the
+    // shutdown frame before cleanup, otherwise this assertion races SIGKILL.
+    drop(spawned);
     thread::sleep(Duration::from_millis(300));
     wait_for_api(&api_socket, Duration::from_secs(10));
     wait_for_socket(&client_socket, Duration::from_secs(5));

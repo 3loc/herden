@@ -26,7 +26,14 @@ DEVICE ?= $(shell xcrun devicectl list devices 2>/dev/null | awk '/physical[a-z]
 help: ## Show available targets
 	@awk -F':.*## ' '/^[a-z-]+:.*## / { printf "  make %-20s %s\n", $$1, $$2 }' $(MAKEFILE_LIST)
 
-.PHONY: host-install host-check host-release-asset host-release-assemble
+.PHONY: host-install host-check host-test host-perf host-release-asset host-release-assemble
+
+host-test: ## Run the locked Host suite serially (avoids upstream parallel fixture races)
+	cd runtime && cargo test --locked -- --test-threads=1
+
+host-perf: ## Compare candidate and published Host CPU use (HOST_CANDIDATE=... HOST_BASELINE=...)
+	@test -n "$(HOST_CANDIDATE)" -a -n "$(HOST_BASELINE)" || { echo "HOST_CANDIDATE and HOST_BASELINE are required" >&2; exit 2; }
+	cd runtime && HERDR_PERF_BASELINE_BIN="$(HOST_BASELINE)" bash scripts/release_perf_smoke.sh "$(HOST_CANDIDATE)"
 
 host-install: ## Build and install the native Host on this Linux or macOS machine
 	sh scripts/install-host-source.sh
