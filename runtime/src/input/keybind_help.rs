@@ -267,4 +267,19 @@ mod tests {
         assert_eq!(filtered[0].1[0].1, "close pane");
         assert!(filter_keybind_help_groups(groups(), "panes").is_empty());
     }
+
+    #[test]
+    fn default_help_advertises_the_pairing_shortcut() {
+        let config = crate::config::Config::default();
+        let prefix = config.prefix_key();
+        let keybinds = config.keybinds();
+        let groups = keybind_help_groups(&keybinds, prefix);
+        let pairing = groups
+            .iter()
+            .flat_map(|(_, entries)| entries)
+            .find(|(_, label)| label.as_ref() == "pair iPhone")
+            .expect("pairing shortcut in keybind help");
+
+        assert_eq!(pairing.0, "prefix+i");
+    }
 }

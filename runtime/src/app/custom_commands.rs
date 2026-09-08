@@ -1,5 +1,6 @@
 use std::fs;
 use std::io::{self, Write};
+use std::path::{Path, PathBuf};
 use std::process::Stdio;
 use std::sync::atomic::{AtomicU64, Ordering};
 use std::time::{SystemTime, UNIX_EPOCH};
@@ -9,6 +10,32 @@ use ratatui::layout::Direction;
 use super::{App, Mode};
 
 static NEXT_COMMAND_NAMESPACE: AtomicU64 = AtomicU64::new(1);
+
+const DELETED_EXECUTABLE_SUFFIX: &str = " (deleted)";
+
+fn executable_path_for_spawn(current: &Path) -> PathBuf {
+    if current.is_file() {
+        return current.to_owned();
+    }
+
+    // Linux appends " (deleted)" to /proc/self/exe after an installer has
+    // atomically replaced the binary. The persistent server deliberately
+    // survives compatible upgrades, so child commands must use the new file
+    // at the original pathname rather than the unlinked executable image.
+    let displayed = current.to_string_lossy();
+    if let Some(original) = displayed.strip_suffix(DELETED_EXECUTABLE_SUFFIX) {
+        let original = PathBuf::from(original);
+        if original.is_file() {
+            return original;
+        }
+    }
+
+    current.to_owned()
+}
+
+fn current_executable_path_for_spawn() -> io::Result<PathBuf> {
+    std::env::current_exe().map(|path| executable_path_for_spawn(&path))
+}
 
 pub(super) fn new_command_namespace() -> String {
     let counter = NEXT_COMMAND_NAMESPACE.fetch_add(1, Ordering::Relaxed);
@@ -215,7 +242,9 @@ impl App {
         selected_text: Option<String>,
     ) -> io::Result<()> {
         if binding.command == crate::config::BUILTIN_PAIRING_COMMAND {
-            let executable = std::env::current_exe()?.to_string_lossy().into_owned();
+            let executable = current_executable_path_for_spawn()?
+                .to_string_lossy()
+                .into_owned();
             return self.spawn_popup_argv_command(
                 &[executable, "pair".to_owned(), "--qr-only".to_owned()],
                 None,
@@ -258,7 +287,7 @@ impl App {
             crate::api::SOCKET_PATH_ENV_VAR.to_string(),
             crate::api::socket_path().display().to_string(),
         )];
-        if let Ok(current_exe) = std::env::current_exe() {
+        if let Ok(current_exe) = current_executable_path_for_spawn() {
             env.push((
                 "HERDR_BIN_PATH".to_string(),
                 current_exe.display().to_string(),
@@ -582,6 +611,8 @@ fn unique_scrollback_path(attempt: u32) -> std::path::PathBuf {
 
 #[cfg(test)]
 mod tests {
+    use std::path::PathBuf;
+
     fn test_app() -> crate::app::App {
         let (_api_tx, api_rx) = tokio::sync::mpsc::unbounded_channel();
         crate::app::App::new(
@@ -640,6 +671,28 @@ mod tests {
             crate::protocol::ClientShellCommandAction::Popup
         );
         assert!(!format!("{manifest:?}").contains(crate::config::BUILTIN_PAIRING_COMMAND));
+    }
+
+    #[test]
+    fn replaced_linux_executable_resolves_to_the_new_file_at_its_original_path() {
+        let root = std::env::temp_dir().join(format!(
+            "herden-replaced-executable-{}",
+            super::new_command_namespace()
+        ));
+        std::fs::create_dir_all(&root).unwrap();
+        let installed = root.join("herden");
+        std::fs::write(&installed, b"new binary").unwrap();
+        let deleted = PathBuf::from(format!("{} (deleted)", installed.display()));
+
+        assert_eq!(super::executable_path_for_spawn(&deleted), installed);
+
+        std::fs::remove_dir_all(root).unwrap();
+    }
+
+    #[test]
+    fn missing_executable_path_is_preserved_for_an_actionable_spawn_error() {
+        let missing = PathBuf::from("/definitely/missing/herden");
+        assert_eq!(super::executable_path_for_spawn(&missing), missing);
     }
 
     #[test]
