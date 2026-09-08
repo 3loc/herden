@@ -10,6 +10,9 @@ Entries reference the issue that motivated them.
 
 ### Added
 
+- Open built-in iPhone pairing from a running Herden session with `Ctrl-B i`,
+  using a full-screen QR popup and no plugin dependency.
+
 - Use one shared terminal keyboard for Agents and Spaces, including dictation
   and an on-keyboard language picker. Add German and French on-device dictation.
 
