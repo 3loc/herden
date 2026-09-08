@@ -56,18 +56,20 @@ Install the release binary on Linux or macOS:
 
 ```sh
 curl -fsSL https://herden.3loc.ltd/install.sh | sh
+export PATH="$HOME/.local/bin:$PATH"
 ```
 
 The installer selects the binary for the Host's OS and architecture, verifies
 its SHA-256 checksum, installs it to `~/.local/bin`, and installs the release's
-licence and attribution notice under `~/.local/share/doc/herden`. Open a new
-terminal and run `herden --version`. If the command is not found, run
-`"$HOME/.local/bin/herden" --version`, then add this line to `~/.zshrc` for zsh
-or `~/.bashrc` for bash:
+licence and attribution notice under `~/.local/share/doc/herden`. It adds the
+install directory to your shell startup files when needed: the active login
+profile and `~/.bashrc` for bash, `~/.zprofile` and `~/.zshrc` for zsh (respecting
+`ZDOTDIR`), or `~/.profile` for POSIX shells. Reinstalling does not duplicate
+these entries. Other shells need their own PATH configuration.
 
-```sh
-export PATH="$HOME/.local/bin:$PATH"
-```
+The export line makes `herden` available in the current Terminal immediately;
+a piped installer cannot change its parent shell's environment. Run
+`herden --version` or `herden pair` in that same Terminal.
 
 The same command upgrades an existing installation. It is idempotent: when the
 installed binary already matches the current release, it is verified and left
@@ -148,7 +150,7 @@ for another device. No Node, npm, plugin action or push relay is required.
 
 | Symptom | Next step |
 | --- | --- |
-| `herden: command not found` | Run `"$HOME/.local/bin/herden"` or set PATH as above. |
+| `herden: command not found` | Run `export PATH="$HOME/.local/bin:$PATH"` in this Terminal, or open a new terminal after installation. |
 | Release download fails | Check access to `herden.3loc.ltd`, or use the source build above. |
 | Expired QR code | Run `herden pair` again and keep its terminal open. |
 | Host unreachable | Check Tailscale on both devices, the Host address, firewall and access policy. |

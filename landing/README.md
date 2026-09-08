@@ -23,6 +23,7 @@ npm run preview      # serve dist/ locally
 | Path | What it holds |
 | --- | --- |
 | `src/pages/index.astro` | The page: composes the section components in order. |
+| `public/install.sh` | Exact copy of the root Host installer, published at `/install.sh`. |
 | `src/pages/404.astro` | Not-found page for unmatched paths. |
 | `src/layouts/Layout.astro` | `<head>` metadata, header, footer, global CSS imports. |
 | `src/components/*.astro` | One component per section, plus `Button`/`Badge`. |
@@ -37,6 +38,9 @@ rail below 1060px, single-column grids on phones) was added here.
 ## Design source
 
 Copy changes should stay in sync with `README.md` at the repo root.
+Install blocks must retain the PATH export after `curl ... | sh`, so the next
+`herden` command works in the same Terminal. The installer configures future
+shells separately; see `../docs/guides/install-host.md`.
 
 `src/styles/substrate/` is a vendored design-system snapshot, trimmed to what
 this page renders: every token file plus the

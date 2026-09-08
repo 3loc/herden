@@ -39,6 +39,9 @@ eliminating several dead ends.
 | `plugin/` | Optional Node notification extension. |
 | `relay/` | Stateless APNs relay. |
 | `landing/` | Static Herden site and public installer copy. |
+| `install.sh` | Verified Host download and shell PATH setup; mirrored exactly at `landing/public/install.sh`. |
+| `scripts/test-install-docker.sh` | Debian shell PATH matrix and Alpine published-binary installer checks. |
+| `docs/guides/install-host.md` | Public Host setup and current-terminal PATH requirements. |
 | `Makefile` | Local build, test, Host release and TestFlight entrypoints. |
 | `scripts/run-ci-ios-tests.sh` | Exhaustive local iOS and real-SSH validation runner. |
 | `UPSTREAM.md` | Heeler/herdr provenance and update policy. |
@@ -47,6 +50,11 @@ eliminating several dead ends.
 Both Agent and Space terminal views feed the shared keyboard into the same
 terminal input controller; attachment paths and pasted text therefore reach
 the live PTY through one guarded input path.
+
+The installer persists PATH in shell startup files; the quick-start export
+updates the current Terminal. Keep both: a `curl ... | sh` child cannot update
+its parent shell's environment. Installer changes run through
+`bash scripts/test-install-docker.sh`; see the Host guide for shell coverage.
 
 ## Load-bearing Host facts
 
