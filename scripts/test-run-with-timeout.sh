@@ -209,26 +209,58 @@ awk '
     exit 1
 }
 
-if ! awk '
-    /pull_request:/ { in_pr = 1 }
-    in_pr && /output\/\*\*/ { found = 1 }
-    in_pr && /^  push:/ { exit found ? 0 : 1 }
-    END { exit found ? 0 : 1 }
-' "$workflow"; then
-    echo "pull_request paths-ignore must include output/**" >&2
+# iOS CI uses positive paths. Omitting output, landing, Host runtime and the
+# Node sources is what keeps unrelated work off macOS runners.
+if grep -qE '^[[:space:]]+paths-ignore:' "$workflow"; then
+    echo "ci.yml must use positive paths, not paths-ignore" >&2
     exit 1
 fi
-if ! awk '
-    /^  push:/ { in_push = 1 }
-    in_push && /output\/\*\*/ { found = 1 }
-    in_push && /^# One in-flight/ { exit found ? 0 : 1 }
-    END { exit found ? 0 : 1 }
-' "$workflow"; then
-    echo "push paths-ignore must include output/**" >&2
+for required in \
+    'Sources/**' \
+    'Tests/**' \
+    'Herden.xcodeproj/**' \
+    'Packages/**' \
+    'project.yml' \
+    'Makefile' \
+    'scripts/**' \
+    'plugin/test-vectors/**' \
+    '.github/workflows/ci.yml'
+do
+    escaped="$(printf '%s' "$required" | sed 's/[.[*^$()+?{|]/\\&/g')"
+    [[ "$(grep -cE "^[[:space:]]+- ${escaped}$" "$workflow")" == 2 ]] || {
+        echo "pull_request and push paths must both include $required" >&2
+        exit 1
+    }
+done
+for excluded in 'output/**' 'landing/**' 'runtime/**' 'plugin/**' 'relay/**'; do
+    escaped="$(printf '%s' "$excluded" | sed 's/[.[*^$()+?{|]/\\&/g')"
+    if grep -qE "^[[:space:]]+- ${escaped}$" "$workflow"; then
+        echo "$excluded must not be an iOS trigger path" >&2
+        exit 1
+    fi
+done
+if grep -qE '^  (plugin-test|host-runtime|relay-test|codegen-drift):' "$workflow"; then
+    echo "Linux and codegen jobs belong in ci-linux.yml" >&2
     exit 1
 fi
-[[ "$(grep -cE '^[[:space:]]+- output/\*\*' "$workflow")" == 2 ]] || {
-    echo "output/** must appear once per paths-ignore list" >&2
+
+linux_workflow="$repo_root/.github/workflows/ci-linux.yml"
+[[ -f "$linux_workflow" ]] || {
+    echo "ci-linux.yml is missing" >&2
+    exit 1
+}
+for job in plugin-test host-runtime relay-test codegen-drift; do
+    grep -qE "^  ${job}:" "$linux_workflow" || {
+        echo "ci-linux.yml must keep the $job job" >&2
+        exit 1
+    }
+done
+grep -qF 'group: ci-ios-${{ github.ref }}' "$workflow" || {
+    echo "ci.yml must keep an iOS-specific concurrency group" >&2
+    exit 1
+}
+grep -qF 'group: ci-linux-${{ github.ref }}' "$linux_workflow" || {
+    echo "ci-linux.yml must keep a Linux-specific concurrency group" >&2
     exit 1
 }
 

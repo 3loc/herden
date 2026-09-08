@@ -5,6 +5,11 @@ repo_root=$(cd "$(dirname "$0")/.." && pwd)
 fixture=$(mktemp -d "${TMPDIR:-/tmp}/herden-install-test.XXXXXX")
 trap 'rm -rf "$fixture"' EXIT HUP INT TERM
 
+cmp -s "$repo_root/install.sh" "$repo_root/landing/public/install.sh" || {
+  echo 'landing/public/install.sh must match the root installer' >&2
+  exit 1
+}
+
 mkdir -p "$fixture/bin" "$fixture/home" "$fixture/install"
 
 cat > "$fixture/bin/uname" <<'SH'
