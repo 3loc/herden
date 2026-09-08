@@ -22,9 +22,8 @@ use std::time::{Duration, Instant};
 use interprocess::local_socket::traits::Stream as _;
 use serde::{Deserialize, Deserializer};
 
-const STABLE_UPDATE_MANIFEST_URL: &str =
-    "https://github.com/3loc/herden/releases/latest/download/latest.json";
-const PREVIEW_UPDATE_MANIFEST_URL: &str = "https://herden.austrheim.ca7.fm/preview.json";
+const STABLE_UPDATE_MANIFEST_URL: &str = "https://herden.3loc.ltd/latest.json";
+const PREVIEW_UPDATE_MANIFEST_URL: &str = "https://herden.3loc.ltd/preview.json";
 const HOMEBREW_FORMULA_API_URL: &str = "https://formulae.brew.sh/api/formula/herden.json";
 const HERDR_UPDATE_COMMAND: &str = "herden update";
 const HOMEBREW_UPDATE_COMMAND: &str = "brew update && brew upgrade herden";

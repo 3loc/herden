@@ -2,10 +2,11 @@
 set -eu
 
 binary="herden"
-host_version="0.8.2"
+host_version="0.8.3"
 host_tag="host-v${host_version}"
 install_dir="${HERDEN_INSTALL_DIR:-$HOME/.local/bin}"
-download_root="${HERDEN_DOWNLOAD_ROOT:-https://github.com/3loc/herden/releases/download/${host_tag}}"
+doc_dir="${HERDEN_DOC_DIR:-$HOME/.local/share/doc/herden}"
+download_root="${HERDEN_DOWNLOAD_ROOT:-https://herden.3loc.ltd/releases/${host_tag}}"
 
 log() { printf '  \033[32m>\033[0m %s\n' "$1"; }
 warn() { printf '  \033[33m!\033[0m %s\n' "$1" >&2; }
@@ -45,8 +46,10 @@ main() {
     esac
 
     asset="herden-${platform}-${architecture}"
+    staged=""
+    updated=0
     temporary="$(mktemp -d)"
-    trap 'rm -rf "$temporary"' EXIT HUP INT TERM
+    trap 'rm -rf "$temporary"; [ -z "$staged" ] || rm -f "$staged"' EXIT HUP INT TERM
 
     log "downloading ${asset} from ${host_tag}"
     curl -fsSL --retry 3 --connect-timeout 10 --max-time 180 \
@@ -55,6 +58,12 @@ main() {
     curl -fsSL --retry 3 --connect-timeout 10 --max-time 30 \
         "${download_root}/${asset}.sha256" -o "${temporary}/${asset}.sha256" \
         || fail "this release has no checksum for ${asset}"
+    curl -fsSL --retry 3 --connect-timeout 10 --max-time 30 \
+        "${download_root}/LICENSE" -o "${temporary}/LICENSE" \
+        || fail "this release has no Apache-2.0 licence"
+    curl -fsSL --retry 3 --connect-timeout 10 --max-time 30 \
+        "${download_root}/NOTICE" -o "${temporary}/NOTICE" \
+        || fail "this release has no attribution notice"
 
     expected="$(awk '{print tolower($1); exit}' "${temporary}/${asset}.sha256")"
     actual="$(checksum "${temporary}/${binary}" | awk '{print tolower($1)}')"
@@ -63,9 +72,26 @@ main() {
     fi
 
     mkdir -p "$install_dir"
-    chmod 0755 "${temporary}/${binary}"
-    mv "${temporary}/${binary}" "${install_dir}/${binary}"
-    log "installed ${install_dir}/${binary}"
+    installed_digest=""
+    if [ -f "${install_dir}/${binary}" ]; then
+        installed_digest="$(checksum "${install_dir}/${binary}" | awk '{print tolower($1)}')"
+    fi
+    if [ "$installed_digest" = "$actual" ]; then
+        log "${install_dir}/${binary} is already ${host_version}"
+    else
+        staged="$(mktemp "${install_dir}/.herden.XXXXXX")"
+        cp "${temporary}/${binary}" "$staged"
+        chmod 0755 "$staged"
+        mv "$staged" "${install_dir}/${binary}"
+        staged=""
+        updated=1
+        log "installed Herden ${host_version} at ${install_dir}/${binary}"
+    fi
+
+    mkdir -p "$doc_dir"
+    mv "${temporary}/LICENSE" "${doc_dir}/LICENSE"
+    mv "${temporary}/NOTICE" "${doc_dir}/NOTICE"
+    log "installed licence and attribution in ${doc_dir}"
 
     if [ "${HERDEN_INSTALL_NOTIFICATIONS:-0}" = "1" ]; then
         if command -v git >/dev/null 2>&1 && command -v npm >/dev/null 2>&1; then
@@ -90,6 +116,10 @@ main() {
         log "OpenSSH Server is available"
     else
         warn "enable OpenSSH Server before pairing this Host"
+    fi
+
+    if [ "$updated" -eq 1 ]; then
+        warn "already-running Herden sessions keep their current executable until restarted"
     fi
 
     printf '\nHerden is ready. Display a Pairing Code with:\n\n  "%s/herden" pair\n\n' "$install_dir"

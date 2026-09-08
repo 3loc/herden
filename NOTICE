@@ -1,0 +1,16 @@
+Herden
+Copyright 2026 Herden contributors
+
+Herden includes and modifies software from these Apache-2.0 projects:
+
+  herdr, https://github.com/herdrdev/herdr
+  Heeler, https://github.com/ZingerLittleBee/Heeler
+
+The native iOS application, plugin, relay, and landing site began from
+Heeler. The Host runtime under runtime/ began from herdr. Herden's public
+names, pairing flow, product integration, and subsequent features are
+modifications made for this project. Exact source baselines and maintenance
+policy are recorded in UPSTREAM.md and runtime/UPSTREAM.md.
+
+Neither upstream project endorses Herden. Their names are used only to
+describe the origin of the software.

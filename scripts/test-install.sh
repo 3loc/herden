@@ -10,7 +10,7 @@ cmp -s "$repo_root/install.sh" "$repo_root/landing/public/install.sh" || {
   exit 1
 }
 
-mkdir -p "$fixture/bin" "$fixture/home" "$fixture/install"
+mkdir -p "$fixture/bin" "$fixture/home" "$fixture/install" "$fixture/doc"
 
 cat > "$fixture/bin/uname" <<'SH'
 #!/bin/sh
@@ -48,6 +48,12 @@ BIN
     fi
     printf '%s  %s\n' "$digest" herden-linux-x86_64 > "$output"
     ;;
+  */LICENSE)
+    printf '%s\n' 'Apache License 2.0 test fixture' > "$output"
+    ;;
+  */NOTICE)
+    printf '%s\n' 'Herden upstream attribution test fixture' > "$output"
+    ;;
   *) exit 22 ;;
 esac
 SH
@@ -66,15 +72,19 @@ chmod 0755 "$fixture/bin/uname" "$fixture/bin/curl" "$fixture/bin/git" "$fixture
 export HOME="$fixture/home"
 export PATH="$fixture/bin:/usr/bin:/bin"
 export HERDEN_INSTALL_DIR="$fixture/install"
+export HERDEN_DOC_DIR="$fixture/doc"
 export HERDEN_TEST_PLUGIN_LOG="$fixture/plugin.log"
 
 sh "$repo_root/install.sh" > "$fixture/install.out" 2> "$fixture/install.err"
 test -x "$fixture/install/herden"
+test -s "$fixture/doc/LICENSE"
+test -s "$fixture/doc/NOTICE"
 test ! -e "$fixture/plugin.log"
 grep -Fq "\"$fixture/install/herden\" pair" "$fixture/install.out"
 
 HERDEN_INSTALL_NOTIFICATIONS=1 sh "$repo_root/install.sh" > "$fixture/optional.out" 2> "$fixture/optional.err"
-grep -Fqx 'plugin install 3loc/herden/plugin --ref host-v0.8.2 --yes' "$fixture/plugin.log"
+grep -Fq 'is already 0.8.3' "$fixture/optional.out"
+grep -Fqx 'plugin install 3loc/herden/plugin --ref host-v0.8.3 --yes' "$fixture/plugin.log"
 
 bad_install="$fixture/bad-install"
 mkdir -p "$bad_install"

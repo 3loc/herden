@@ -25,9 +25,8 @@ const REMOTE_SERVER_SHUTDOWN_CONFIRM_TIMEOUT: Duration = Duration::from_secs(5);
 const NONINTERACTIVE_SSH_COMMAND_TIMEOUT: Duration = Duration::from_secs(15);
 const REMOTE_SERVER_SHUTDOWN_POLL_INTERVAL: Duration = Duration::from_millis(100);
 const CURRENT_PROTOCOL: u32 = crate::protocol::PROTOCOL_VERSION;
-const STABLE_UPDATE_MANIFEST_URL: &str =
-    "https://github.com/3loc/herden/releases/latest/download/latest.json";
-const PREVIEW_UPDATE_MANIFEST_URL: &str = "https://herden.austrheim.ca7.fm/preview.json";
+const STABLE_UPDATE_MANIFEST_URL: &str = "https://herden.3loc.ltd/latest.json";
+const PREVIEW_UPDATE_MANIFEST_URL: &str = "https://herden.3loc.ltd/preview.json";
 const REMOTE_BINARY_ENV_VAR: &str = "HERDR_REMOTE_BINARY";
 const SSH_CONTROL_SOCKET_NAME: &str = "ctl";
 pub(crate) fn run_remote(remote: RemoteLaunch) -> io::Result<()> {

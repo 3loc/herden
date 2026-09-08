@@ -1,0 +1,23 @@
+{
+  "version": "@VERSION@",
+  "protocol": 22,
+  "endpoint_generation": 1,
+  "notes": "Herden Host @VERSION@ adds built-in iPhone pairing, including the Ctrl-B i Pairing Code shortcut, and fixes its effective shortcut in keybinding help.",
+  "assets": {
+    "linux-x86_64": "https://herden.3loc.ltd/releases/host-v@VERSION@/herden-linux-x86_64",
+    "linux-aarch64": "https://herden.3loc.ltd/releases/host-v@VERSION@/herden-linux-aarch64",
+    "macos-x86_64": "https://herden.3loc.ltd/releases/host-v@VERSION@/herden-macos-x86_64",
+    "macos-aarch64": "https://herden.3loc.ltd/releases/host-v@VERSION@/herden-macos-aarch64"
+  },
+  "sha256": {
+    "linux-x86_64": "@LINUX_X86_64@",
+    "linux-aarch64": "@LINUX_AARCH64@",
+    "macos-x86_64": "@MACOS_X86_64@",
+    "macos-aarch64": "@MACOS_AARCH64@"
+  },
+  "releases": {
+    "@VERSION@": {
+      "notes": "Herden Host @VERSION@ adds built-in iPhone pairing, including the Ctrl-B i Pairing Code shortcut, and fixes its effective shortcut in keybinding help."
+    }
+  }
+}
