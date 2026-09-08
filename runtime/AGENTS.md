@@ -1,6 +1,33 @@
-# herdr
+# Herden Host runtime
 
-Terminal based agent runtime for coding agents.
+Herden's terminal-based agent runtime, derived from upstream herdr.
+
+## Herden fork map and release guardrails
+
+| Path | Responsibility |
+| --- | --- |
+| `src/client/shell/brand.rs` | Persistent `[herden]` identity row in every desktop sidebar. |
+| `src/client/shell/sidebar.rs` | Local Host sidebar geometry and hit targets below the identity row. |
+| `src/client/shell/endpoint_sidebar.rs` | Federated endpoint sidebar geometry and hit targets below the identity row. |
+| `../scripts/build-host-release-asset.sh` | Cross-platform release build and mandatory identity verification before checksumming. |
+| `../scripts/verify-host-release-asset.sh` | Exact native version check plus embedded `[herden]` marker check for every asset. |
+| `../install.sh` | Public idempotent installer; mirrored byte-for-byte at `../landing/public/install.sh`. |
+
+The identity row is compiled into the Host, the release verifier rejects an
+asset without that marker before writing its checksum, and the installer then
+downloads that exact checksummed asset. Do not reduce this to a `--version`
+check: Host 0.8.3 once reported `herden 0.8.3` while its normal post-onboarding
+TUI was visually indistinguishable from upstream Herdr. Smoke-test the actual
+release TUI after dismissing onboarding and assert that `[herden]` remains
+visible.
+
+Legacy `HERDR_*` names are compatibility surfaces, but their values may also
+prove that the calling shell is inside a genuinely old Herdr process. An
+installer cannot rename or replace that live client. If `HERDR_BIN_PATH` ends
+in `herdr` or the inherited socket is under `~/.config/herdr`, detach with
+Ctrl-B then d and launch the installed Herden binary from the outer shell. Use
+explicit Herden socket paths for status or live-handoff commands issued from a
+legacy pane.
 
 ## Scope and Audience
 
