@@ -228,6 +228,18 @@ fn default_pairing_binding_invokes_the_endpoint_popup() {
         });
     state.set_snapshot(Box::new(projection));
 
+    let help_groups = crate::input::keybind_help_groups(
+        &state.config.keybinds.keybinds,
+        state.config.keybinds.prefix,
+    );
+    let pairing_help: Vec<_> = help_groups
+        .iter()
+        .flat_map(|(_, entries)| entries)
+        .filter(|(_, description)| description.as_ref() == "pair iPhone")
+        .collect();
+    assert_eq!(pairing_help.len(), 1);
+    assert_eq!(pairing_help[0].0, "prefix+i");
+
     assert!(state.handle_input_bytes(&[0x02]).actions.is_empty());
     let outcome = state.handle_input_bytes(b"i");
     let [ClientShellAction::Endpoint { request, .. }] = &outcome.actions[..] else {

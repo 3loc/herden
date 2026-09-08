@@ -195,24 +195,32 @@ pub(crate) fn keybind_help_groups(
         ),
     ];
 
-    if !keybinds.custom_commands.is_empty() {
-        groups.push((
-            "custom",
-            keybinds
-                .custom_commands
-                .iter()
-                .map(|binding| {
-                    (
-                        binding.label.clone(),
-                        binding
-                            .description
-                            .clone()
-                            .map(Cow::Owned)
-                            .unwrap_or(Cow::Borrowed("custom command")),
-                    )
-                })
-                .collect(),
+    let mut custom_entries = Vec::new();
+    for binding in &keybinds.custom_commands {
+        let projected_entry = binding.description.as_deref().and_then(|description| {
+            groups
+                .iter_mut()
+                .flat_map(|(_, entries)| entries.iter_mut())
+                .find(|(_, label)| label.as_ref() == description)
+        });
+        if let Some((key, _)) = projected_entry {
+            if key == "unset" {
+                *key = binding.label.clone();
+            }
+            continue;
+        }
+        custom_entries.push((
+            binding.label.clone(),
+            binding
+                .description
+                .clone()
+                .map(Cow::Owned)
+                .unwrap_or(Cow::Borrowed("custom command")),
         ));
+    }
+
+    if !custom_entries.is_empty() {
+        groups.push(("custom", custom_entries));
     }
     groups
 }
@@ -274,12 +282,31 @@ mod tests {
         let prefix = config.prefix_key();
         let keybinds = config.keybinds();
         let groups = keybind_help_groups(&keybinds, prefix);
-        let pairing = groups
+        let pairing: Vec<_> = groups
             .iter()
             .flat_map(|(_, entries)| entries)
-            .find(|(_, label)| label.as_ref() == "pair iPhone")
-            .expect("pairing shortcut in keybind help");
+            .filter(|(_, label)| label.as_ref() == "pair iPhone")
+            .collect();
 
-        assert_eq!(pairing.0, "prefix+i");
+        assert_eq!(pairing.len(), 1);
+        assert_eq!(pairing[0].0, "prefix+i");
+    }
+
+    #[test]
+    fn endpoint_pairing_command_replaces_an_unset_builtin_help_entry() {
+        let config = crate::config::Config::default();
+        let prefix = config.prefix_key();
+        let mut keybinds = config.keybinds();
+        keybinds.pair = ActionKeybinds::default();
+
+        let groups = keybind_help_groups(&keybinds, prefix);
+        let pairing: Vec<_> = groups
+            .iter()
+            .flat_map(|(_, entries)| entries)
+            .filter(|(_, label)| label.as_ref() == "pair iPhone")
+            .collect();
+
+        assert_eq!(pairing.len(), 1);
+        assert_eq!(pairing[0].0, "prefix+i");
     }
 }
