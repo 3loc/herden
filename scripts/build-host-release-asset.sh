@@ -19,11 +19,11 @@ esac
 command -v cargo >/dev/null 2>&1 || fail 'cargo is required'
 command -v zig >/dev/null 2>&1 || fail 'Zig 0.15.2 is required'
 [ "$(zig version)" = 0.15.2 ] || fail 'Zig 0.15.2 is required'
+ZIG=${ZIG:-$(command -v zig)}
+export ZIG
 
 if [ "$target" = aarch64-unknown-linux-musl ]; then
-    command -v aarch64-linux-gnu-gcc >/dev/null 2>&1 \
-        || fail 'aarch64-linux-gnu-gcc is required for the Linux ARM64 build'
-    export CARGO_TARGET_AARCH64_UNKNOWN_LINUX_MUSL_LINKER=aarch64-linux-gnu-gcc
+    export CARGO_TARGET_AARCH64_UNKNOWN_LINUX_MUSL_LINKER="$repo_dir/scripts/zig-aarch64-linux-musl-cc.sh"
 fi
 
 cd "$repo_dir/runtime"
