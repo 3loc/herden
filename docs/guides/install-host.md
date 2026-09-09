@@ -112,6 +112,19 @@ Already have the checkout? Start at `make host-check`. Source installation
 writes the executable to `~/.local/bin`. It does not install plugins or change
 your Claude, Codex, SSH or Tailscale configuration.
 
+For development, `make host-build` compiles only the Host and `make host-test`
+tests only the Host. Both reuse the Cargo target cache under
+`$XDG_CACHE_HOME/herden-build/cargo-target` when `XDG_CACHE_HOME` is set, or
+`~/.cache/herden-build/cargo-target` otherwise, including across task worktrees.
+They never invoke Xcode or build the iOS app.
+
+Run one matching test while iterating, then the full Host suite before handoff:
+
+```sh
+make host-test-one FILTER=managed_agent_exit
+make host-test
+```
+
 ## Start and pair
 
 Install and sign in to [Claude Code](https://code.claude.com/docs/en/quickstart)

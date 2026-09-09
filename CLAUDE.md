@@ -100,6 +100,13 @@ designed; they are compatibility surfaces, not public branding.
 ## Conventions
 
 - All builds, Swift tests, device installs, archives, and TestFlight uploads run on macOS; never attempt them from a Linux checkout. They all go through `make` (see `make help`). An interim TestFlight build is `make bump && make testflight` — App Store Connect rejects reused build numbers.
+- Keep validation scoped to the changed product surface. Runtime-only work uses
+  `make host-build`, `make host-test-one FILTER=…`, or `make host-test` and must
+  not build iOS. App-only work uses `make ios-build-sim`,
+  `make ios-test-one SUITE=…`, or `make ios-test`; add `make ios-test-ssh` only for changes under
+  `Packages/HerdenSSH`. Use `make test-all` only when a change crosses Host and
+  iOS boundaries or as a release check. These targets use stable per-machine
+  Cargo and Xcode caches so task worktrees do not rebuild dependencies.
 - Cutting a release is `make publish` (`scripts/publish.sh`, documented in `docs/guides/releasing.md`): it cuts `CHANGELOG.md`'s `[Unreleased]`, bumps `MARKETING_VERSION` in `project.yml`, builds and uploads to TestFlight, then tags and creates the GitHub release. `CHANGELOG.md` is the source of both the version and the notes; never hand-edit `MARKETING_VERSION` or create a `vX.Y.Z` tag by hand. Preview with `make publish DRY_RUN=1`.
 - Every distributable Host build is one public-to-fleet operation: publish the new versioned binaries and checksums, update both root `install.sh` and its identical `landing/public/install.sh` copy to download that exact version, and deploy them to `https://herden.3loc.ltd` before any fleet rollout. Test the public URL—not local files—in disposable Linux containers for fresh installation, an idempotent repeat, and upgrade from the previous release; verify the installed version and checksum against the published metadata.
 - After those public checks pass, run the 3loc/fleet rollout from the `3loc` VM and make every reachable `herden_hosts` member install through that same published `https://herden.3loc.ltd/install.sh`. The release path must not build or distribute `SOURCE=`, `REF=`, snapshots, or controller-local binaries; if the fleet target still does so, update its playbook before rollout. Finish with the fleet's independent version/checksum audit and report offline Hosts as pending. The Host release is not complete until the landing-page installer, its downloaded binaries, and the reachable fleet all agree.

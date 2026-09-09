@@ -4,6 +4,7 @@ set -euo pipefail
 
 repo_root=$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)
 destination=${1:-platform=iOS Simulator,name=iPhone 17}
+derived_data=${HERDEN_SSH_DERIVED_DATA:-$repo_root/build/HerdenSSHDerivedData}
 test_log=$(mktemp -t herden-ssh-tests.XXXXXX)
 
 cleanup() {
@@ -16,7 +17,7 @@ trap cleanup EXIT
     xcodebuild test \
         -scheme HerdenSSH \
         -destination "$destination" \
-        -derivedDataPath "$repo_root/build/HerdenSSHDerivedData" \
+        -derivedDataPath "$derived_data" \
         -collect-test-diagnostics never
 ) 2>&1 | tee "$test_log"
 

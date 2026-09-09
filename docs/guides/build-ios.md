@@ -200,11 +200,36 @@ path. Continue with the [Host pairing guide](install-host.md#start-and-pair).
 
 ## Run the tests
 
-Run the app and HerdenSSH package suites on an installed `iPhone 17` Simulator:
+For ordinary app changes, run only the app suite:
+
+```sh
+make ios-test
+```
+
+During a tight edit loop, compile without running tests or select one suite:
+
+```sh
+make ios-build-sim
+make ios-test-one SUITE=PairingCodeTests
+```
+
+Changes under `Packages/HerdenSSH` use its separate package suite:
+
+```sh
+make ios-test-ssh
+```
+
+Run both iOS surfaces before release or after a cross-cutting transport change:
 
 ```sh
 make test
 ```
+
+The Make targets keep DerivedData in stable `Herden-Local` and
+`HerdenSSH-Local` directories under Xcode's normal DerivedData folder. The
+cache is therefore reused across task worktrees and temporary Studio staging
+directories. Override `DERIVED` or `SSH_DERIVED` only when an isolated cache is
+deliberately required.
 
 Choose a focused app suite with `xcodebuild`:
 
@@ -214,13 +239,6 @@ xcodebuild test \
   -scheme Herden \
   -destination 'platform=iOS Simulator,name=iPhone 17' \
   -only-testing:HerdenTests/PairingCodeTests
-```
-
-Changes under `Packages/HerdenSSH` use the separate package test plan:
-
-```sh
-scripts/run-herdenssh-package-tests.sh \
-  'platform=iOS Simulator,name=iPhone 17'
 ```
 
 Some real-SSH suites require disposable local SSH fixtures. They skip on a

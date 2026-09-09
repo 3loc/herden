@@ -32,7 +32,7 @@ mkdir -p "$install_dir"
 staged_binary=$(mktemp "$install_dir/.herden-install.XXXXXX")
 trap 'rm -f "$staged_binary"' 0
 trap 'exit 1' HUP INT TERM
-install -m 0755 target/release/herden "$staged_binary"
+install -m 0755 "${CARGO_TARGET_DIR:-target}/release/herden" "$staged_binary"
 mv -f "$staged_binary" "$install_dir/herden"
 printf '\nInstalled %s/herden\nNo plugins are required.\n\nStart your Host:\n  "%s/herden"\n\nIn a shell inside that session, pair your phone:\n  "%s/herden" pair\n' \
     "$install_dir" "$install_dir" "$install_dir"
