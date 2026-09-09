@@ -117,28 +117,19 @@ struct ConsoleListPresentationRoutingTests {
         #expect(
             ConsoleAgentsSurface(
                 hostCount: 2,
-                filteredHostName: nil,
-                filteredAgentCount: 0,
+                agentCount: 0,
                 visibleIssueCount: 0) == .noAgents)
         #expect(
             ConsoleAgentsSurface(
                 hostCount: 2,
-                filteredHostName: nil,
-                filteredAgentCount: 0,
+                agentCount: 0,
                 visibleIssueCount: 0,
                 presentationMode: .grouped,
                 projectedSectionCount: 2) == .rows)
         #expect(
             ConsoleAgentsSurface(
                 hostCount: 1,
-                filteredHostName: "studio",
-                filteredAgentCount: 0,
-                visibleIssueCount: 0) == .noAgentsOnHost("studio"))
-        #expect(
-            ConsoleAgentsSurface(
-                hostCount: 1,
-                filteredHostName: "studio",
-                filteredAgentCount: 0,
+                agentCount: 0,
                 visibleIssueCount: 0,
                 presentationMode: .grouped,
                 projectedSectionCount: 1) == .rows)

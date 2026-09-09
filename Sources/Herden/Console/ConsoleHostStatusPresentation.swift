@@ -110,13 +110,11 @@ struct ConsoleHostStatusPresentation: Equatable, Identifiable {
 enum ConsoleAgentsSurface: Equatable {
     case noHosts
     case noAgents
-    case noAgentsOnHost(String)
     case rows
 
     init(
         hostCount: Int,
-        filteredHostName: String?,
-        filteredAgentCount: Int,
+        agentCount: Int,
         filteredSpaceCount: Int = 0,
         visibleIssueCount: Int,
         presentationMode: ConsoleListPresentationMode = .flat,
@@ -126,12 +124,8 @@ enum ConsoleAgentsSurface: Equatable {
             self = .noHosts
         } else if presentationMode == .grouped {
             self = projectedSectionCount > 0 ? .rows : .noHosts
-        } else if filteredAgentCount == 0 && filteredSpaceCount == 0 && visibleIssueCount == 0 {
-            if let filteredHostName {
-                self = .noAgentsOnHost(filteredHostName)
-            } else {
-                self = .noAgents
-            }
+        } else if agentCount == 0 && filteredSpaceCount == 0 && visibleIssueCount == 0 {
+            self = .noAgents
         } else {
             self = .rows
         }

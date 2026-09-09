@@ -17,7 +17,7 @@ extension TerminalAgentSwitcherItem {
     init(agent: ConsoleAgent, pins: PinnedAgentsStore) {
         self.init(
             id: agent.id,
-            title: agent.switcherLabel,
+            title: "\(agent.switcherLabel) · \(agent.hostName)",
             status: agent.agent.status,
             isPinned: pins.isPinned(hostID: agent.hostID, paneID: agent.agent.paneID))
     }

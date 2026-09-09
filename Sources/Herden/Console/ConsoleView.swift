@@ -41,9 +41,6 @@ struct ConsoleView: View {
     /// 1.2 s visual-feedback hold after `retryHost` returns. Distinct from
     /// `EventsSessionStatus.reconnecting`.
     @State private var manualReconnectInFlightHostIDs: Set<Host.ID> = []
-    /// Narrows the Agent list to one Host; nil shows every Host. This is a
-    /// filter across both Spaces and Agents.
-    @State private var hostFilter: Host.ID?
     /// Outlives the detail column's rebuilds, which is the whole point: it
     /// carries the raised keyboard from one Attach screen to the next.
     @State private var keyboardHandoff = TerminalKeyboardHandoff()
@@ -86,24 +83,6 @@ struct ConsoleView: View {
                         }
                         .accessibilityElement(children: .combine)
                     }
-                    // A filter is meaningless with a single Host.
-                    if hosts.hosts.count > 1 {
-                        ToolbarItem(placement: .primaryAction) {
-                            Menu(
-                                "Filter by Host",
-                                systemImage: hostFilter == nil
-                                    ? "line.3.horizontal.decrease.circle"
-                                    : "line.3.horizontal.decrease.circle.fill"
-                            ) {
-                                Picker("Host", selection: $hostFilter) {
-                                    Text("All Hosts").tag(Host.ID?.none)
-                                    ForEach(hosts.hosts) { host in
-                                        Text(host.displayName).tag(Host.ID?.some(host.id))
-                                    }
-                                }
-                            }
-                        }
-                    }
                     ToolbarItem(placement: .primaryAction) {
                         Menu("Settings", systemImage: "ellipsis.circle") {
                             Button("Spaces & Terminals", systemImage: "apple.terminal") { isBrowsingSpaces = true }
@@ -114,7 +93,7 @@ struct ConsoleView: View {
                     if !hosts.hosts.isEmpty {
                         ToolbarItem(placement: .primaryAction) {
                             Button("New Agent", systemImage: "plus") {
-                                newSpaceHostID = hostFilter
+                                newSpaceHostID = nil
                                 isStartingAgent = true
                             }
                         }
@@ -206,7 +185,7 @@ struct ConsoleView: View {
                             Button("New Terminal", systemImage: "plus") {
                                 createsTerminalAfterBrowserDismissal = true
                                 isBrowsingSpaces = false
-                                newSpaceHostID = hostFilter
+                                newSpaceHostID = nil
                             }
                         }
                         .scrollContentBackground(.hidden)
@@ -306,13 +285,6 @@ struct ConsoleView: View {
             isCreatingSpace = false
             isShowingSettings = false
             selectedSpace = nil
-        }
-        // A filter pointing at a removed Host would silently hide every
-        // Agent; fall back to All Hosts instead.
-        .onChange(of: hosts.hosts) { _, hosts in
-            if let hostFilter, !hosts.contains(where: { $0.id == hostFilter }) {
-                self.hostFilter = nil
-            }
         }
     }
 
@@ -466,23 +438,11 @@ struct ConsoleView: View {
                 Text("Start an Agent. Its Space is created automatically.")
             } actions: {
                 Button("New Agent", systemImage: "plus") {
-                    newSpaceHostID = hostFilter
+                    newSpaceHostID = nil
                     isStartingAgent = true
                 }
                 .buttonStyle(.borderedProminent)
                 .tint(Brand.vine)
-            }
-        case .noAgentsOnHost(let hostName):
-            ContentUnavailableView {
-                Label(
-                    "No Agents on \(hostName)",
-                    systemImage: "line.3.horizontal.decrease.circle")
-            } actions: {
-                Button("New Agent", systemImage: "plus") {
-                    newSpaceHostID = hostFilter
-                    isStartingAgent = true
-                }
-                Button("Show All Hosts") { hostFilter = nil }
             }
         case .rows:
             List(selection: selectedAgent) {
@@ -500,7 +460,7 @@ struct ConsoleView: View {
 
     @ViewBuilder
     private var flatAgentListRows: some View {
-        ForEach(visibleHostIssues) { issue in
+        ForEach(hostIssues) { issue in
             if issue.navigates {
                 Button { presentHosts(issue.hostID) } label: {
                     hostIssueRow(issue, showsChevron: true)
@@ -511,10 +471,10 @@ struct ConsoleView: View {
                 hostIssueRow(issue, showsChevron: false)
             }
         }
-        ForEach(filteredAgents) { agent in
+        ForEach(console.agents) { agent in
             agentRow(agent)
         }
-        if filteredAgents.isEmpty && visibleHostIssues.isEmpty {
+        if console.agents.isEmpty && hostIssues.isEmpty {
             Text("No Agents")
                 .font(Brand.sans(.subheadline))
                 .foregroundStyle(Brand.muted)
@@ -778,36 +738,18 @@ struct ConsoleView: View {
     private var agentsSurface: ConsoleAgentsSurface {
         ConsoleAgentsSurface(
             hostCount: hosts.hosts.count,
-            filteredHostName: hostFilter == nil ? nil : filteredHostName,
-            filteredAgentCount: filteredAgents.count,
+            agentCount: console.agents.count,
             filteredSpaceCount: 0,
-            visibleIssueCount: visibleHostIssues.count,
+            visibleIssueCount: hostIssues.count,
             presentationMode: .flat,
             projectedSectionCount: 0)
-    }
-
-    private var filteredAgents: [ConsoleAgent] {
-        guard let hostFilter else { return console.agents }
-        return console.agents.filter { $0.hostID == hostFilter }
     }
 
     private var filteredSpaces: [ConsoleSpace] {
         ConsoleSpace.project(
             hosts: hosts.hosts,
             workspacesByHost: console.workspacesByHost,
-            agents: console.agents,
-            filteredHostID: hostFilter)
-    }
-
-    /// Host issues shown in the list: all of them, or the filtered Host's
-    /// only — a filtered Console should not nag about other machines.
-    private var visibleHostIssues: [ConsoleHostStatusPresentation] {
-        guard let hostFilter else { return hostIssues }
-        return hostIssues.filter { $0.hostID == hostFilter }
-    }
-
-    private var filteredHostName: String {
-        hosts.hosts.first(where: { $0.id == hostFilter })?.displayName ?? "this Host"
+            agents: console.agents)
     }
 
     private struct HostSheet: Identifiable {

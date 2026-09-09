@@ -10,6 +10,10 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ### Fixed
 
+- Remove a Herden-launched Agent's dedicated pane and Space when its process
+  exits, including exits initiated from the attached iPhone terminal.
+- Follow Codex, Claude Code and pi session titles automatically while keeping
+  a name explicitly set by the user authoritative.
 - Close a sole-Agent Space as a unit and add an explicit Close Space action,
   so destructive exits no longer leave replacement shells behind on the Host.
 - Shrink the terminal Pairing Code from roughly 77×39 to 49×25 cells while
@@ -56,6 +60,8 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ### Changed
 
+- Show Agents from every Host in one Console list, remove the Host filter, and
+  identify each Host in the in-terminal Agent switcher.
 - Highlight iOS sharing, media and document attachments, on-device dictation,
   and QR pairing across a tailnet on the landing page.
 - Claude Code and Codex sessions start and restore with their native vi editor

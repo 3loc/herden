@@ -187,7 +187,7 @@ struct TerminalAgentSwitcherTests {
 
         let unpinned = TerminalAgentSwitcherItem(agent: agent, pins: pins)
         #expect(unpinned.id == agent.id)
-        #expect(unpinned.title == "alpha")
+        #expect(unpinned.title == "alpha · devbox")
         #expect(unpinned.status == .blocked)
         #expect(!unpinned.isPinned)
 
@@ -195,6 +195,21 @@ struct TerminalAgentSwitcherTests {
         let pinned = TerminalAgentSwitcherItem(agent: agent, pins: pins)
         #expect(pinned.id == agent.id)
         #expect(pinned.isPinned)
+    }
+
+    @MainActor
+    @Test func switcherItemsIdentifyAgentsAcrossHosts() throws {
+        let suiteName = "hm-switcher-hosts-\(UUID().uuidString)"
+        let defaults = try #require(UserDefaults(suiteName: suiteName))
+        defer { defaults.removePersistentDomain(forName: suiteName) }
+        let pins = PinnedAgentsStore(defaults: defaults)
+        let first = Self.makeAgent(pane: "p1", workspace: "api")
+        let second = ConsoleAgent(
+            hostID: UUID(), hostName: "studio",
+            agent: first.agent, workspaceLabel: "api", repositoryCheckout: nil)
+
+        #expect(TerminalAgentSwitcherItem(agent: first, pins: pins).title == "api · devbox")
+        #expect(TerminalAgentSwitcherItem(agent: second, pins: pins).title == "api · studio")
     }
 
     /// Long-press is Pin / Unpin, matching the Console row, so the user can

@@ -174,14 +174,7 @@ struct ConsoleHostStatusPresentationTests {
             #expect(
                 ConsoleAgentsSurface(
                     hostCount: 1,
-                    filteredHostName: nil,
-                    filteredAgentCount: 0,
-                    visibleIssueCount: 1) == .rows)
-            #expect(
-                ConsoleAgentsSurface(
-                    hostCount: 1,
-                    filteredHostName: "studio",
-                    filteredAgentCount: 0,
+                    agentCount: 0,
                     visibleIssueCount: 1) == .rows)
         }
         #expect(
@@ -196,26 +189,17 @@ struct ConsoleHostStatusPresentationTests {
         #expect(
             ConsoleAgentsSurface(
                 hostCount: 0,
-                filteredHostName: nil,
-                filteredAgentCount: 0,
+                agentCount: 0,
                 visibleIssueCount: 0) == .noHosts)
         #expect(
             ConsoleAgentsSurface(
                 hostCount: 1,
-                filteredHostName: nil,
-                filteredAgentCount: 0,
+                agentCount: 0,
                 visibleIssueCount: 0) == .noAgents)
         #expect(
             ConsoleAgentsSurface(
                 hostCount: 2,
-                filteredHostName: "studio",
-                filteredAgentCount: 0,
-                visibleIssueCount: 0) == .noAgentsOnHost("studio"))
-        #expect(
-            ConsoleAgentsSurface(
-                hostCount: 2,
-                filteredHostName: nil,
-                filteredAgentCount: 1,
+                agentCount: 1,
                 visibleIssueCount: 1) == .rows)
     }
 }

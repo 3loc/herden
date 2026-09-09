@@ -235,8 +235,7 @@ struct ConsoleSpacePresentationTests {
         #expect(
             ConsoleAgentsSurface(
                 hostCount: 1,
-                filteredHostName: nil,
-                filteredAgentCount: 0,
+                agentCount: 0,
                 filteredSpaceCount: 1,
                 visibleIssueCount: 0) == .rows)
     }
@@ -244,6 +243,33 @@ struct ConsoleSpacePresentationTests {
 
 @Suite("Agent card presentation")
 struct AgentCardPresentationTests {
+    @Test func nativeSessionNameLeadsUnlessTheUserNamedTheAgent() {
+        let host = Host.fixture(name: "studio")
+        let automatic = ConsoleAgent(
+            hostID: host.id,
+            hostName: host.displayName,
+            agent: Agent(
+                terminalID: "t1", kind: "codex", title: "Fix session naming",
+                status: .working, workspaceID: "w", tabID: "w:t", paneID: "w:p1",
+                cwd: "/src/herden", revision: 1, name: "codex",
+                nameIsUserSet: false, automaticName: "Fix session naming"),
+            workspaceLabel: "herden",
+            repositoryCheckout: nil)
+        let manual = ConsoleAgent(
+            hostID: host.id,
+            hostName: host.displayName,
+            agent: Agent(
+                terminalID: "t2", kind: "codex", title: "Fix session naming",
+                status: .working, workspaceID: "w", tabID: "w:t", paneID: "w:p2",
+                cwd: "/src/herden", revision: 1, name: "release-captain",
+                nameIsUserSet: true, automaticName: "Fix session naming"),
+            workspaceLabel: "herden",
+            repositoryCheckout: nil)
+
+        #expect(AgentCardPresentation(agent: automatic).headline == "Fix session naming")
+        #expect(AgentCardPresentation(agent: manual).headline == "release-captain")
+    }
+
     @Test func namedAgentsInTheSameSpaceKeepDistinctHeadlinesAndSharedContext() {
         let first = presentation(kind: "codex", name: "reviewer", title: "", cwd: "/src/app", workspaceLabel: "App")
         let second = presentation(kind: "codex", name: "builder", title: "", cwd: "/src/app", workspaceLabel: "App")
