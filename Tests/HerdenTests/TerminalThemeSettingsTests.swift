@@ -14,14 +14,18 @@ struct TerminalThemeSettingsTests {
         return (defaults, { defaults.removePersistentDomain(forName: suiteName) })
     }
 
-    @Test func defaultsBothAppearancesToVesper() throws {
+    @Test func defaultsToDaylightInLightModeAndVesperInDarkMode() throws {
         let (defaults, cleanup) = try makeDefaults()
         defer { cleanup() }
         let settings = TerminalThemeSettings(defaults: defaults)
 
-        #expect(settings.lightSelection == .vesper)
+        #expect(settings.lightSelection == .followSystem)
         #expect(settings.darkSelection == .vesper)
-        #expect(settings.theme == TerminalThemeOption.vesper.terminalTheme)
+        #expect(
+            settings.theme
+                == TerminalTheme(
+                    light: TerminalThemeOption.followSystem.configuration(isDark: false),
+                    dark: TerminalThemeOption.vesper.configuration(isDark: true)))
     }
 
     /// Pre-slot releases persisted one selection; it must seed both slots so
@@ -105,7 +109,7 @@ struct TerminalThemeSettingsTests {
 
         let reloaded = TerminalThemeSettings(defaults: defaults)
         #expect(reloaded.darkSelection == .dracula)
-        #expect(reloaded.lightSelection == .vesper)
+        #expect(reloaded.lightSelection == .followSystem)
     }
 
     @Test func unknownPersistedSelectionFallsBackToVesper() throws {
@@ -116,7 +120,7 @@ struct TerminalThemeSettingsTests {
         defaults.set("removed-theme", forKey: "terminal-theme-dark")
         let settings = TerminalThemeSettings(defaults: defaults)
 
-        #expect(settings.lightSelection == .vesper)
+        #expect(settings.lightSelection == .followSystem)
         #expect(settings.darkSelection == .vesper)
     }
 

@@ -109,9 +109,9 @@ struct ContentView: View {
             liveActivities: liveActivities,
             activity: activity
         )
-        // Herden is a fixed dark product surface. Apply its scheme
-        // and vine accent at the window so every sheet and UIKit bridge agrees.
-        .preferredColorScheme(.dark)
+        // Apply the user's appearance once at the window so every sheet,
+        // pushed screen, and UIKit terminal surface resolves the same mode.
+        .preferredColorScheme(appearance.preferredColorScheme)
         .tint(Brand.vine)
         .task {
             console.setHosts(hostStore.hosts)

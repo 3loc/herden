@@ -1,21 +1,30 @@
 import CoreText
 import SwiftUI
+import UIKit
 
-/// Herden's fixed dark visual system. It does not inherit iOS semantic fills.
+/// Herden's day/night visual system. The daylight half keeps the field-green
+/// identity while using near-white planes and dark ink for outdoor contrast;
+/// the night half preserves the original black-and-vine palette.
 enum Brand {
-    static let background = Color(herdenHex: 0x08080A)
-    static let elevated = Color(herdenHex: 0x0E0E12)
-    static let card = Color(herdenHex: 0x121218)
-    static let ink = Color(herdenHex: 0xF5F4F0)
-    static let muted = Color(herdenHex: 0xA8A6A0)
-    static let subtle = Color(herdenHex: 0x6B6A65)
-    static let vine = Color(herdenHex: 0xA8EC2A)
-    static let vineLight = Color(herdenHex: 0xCFF87A)
-    static let vineDark = Color(herdenHex: 0x8FD413)
-    static let amber = Color(herdenHex: 0xF0CE7A)
-    static let uploadOrange = Color(herdenHex: 0xFF9F43)
-    static let fault = Color(herdenHex: 0xEF4E4E)
-    static let hairline = Color.white.opacity(0.08)
+    static let background = adaptive(light: 0xF8FAF4, dark: 0x08080A)
+    static let elevated = adaptive(light: 0xEEF2E8, dark: 0x0E0E12)
+    static let card = adaptive(light: 0xFFFFFF, dark: 0x121218)
+    static let ink = adaptive(light: 0x14180F, dark: 0xF5F4F0)
+    static let muted = adaptive(light: 0x47503D, dark: 0xA8A6A0)
+    static let subtle = adaptive(light: 0x626B58, dark: 0x6B6A65)
+    static let vine = adaptive(light: 0x416D00, dark: 0xA8EC2A)
+    static let vineLight = adaptive(light: 0x6E9C1B, dark: 0xCFF87A)
+    static let vineDark = adaptive(light: 0x315600, dark: 0x8FD413)
+    static let amber = adaptive(light: 0x795100, dark: 0xF0CE7A)
+    static let uploadOrange = adaptive(light: 0xA84500, dark: 0xFF9F43)
+    static let fault = adaptive(light: 0xB4232C, dark: 0xEF4E4E)
+    static let hairline = adaptive(light: 0x000000, dark: 0xFFFFFF).opacity(0.10)
+
+    private static func adaptive(light: UInt32, dark: UInt32) -> Color {
+        Color(uiColor: UIColor { traits in
+            UIColor(herdenHex: traits.userInterfaceStyle == .dark ? dark : light)
+        })
+    }
 
     static func display(_ style: Font.TextStyle) -> Font {
         .custom("InstrumentSerif-Regular", size: style.herdenBaseSize, relativeTo: style)
@@ -38,12 +47,13 @@ enum Brand {
     }
 }
 
-private extension Color {
-    init(herdenHex: UInt32) {
+private extension UIColor {
+    convenience init(herdenHex: UInt32) {
         self.init(
-            red: Double((herdenHex >> 16) & 0xff) / 255,
-            green: Double((herdenHex >> 8) & 0xff) / 255,
-            blue: Double(herdenHex & 0xff) / 255)
+            red: CGFloat((herdenHex >> 16) & 0xff) / 255,
+            green: CGFloat((herdenHex >> 8) & 0xff) / 255,
+            blue: CGFloat(herdenHex & 0xff) / 255,
+            alpha: 1)
     }
 }
 

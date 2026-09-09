@@ -197,7 +197,6 @@ struct ConsoleView: View {
                             }
                         }
                     }
-                    .preferredColorScheme(.dark)
                 }
                 .fullScreenCover(item: $openedSpace) { opened in
                     NavigationStack {
@@ -724,7 +723,6 @@ struct ConsoleView: View {
                 }
             }
         }
-        .preferredColorScheme(.dark)
         .tint(Brand.vine)
     }
 

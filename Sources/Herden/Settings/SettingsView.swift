@@ -105,6 +105,7 @@ struct SettingsView: View {
                     } label: {
                         Label("Notifications", systemImage: "bell.badge")
                     }
+                    appearancePicker
                     NavigationLink {
                         TerminalAppearanceSettingsView(terminal: terminal)
                     } label: {
@@ -127,6 +128,22 @@ struct SettingsView: View {
                     Button("Done") { dismiss() }
                 }
             }
+        }
+    }
+
+    /// Three choices do not warrant another navigation level. Keeping the
+    /// control here also makes the screen repaint immediately as it changes.
+    private var appearancePicker: some View {
+        Picker(
+            selection: Binding(
+                get: { appearance.selection },
+                set: { appearance.select($0) })
+        ) {
+            ForEach(AppAppearanceOption.allCases) { option in
+                Text(option.title).tag(option)
+            }
+        } label: {
+            Label("Appearance", systemImage: "circle.lefthalf.filled")
         }
     }
 

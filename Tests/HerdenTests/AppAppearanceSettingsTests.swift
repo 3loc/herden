@@ -1,6 +1,7 @@
 import Foundation
 import SwiftUI
 import Testing
+import UIKit
 
 @testable import Herden
 
@@ -64,5 +65,26 @@ struct AppAppearanceSettingsTests {
     @Test func everyOptionIsOfferedInAStableOrder() {
         #expect(AppAppearanceOption.allCases == [.system, .light, .dark])
         #expect(AppAppearanceOption.allCases.map(\.title) == ["System", "Light", "Dark"])
+    }
+
+    @Test func brandSurfacesAndInkResolveDifferentlyForDayAndNight() {
+        #expect(hex(Brand.background, style: .light) == 0xF8FAF4)
+        #expect(hex(Brand.background, style: .dark) == 0x08080A)
+        #expect(hex(Brand.ink, style: .light) == 0x14180F)
+        #expect(hex(Brand.ink, style: .dark) == 0xF5F4F0)
+        #expect(hex(Brand.vine, style: .light) == 0x416D00)
+        #expect(hex(Brand.vine, style: .dark) == 0xA8EC2A)
+    }
+
+    private func hex(_ color: Color, style: UIUserInterfaceStyle) -> UInt32 {
+        let resolved = UIColor(color).resolvedColor(
+            with: UITraitCollection(userInterfaceStyle: style))
+        var red: CGFloat = 0
+        var green: CGFloat = 0
+        var blue: CGFloat = 0
+        resolved.getRed(&red, green: &green, blue: &blue, alpha: nil)
+        return UInt32((red * 255).rounded()) << 16
+            | UInt32((green * 255).rounded()) << 8
+            | UInt32((blue * 255).rounded())
     }
 }

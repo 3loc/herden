@@ -32,6 +32,8 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ### Added
 
+- Add System, Light and Dark appearance modes across the app, with separate
+  daylight and nighttime terminal themes for readable use outdoors.
 - Synchronized the Host runtime with Herdr 0.9.0 and retained exact upstream
   ancestry through subtree merges.
 - Added repo-local skills for repeatable herdr synchronization and selective
