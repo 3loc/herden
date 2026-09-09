@@ -53,6 +53,11 @@ tester, or build ID in automation. Verify endpoint/schema changes against
    {"data":[{"type":"builds","id":"BUILD_ID"}]}
    ```
 
+   Do this only for external groups. Eligible builds appear in internal groups
+   automatically; trying to add one explicitly returns 422 (`Builds cannot be
+   assigned to this internal group`). Verify internal membership by reading
+   `GET /v1/betaGroups/GROUP_ID/builds` instead.
+
 6. Verify `autoNotifyEnabled` on the build's `buildBetaDetails`; enable it with
    PATCH if automatic distribution is part of the requested rollout. The body
    uses `type: buildBetaDetails`, the detail's ID and
