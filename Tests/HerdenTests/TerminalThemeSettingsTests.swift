@@ -128,6 +128,13 @@ struct TerminalThemeSettingsTests {
         #expect(TerminalThemeOption.missingCatalogThemeNames.isEmpty)
     }
 
+    @Test func launchColorsMatchTheVisibleTheme() throws {
+        let colors = try #require(TerminalThemeOption.followSystem.launchColors(for: .light))
+
+        #expect(colors.foreground == "000000")
+        #expect(colors.background == "F7F7F7")
+    }
+
     @Test func changingThemeKeepsTheExistingTerminalSession() {
         let terminal = TerminalScreenView.makeConfiguredTerminal()
         let session = terminal.terminalSession

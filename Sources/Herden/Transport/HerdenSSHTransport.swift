@@ -793,7 +793,12 @@ actor HerdenSSHTransport: Transport {
             name: launch.name,
             paneID: paneID,
             args: launch.arguments.isEmpty ? nil : launch.arguments,
-            nameIsUserSet: launch.nameIsUserSet)
+            nameIsUserSet: launch.nameIsUserSet,
+            terminalColors: launch.terminalColors.map {
+                AgentStartTerminalColors(
+                    background: "#\($0.background)",
+                    foreground: "#\($0.foreground)")
+            })
         let deadline = ContinuousClock.now + Self.shellReadinessBudget
         while true {
             do {

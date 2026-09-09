@@ -132,7 +132,7 @@ pub fn osc_reset_default_color_sequence(kind: DefaultColorKind) -> &'static str 
     }
 }
 
-fn parse_rgb_color(value: &str) -> Option<RgbColor> {
+pub(crate) fn parse_rgb_color(value: &str) -> Option<RgbColor> {
     if let Some(rgb) = value.strip_prefix("rgb:") {
         let mut parts = rgb.split('/');
         return Some(RgbColor {

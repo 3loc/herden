@@ -153,6 +153,15 @@ pub(crate) fn interactive_shell_command(_argv: &[String], _shell_name: &str) -> 
     None
 }
 
+pub(crate) fn wrap_interactive_agent_command(
+    command: String,
+    _shell_name: &str,
+    _foreground: crate::terminal_theme::RgbColor,
+    _background: crate::terminal_theme::RgbColor,
+) -> String {
+    command
+}
+
 /// Unsupported platform stub.
 pub(crate) fn scrollback_editor_argv(_path: &std::path::Path) -> std::io::Result<Vec<String>> {
     Err(std::io::Error::new(

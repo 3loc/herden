@@ -101,12 +101,20 @@ fn agent_start_and_prompt_requests_round_trip() {
             pane_id: "w1:p2".into(),
             args: vec!["--no-session".into()],
             timeout_ms: Some(30_000),
+            terminal_colors: Some(super::AgentStartTerminalColors {
+                foreground: "#010203".into(),
+                background: "#f7f7f7".into(),
+            }),
         }),
     };
     let start_json = serde_json::to_value(&start).unwrap();
     assert_eq!(start_json["method"], "agent.start");
     assert_eq!(start_json["params"]["pane_id"], "w1:p2");
     assert_eq!(start_json["params"]["name_is_user_set"], true);
+    assert_eq!(
+        start_json["params"]["terminal_colors"]["background"],
+        "#f7f7f7"
+    );
     assert_eq!(
         serde_json::from_value::<Request>(start_json).unwrap(),
         start

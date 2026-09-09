@@ -656,6 +656,15 @@ pub(crate) fn interactive_shell_command(argv: &[String], shell_name: &str) -> Op
     }
 }
 
+pub(crate) fn wrap_interactive_agent_command(
+    command: String,
+    _shell_name: &str,
+    _foreground: crate::terminal_theme::RgbColor,
+    _background: crate::terminal_theme::RgbColor,
+) -> String {
+    command
+}
+
 fn powershell_agent_script(argv: &[String]) -> Option<String> {
     let (program, args) = argv.split_first()?;
     if args.is_empty() {

@@ -10,6 +10,10 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ### Fixed
 
+- Fresh Agents now keep the active iPhone terminal palette for the lifetime of
+  their managed launch, so Codex and other colour-aware TUIs cannot cache the
+  Host's restored dark palette before startup.
+
 - Remove a Herden-launched Agent's dedicated pane and Space when its process
   exits, including exits initiated from the attached iPhone terminal.
 - Follow Codex, Claude Code and pi session titles automatically while keeping

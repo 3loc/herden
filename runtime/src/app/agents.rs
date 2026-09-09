@@ -3,7 +3,7 @@ use std::time::{Duration, Instant};
 use bytes::Bytes;
 
 use super::{terminal_targets::TerminalTargetError, App};
-use crate::api::schema::AgentStartParams;
+use crate::api::schema::{AgentStartParams, AgentStartTerminalColors};
 
 const DEFAULT_AGENT_START_TIMEOUT: Duration = Duration::from_secs(30);
 pub(crate) const MAX_AGENT_START_TIMEOUT: Duration = Duration::from_secs(300);
@@ -204,6 +204,19 @@ impl App {
         argv.extend(params.args);
         let command = crate::platform::interactive_shell_command(&argv, &shell_name)
             .ok_or(AgentStartError::InvalidArgument)?;
+        let command = match params.terminal_colors.as_ref() {
+            Some(colors) => {
+                let (foreground, background) = parse_agent_terminal_colors(colors)
+                    .ok_or(AgentStartError::InvalidTerminalColors)?;
+                crate::platform::wrap_interactive_agent_command(
+                    command,
+                    &shell_name,
+                    foreground,
+                    background,
+                )
+            }
+            None => command,
+        };
         let bytes = crate::app::api_helpers::encode_api_submission(runtime, &command);
         let timeout = Duration::from_millis(
             params
@@ -260,6 +273,10 @@ impl App {
             AgentStartError::InvalidArgument => crate::api::schema::ErrorBody {
                 code: "invalid_agent_argument".into(),
                 message: "agent arguments cannot be encoded safely for the target shell".into(),
+            },
+            AgentStartError::InvalidTerminalColors => crate::api::schema::ErrorBody {
+                code: "invalid_agent_terminal_colors".into(),
+                message: "agent terminal colors must be valid RGB color values".into(),
             },
             AgentStartError::InvalidTimeout => crate::api::schema::ErrorBody {
                 code: "invalid_agent_timeout".into(),
@@ -463,6 +480,7 @@ pub(super) enum AgentStartError {
     InvalidName,
     UnsupportedKind(String),
     InvalidArgument,
+    InvalidTerminalColors,
     InvalidTimeout,
     TargetNotFound(String),
     TargetBusy(String),
@@ -472,6 +490,18 @@ pub(super) enum AgentStartError {
         name: String,
         candidates: Vec<crate::api::schema::AgentInfo>,
     },
+}
+
+fn parse_agent_terminal_colors(
+    colors: &AgentStartTerminalColors,
+) -> Option<(
+    crate::terminal_theme::RgbColor,
+    crate::terminal_theme::RgbColor,
+)> {
+    Some((
+        crate::terminal_theme::parse_rgb_color(&colors.foreground)?,
+        crate::terminal_theme::parse_rgb_color(&colors.background)?,
+    ))
 }
 
 pub(super) enum AgentRenameError {
@@ -487,7 +517,24 @@ pub(super) enum AgentRenameError {
 
 #[cfg(test)]
 mod tests {
-    use super::valid_agent_name;
+    use super::{parse_agent_terminal_colors, valid_agent_name};
+
+    #[test]
+    fn agent_terminal_colors_require_two_valid_rgb_values() {
+        let colors = crate::api::schema::AgentStartTerminalColors {
+            foreground: "#010203".into(),
+            background: "rgb:f7/f7/f7".into(),
+        };
+        let (foreground, background) = parse_agent_terminal_colors(&colors).unwrap();
+        assert_eq!((foreground.r, foreground.g, foreground.b), (1, 2, 3));
+        assert_eq!((background.r, background.g, background.b), (247, 247, 247));
+
+        let invalid = crate::api::schema::AgentStartTerminalColors {
+            foreground: "black".into(),
+            background: "#f7f7f7".into(),
+        };
+        assert!(parse_agent_terminal_colors(&invalid).is_none());
+    }
 
     #[test]
     fn agent_names_use_a_small_cli_safe_grammar() {

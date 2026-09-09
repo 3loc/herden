@@ -175,6 +175,15 @@ pub struct AgentStartParams {
     /// Startup timeout in milliseconds. Values must be greater than 3000 and at most 300000.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub timeout_ms: Option<u64>,
+    /// Optional terminal defaults to apply for the lifetime of the launched agent.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub terminal_colors: Option<AgentStartTerminalColors>,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, schemars::JsonSchema)]
+pub struct AgentStartTerminalColors {
+    pub foreground: String,
+    pub background: String,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, schemars::JsonSchema)]

@@ -378,6 +378,7 @@ fn agent_start(args: &[String]) -> std::io::Result<i32> {
                 pane_id: pane_id.clone(),
                 args: agent_args.clone(),
                 timeout_ms,
+                terminal_colors: None,
             }),
         })?;
         if response.get("error").is_none() {

@@ -193,6 +193,13 @@ struct TerminalThemePalette {
 }
 
 extension TerminalThemeOption {
+    func launchColors(for colorScheme: ColorScheme) -> AgentLaunchTerminalColors? {
+        guard let definition = swatchDefinition(for: colorScheme) else { return nil }
+        return AgentLaunchTerminalColors(
+            foreground: definition.foreground,
+            background: definition.background)
+    }
+
     func palette(for colorScheme: ColorScheme) -> TerminalThemePalette {
         guard let definition = swatchDefinition(for: colorScheme) else {
             return .system

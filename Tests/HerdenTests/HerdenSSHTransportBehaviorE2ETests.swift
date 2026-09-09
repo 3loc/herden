@@ -854,6 +854,32 @@ struct HerdenSSHTransportBehaviorE2ETests {
         )
     }
 
+    @Test("agent start keeps terminal colors in the managed launch request")
+    func agentStartKeepsTerminalColorsInTheManagedLaunchRequest() async throws {
+        let environment = try #require(HerdenSSHTransportBehaviorEnvironment.current)
+        let transport = try await HerdenSSHTransport.connect(
+            settings: environment.directSettings())
+        defer { Task { try? await transport.close() } }
+
+        let token = Self.scriptToken("ok")
+        let colors = try #require(
+            AgentLaunchTerminalColors(foreground: "#111111", background: "fafafa"))
+        _ = try await transport.startAgent(
+            AgentLaunchRequest(
+                kind: "codex",
+                name: "fixture",
+                workspaceID: "workspace-1",
+                cwd: "/fixture/\(token)",
+                terminalColors: colors))
+
+        let recorded = try await Self.recordedRequests(from: transport, token: token)
+        #expect(recorded.count == 2)
+        #expect(recorded[0].hasPrefix("tab.create "))
+        #expect(
+            recorded[1]
+                == "agent.start {\"kind\":\"codex\",\"name\":\"fixture\",\"name_is_user_set\":false,\"pane_id\":\"pane:\(token)\",\"terminal_colors\":{\"background\":\"#FAFAFA\",\"foreground\":\"#111111\"}}")
+    }
+
     @Test("shell terminal creation sends one exact tab create request")
     func shellTerminalCreationSendsOneExactTabCreateRequest() async throws {
         let environment = try #require(HerdenSSHTransportBehaviorEnvironment.current)

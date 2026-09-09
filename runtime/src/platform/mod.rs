@@ -346,6 +346,26 @@ pub(crate) fn interactive_unix_shell_command(
     Some(command)
 }
 
+#[cfg(any(target_os = "linux", target_os = "macos"))]
+pub(crate) fn wrap_interactive_unix_agent_command(
+    command: String,
+    shell_name: &str,
+    foreground: crate::terminal_theme::RgbColor,
+    background: crate::terminal_theme::RgbColor,
+) -> String {
+    let colors = format!(
+        "\u{1b}]10;rgb:{:02x}/{:02x}/{:02x}\u{7}\u{1b}]11;rgb:{:02x}/{:02x}/{:02x}\u{7}",
+        foreground.r, foreground.g, foreground.b, background.r, background.g, background.b,
+    );
+    if is_powershell_process_name(shell_name) {
+        let powershell_colors = colors.replace('\u{1b}', "`e").replace('\u{7}', "`a");
+        format!("& {{ [Console]::Write(\"{powershell_colors}\"); & {command} }}")
+    } else {
+        let printf_colors = colors.replace('\u{1b}', "\\033").replace('\u{7}', "\\007");
+        format!("(printf '{printf_colors}'; exec {command})")
+    }
+}
+
 pub(crate) fn quote_powershell_arg(value: &str) -> String {
     if !value.is_empty()
         && !value.starts_with('-')
@@ -489,6 +509,24 @@ mod tests {
         for program in ["vim", "nvim", "cargo", "test-runner", "opencode"] {
             assert!(!is_pane_shell_process_name(program), "{program}");
         }
+    }
+
+    #[test]
+    fn terminal_colored_agent_launch_keeps_colors_in_the_agent_job() {
+        let command = wrap_interactive_unix_agent_command(
+            "codex --flag".into(),
+            "zsh",
+            crate::terminal_theme::RgbColor { r: 0, g: 0, b: 0 },
+            crate::terminal_theme::RgbColor {
+                r: 0xf7,
+                g: 0xf7,
+                b: 0xf7,
+            },
+        );
+        assert_eq!(
+            command,
+            "(printf '\\033]10;rgb:00/00/00\\007\\033]11;rgb:f7/f7/f7\\007'; exec codex --flag)"
+        );
     }
 
     #[test]

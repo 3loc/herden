@@ -125,7 +125,13 @@ struct ConsoleView: View {
                     notificationRouter.path = [id]
                 }) {
                     // StartAgentView brings its own NavigationStack.
-                    StartAgentView(hosts: hosts.hosts, console: console, initialHostID: newSpaceHostID) { id in
+                    StartAgentView(
+                        hosts: hosts.hosts,
+                        console: console,
+                        terminalColors: terminal.themes.selection(for: colorScheme)
+                            .launchColors(for: colorScheme),
+                        initialHostID: newSpaceHostID
+                    ) { id in
                         // A fresh launch lands in its own terminal, exactly
                         // as tapping the new row would.
                         startedAgentAfterDismissal = id

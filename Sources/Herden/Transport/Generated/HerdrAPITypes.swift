@@ -269,6 +269,7 @@ struct AgentStartParams: Codable, Equatable, Sendable {
     let name: String
     let nameIsUserSet: Bool?
     let paneID: String
+    let terminalColors: AgentStartTerminalColors?
     let timeoutMs: Int?
 
     init(
@@ -277,6 +278,7 @@ struct AgentStartParams: Codable, Equatable, Sendable {
         paneID: String,
         args: [String]? = nil,
         nameIsUserSet: Bool? = nil,
+        terminalColors: AgentStartTerminalColors? = nil,
         timeoutMs: Int? = nil
     ) {
         self.kind = kind
@@ -284,6 +286,7 @@ struct AgentStartParams: Codable, Equatable, Sendable {
         self.paneID = paneID
         self.args = args
         self.nameIsUserSet = nameIsUserSet
+        self.terminalColors = terminalColors
         self.timeoutMs = timeoutMs
     }
 
@@ -293,7 +296,19 @@ struct AgentStartParams: Codable, Equatable, Sendable {
         case name
         case nameIsUserSet = "name_is_user_set"
         case paneID = "pane_id"
+        case terminalColors = "terminal_colors"
         case timeoutMs = "timeout_ms"
+    }
+}
+
+/// herden schema `$defs/AgentStartTerminalColors`.
+struct AgentStartTerminalColors: Codable, Equatable, Sendable {
+    let background: String
+    let foreground: String
+
+    init(background: String, foreground: String) {
+        self.background = background
+        self.foreground = foreground
     }
 }
 

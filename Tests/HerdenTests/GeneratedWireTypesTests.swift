@@ -274,7 +274,10 @@ import Testing
     @Test func agentStartParamsRoundTrip() throws {
         let params = AgentStartParams(
             kind: "claude", name: "reviewer", paneID: "w1:p1",
-            args: ["--continue"], timeoutMs: 5_000)
+            args: ["--continue"],
+            terminalColors: AgentStartTerminalColors(
+                background: "F7F7F7", foreground: "000000"),
+            timeoutMs: 5_000)
 
         let data = try JSONEncoder().encode(params)
         let decoded = try JSONDecoder().decode(AgentStartParams.self, from: data)
@@ -282,7 +285,9 @@ import Testing
         #expect(decoded == params)
         let object = try JSONSerialization.jsonObject(with: data) as? [String: Any]
         let fields = try #require(object)
-        #expect(fields.keys.sorted() == ["args", "kind", "name", "pane_id", "timeout_ms"])
+        #expect(
+            fields.keys.sorted()
+                == ["args", "kind", "name", "pane_id", "terminal_colors", "timeout_ms"])
     }
 
     @Test func agentPromptParamsOmitWait() throws {
