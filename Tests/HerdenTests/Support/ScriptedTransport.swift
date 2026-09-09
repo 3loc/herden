@@ -30,6 +30,7 @@ final actor ScriptedTransport: Transport {
     /// asserts on the pane it targeted (and that the cancel path never
     /// appends here).
     private(set) var closedPanes: [PaneTarget] = []
+    private(set) var closedWorkspaces: [WorkspaceCloseParams] = []
     private var closeFailure: TransportError?
     private(set) var listedWorktreeWorkspaceIDs: [String] = []
     private(set) var removedWorktreeRequests: [WorktreeRemovalRequest] = []
@@ -463,6 +464,11 @@ final actor ScriptedTransport: Transport {
         closedPanes.append(params)
     }
 
+    func closeWorkspace(_ params: WorkspaceCloseParams) async throws {
+        if let closeFailure { throw closeFailure }
+        closedWorkspaces.append(params)
+    }
+
     func listWorktrees(forWorkspaceID workspaceID: String) async throws -> WorktreeListResponse {
         listedWorktreeWorkspaceIDs.append(workspaceID)
         if let worktreeListFailure { throw worktreeListFailure }
@@ -776,11 +782,14 @@ extension WorkspaceInfo {
         label: String,
         repoName: String? = nil,
         checkoutPath: String? = nil,
-        isLinkedWorktree: Bool = false
+        isLinkedWorktree: Bool = false,
+        paneCount: Int = 1,
+        tabCount: Int = 1
     ) -> WorkspaceInfo {
         WorkspaceInfo(
             activeTabID: "\(workspaceID):t1", agentStatus: .unknown, focused: false,
-            label: label, number: 1, paneCount: 1, tabCount: 1, workspaceID: workspaceID,
+            label: label, number: 1, paneCount: paneCount, tabCount: tabCount,
+            workspaceID: workspaceID,
             worktree: repoName.map { name in
                 WorkspaceWorktreeInfo(
                     checkoutPath: checkoutPath ?? "/work/\(name)",

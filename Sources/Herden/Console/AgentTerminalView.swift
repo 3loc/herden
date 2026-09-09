@@ -284,7 +284,10 @@ struct AgentTerminalView: View {
                 stageFile: console.fileStager(for: agent.hostID),
                 composer: composer
             ) {
-                try await console.closePane(agent.agent.paneID, on: agent.hostID)
+                try await console.closeAgent(
+                    agent.agent.paneID,
+                    workspaceID: agent.agent.workspaceID,
+                    on: agent.hostID)
             })
         _skills = State(initialValue: Self.makeSkillsStore(for: agent, console: console))
         _messageJump = State(
@@ -513,8 +516,8 @@ struct AgentTerminalView: View {
             Button("Cancel", role: .cancel) {}
         } message: {
             Text(
-                "This closes the pane on the Host and removes the agent everywhere. "
-                    + "This can't be undone.")
+                "This removes the Agent everywhere. If it is the only thing in its "
+                    + "Space, the empty Space is removed too. This can't be undone.")
         }
     }
 

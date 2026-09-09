@@ -781,10 +781,7 @@ actor HerdenSSHTransport: Transport {
     }
 
     private func closeCreatedWorkspace(workspaceID: String) async throws {
-        _ = try await request(
-            method: "workspace.close",
-            params: WorkspaceCloseParams(workspaceID: workspaceID),
-            decoding: OkResponse.self)
+        try await closeWorkspace(WorkspaceCloseParams(workspaceID: workspaceID))
     }
 
     private func startAgentAwaitingShell(
@@ -818,6 +815,13 @@ actor HerdenSSHTransport: Transport {
     func closePane(_ params: PaneTarget) async throws {
         _ = try await request(
             method: "pane.close",
+            params: params,
+            decoding: OkResponse.self)
+    }
+
+    func closeWorkspace(_ params: WorkspaceCloseParams) async throws {
+        _ = try await request(
+            method: "workspace.close",
             params: params,
             decoding: OkResponse.self)
     }

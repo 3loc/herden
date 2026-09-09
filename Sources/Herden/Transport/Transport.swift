@@ -107,6 +107,12 @@ protocol Transport: Sendable {
     /// id; returns once the server acknowledges.
     func closePane(_ params: PaneTarget) async throws
 
+    /// Closes an entire Workspace (`workspace.close`). This is the destructive
+    /// close for a standalone Space and for an Agent that is the Workspace's
+    /// only Pane; using `pane.close` for that last Pane leaves herden's
+    /// replacement shell behind as an apparently lingering Space.
+    func closeWorkspace(_ params: WorkspaceCloseParams) async throws
+
     /// Lists git worktrees for the repository containing `workspaceID`.
     /// Console detail uses this only to obtain branch presentation because
     /// `session.snapshot` already carries repository and checkout identity.
@@ -247,6 +253,11 @@ extension Transport {
     func createSpace(_ request: SpaceCreationRequest) async throws -> CreatedSpace {
         throw TransportError.channelFailed(
             detail: "This transport cannot create Spaces.")
+    }
+
+    func closeWorkspace(_ params: WorkspaceCloseParams) async throws {
+        throw TransportError.channelFailed(
+            detail: "This transport cannot close Spaces.")
     }
 
     func listSkills(_ query: SkillListQuery) async throws -> [AgentSkill] {

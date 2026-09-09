@@ -320,6 +320,30 @@ final class HostConsoleProjection {
         scheduleResync()
     }
 
+    /// Ends an Agent without leaving herden's replacement shell behind. A
+    /// one-Pane Workspace is closed as a unit; in a shared Workspace only the
+    /// selected Pane is closed so sibling Agents and terminals survive.
+    func closeAgent(_ paneID: String, workspaceID: String) async throws {
+        let closesWorkspace = workspacesByID[workspaceID]?.paneCount == 1
+        try await session.withTransport { transport in
+            if closesWorkspace {
+                try await transport.closeWorkspace(
+                    WorkspaceCloseParams(workspaceID: workspaceID))
+            } else {
+                try await transport.closePane(PaneTarget(paneID: paneID))
+            }
+        }
+        scheduleResync()
+    }
+
+    func closeWorkspace(_ workspaceID: String) async throws {
+        try await session.withTransport { transport in
+            try await transport.closeWorkspace(
+                WorkspaceCloseParams(workspaceID: workspaceID))
+        }
+        scheduleResync()
+    }
+
     /// Whether a Pane is still alive on the Host, probed with a minimal
     /// `pane.read`. A server rejection means the Pane is gone (closed on the
     /// desktop, or the server restarted and lost every tab); a transport

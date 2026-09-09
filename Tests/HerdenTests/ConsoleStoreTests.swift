@@ -1158,6 +1158,65 @@ struct ConsoleStoreTests {
         store.setHosts([])
     }
 
+    @Test func closeAgentClosesItsSolePaneWorkspaceInsteadOfLeavingAShell() async throws {
+        let host = Host.fixture()
+        let transport = ScriptedTransport(snapshot: .fixture(
+            agents: [.fixture(paneID: "w1:p1", workspaceID: "w1")],
+            workspaces: [.fixture(workspaceID: "w1", label: "Task")]))
+        let store = makeStore(transports: [host.id: transport])
+
+        store.setHosts([host])
+        await store.resume()
+        try await waitUntil("the sole agent and workspace should arrive") {
+            store.agents.count == 1 && store.workspaces(for: host.id).count == 1
+        }
+
+        try await store.closeAgent("w1:p1", workspaceID: "w1", on: host.id)
+
+        #expect(await transport.closedWorkspaces.map(\.workspaceID) == ["w1"])
+        #expect(await transport.closedPanes.isEmpty)
+        store.setHosts([])
+    }
+
+    @Test func closeAgentPreservesASharedWorkspace() async throws {
+        let host = Host.fixture()
+        let transport = ScriptedTransport(snapshot: .fixture(
+            agents: [.fixture(paneID: "w1:p1", workspaceID: "w1")],
+            workspaces: [
+                .fixture(workspaceID: "w1", label: "Shared", paneCount: 2),
+            ]))
+        let store = makeStore(transports: [host.id: transport])
+
+        store.setHosts([host])
+        await store.resume()
+        try await waitUntil("the shared workspace should arrive") {
+            store.workspaces(for: host.id).count == 1
+        }
+
+        try await store.closeAgent("w1:p1", workspaceID: "w1", on: host.id)
+
+        #expect(await transport.closedPanes.map(\.paneID) == ["w1:p1"])
+        #expect(await transport.closedWorkspaces.isEmpty)
+        store.setHosts([])
+    }
+
+    @Test func closeSpaceClosesTheWholeWorkspace() async throws {
+        let host = Host.fixture()
+        let transport = ScriptedTransport(snapshot: .fixture())
+        let store = makeStore(transports: [host.id: transport])
+
+        store.setHosts([host])
+        await store.resume()
+        try await waitUntil("the Host should connect") {
+            await transport.snapshotFetchCount > 0
+        }
+
+        try await store.closeWorkspace("w-space", on: host.id)
+
+        #expect(await transport.closedWorkspaces.map(\.workspaceID) == ["w-space"])
+        store.setHosts([])
+    }
+
     @Test func renameAgentForwardsItsParamsAndResnapshots() async throws {
         // agent.rename (#98): the params reach the Host's transport, and the
         // new name lands via one explicit resync — pane.updated is not a

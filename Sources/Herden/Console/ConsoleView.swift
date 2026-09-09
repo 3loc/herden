@@ -35,6 +35,8 @@ struct ConsoleView: View {
     @State private var openedSpace: OpenedSpace?
     @State private var openingSpaceID: ConsoleSpace.ID?
     @State private var spaceOpenFailureMessage: String?
+    @State private var isClosingOpenedSpace = false
+    @State private var spaceCloseFailureMessage: String?
     /// Hosts whose Host-detail Reconnect request is in flight, including the
     /// 1.2 s visual-feedback hold after `retryHost` returns. Distinct from
     /// `EventsSessionStatus.reconnecting`.
@@ -227,6 +229,13 @@ struct ConsoleView: View {
                             isReturning: false,
                             title: opened.label,
                             backLabel: "Back to Agents",
+                            isClosingTerminal: isClosingOpenedSpace,
+                            onCloseTerminal: { closeOpenedSpace(opened) },
+                            closeActionTitle: "Close Space",
+                            closeConfirmationTitle: "Close \(opened.label)?",
+                            closeConfirmationMessage:
+                                "This closes the Space on the Host, ending every Agent and "
+                                + "terminal inside it. This can't be undone.",
                             stageImage: console.imageStager(for: opened.hostID),
                             stageFile: console.fileStager(for: opened.hostID)
                         ) {
@@ -243,6 +252,16 @@ struct ConsoleView: View {
                     Button("OK", role: .cancel) { spaceOpenFailureMessage = nil }
                 } message: {
                     Text(spaceOpenFailureMessage ?? "")
+                }
+                .alert(
+                    "Could Not Close Space",
+                    isPresented: Binding(
+                        get: { spaceCloseFailureMessage != nil },
+                        set: { if !$0 { spaceCloseFailureMessage = nil } })
+                ) {
+                    Button("OK", role: .cancel) { spaceCloseFailureMessage = nil }
+                } message: {
+                    Text(spaceCloseFailureMessage ?? "")
                 }
         } detail: {
             detail
@@ -633,6 +652,28 @@ struct ConsoleView: View {
                 runTerminal: console.terminalRunner(for: hostID)))
     }
 
+    private func closeOpenedSpace(_ opened: OpenedSpace) {
+        guard !isClosingOpenedSpace else { return }
+        isClosingOpenedSpace = true
+        spaceCloseFailureMessage = nil
+        Task { @MainActor in
+            defer { isClosingOpenedSpace = false }
+            do {
+                try await console.closeWorkspace(
+                    opened.workspaceID, on: opened.hostID)
+            } catch {
+                spaceCloseFailureMessage = Self.spaceCloseMessage(for: error)
+                return
+            }
+            await opened.terminal.leave().value
+            console.forgetShellTerminal(
+                forWorkspaceID: opened.workspaceID, on: opened.hostID)
+            if openedSpace?.id == opened.id {
+                openedSpace = nil
+            }
+        }
+    }
+
     private func reopenLastSession() {
         if let id = lastOpenedAgentID, console.agents.contains(where: { $0.id == id }) {
             notificationRouter.path = [id]
@@ -656,6 +697,21 @@ struct ConsoleView: View {
             "herden could not open the Space: \(message)"
         default:
             "Opening the Space failed: \(error)"
+        }
+    }
+
+    private static func spaceCloseMessage(for error: any Error) -> String {
+        switch error {
+        case TransportError.sshUnreachable:
+            "The Host is not connected. The Space is still open there."
+        case TransportError.timedOut:
+            "The Host did not answer in time. The Space may still be open there."
+        case let api as HerdrAPIError:
+            "herden could not close the Space: \(api.message)"
+        case TransportError.apiRejected(_, let message):
+            "herden could not close the Space: \(message)"
+        default:
+            "Closing the Space failed: \(error)"
         }
     }
 

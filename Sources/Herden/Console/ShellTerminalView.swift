@@ -21,6 +21,11 @@ struct ShellTerminalView: View {
     /// Nil hides the Close Terminal action entirely (previews, tests).
     var isClosingTerminal: Bool = false
     var onCloseTerminal: (@MainActor () -> Void)? = nil
+    var closeActionTitle = "Close Terminal"
+    var closeConfirmationTitle = "Close Terminal?"
+    var closeConfirmationMessage =
+        "This closes the tab on the Host, ending anything running in it. "
+        + "Going Back instead leaves it for desktop handoff."
     var stageImage: ImageStager? = nil
     var stageFile: FileStager? = nil
     let onBack: @MainActor () async -> Void
@@ -152,7 +157,7 @@ struct ShellTerminalView: View {
                         Button(role: .destructive) {
                             isConfirmingClose = true
                         } label: {
-                            Label("Close Terminal", systemImage: "trash")
+                            Label(closeActionTitle, systemImage: "trash")
                         }
                         .disabled(isClosingTerminal || isReturning)
                     }
@@ -166,16 +171,16 @@ struct ShellTerminalView: View {
                 }
             }
             .confirmationDialog(
-                "Close Terminal?", isPresented: $isConfirmingClose, titleVisibility: .visible
+                closeConfirmationTitle,
+                isPresented: $isConfirmingClose,
+                titleVisibility: .visible
             ) {
-                Button("Close Terminal", role: .destructive) {
+                Button(closeActionTitle, role: .destructive) {
                     onCloseTerminal?()
                 }
                 Button("Cancel", role: .cancel) {}
             } message: {
-                Text(
-                    "This closes the tab on the Host, ending anything running in it. "
-                        + "Going Back instead leaves it for desktop handoff.")
+                Text(closeConfirmationMessage)
             }
             .sheet(
                 isPresented: Binding(

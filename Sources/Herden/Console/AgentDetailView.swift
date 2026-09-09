@@ -59,7 +59,10 @@ struct AgentDetailView: View {
                 stageFile: console.fileStager(for: agent.hostID),
                 composer: composer
             ) {
-                try await console.closePane(agent.agent.paneID, on: agent.hostID)
+                try await console.closeAgent(
+                    agent.agent.paneID,
+                    workspaceID: agent.agent.workspaceID,
+                    on: agent.hostID)
             }
         _attach = State(initialValue: attach)
         let hostID = agent.hostID

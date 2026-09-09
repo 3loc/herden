@@ -443,6 +443,17 @@ final class ConsoleStore {
         try await projection(for: hostID).closePane(paneID)
     }
 
+    func closeAgent(
+        _ paneID: String, workspaceID: String, on hostID: Host.ID
+    ) async throws {
+        try await projection(for: hostID).closeAgent(
+            paneID, workspaceID: workspaceID)
+    }
+
+    func closeWorkspace(_ workspaceID: String, on hostID: Host.ID) async throws {
+        try await projection(for: hostID).closeWorkspace(workspaceID)
+    }
+
     func listWorktrees(
         forWorkspaceID workspaceID: String, on hostID: Host.ID
     ) async throws -> WorktreeListResponse {
