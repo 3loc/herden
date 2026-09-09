@@ -83,6 +83,28 @@ impl App {
         &mut self,
         ev: AppEvent,
     ) -> Vec<crate::app::actions::PaneStateUpdate> {
+        // A managed Agent was launched as the purpose of its pane (the path
+        // used by `agent.start`, including the iOS New Agent flow). Once that
+        // process exits, returning to the bootstrap shell would leave a dead
+        // Space behind forever. Remember the public target before state
+        // reconciliation releases the managed identity, then close it after
+        // publishing the final Agent state transition below. Unmanaged Agents
+        // deliberately keep their shell: the user may have started one inside
+        // a general-purpose terminal they still need.
+        let exited_managed_pane = match &ev {
+            AppEvent::StateChanged {
+                pane_id,
+                process_exited: true,
+                ..
+            } => self.find_pane(*pane_id).and_then(|(ws_idx, pane)| {
+                self.state
+                    .terminals
+                    .get(&pane.attached_terminal_id)
+                    .and_then(|terminal| terminal.managed_agent_kind())
+                    .and_then(|_| self.public_pane_id(ws_idx, *pane_id))
+            }),
+            _ => None,
+        };
         let mut worktree_restore_failed = false;
         let ev = match ev {
             AppEvent::WorktreeRuntimeRestoreFailed {
@@ -343,6 +365,18 @@ impl App {
         for update in &pane_updates {
             self.refresh_new_herdr_toast_context_for_update(update, &previous_toast);
             self.emit_pane_state_update(update);
+        }
+        if let Some(pane_id) = exited_managed_pane {
+            let target = crate::api::schema::PaneTarget {
+                pane_id: pane_id.clone(),
+            };
+            if let Err(response) = self.close_pane("managed-agent-exit".into(), &target) {
+                tracing::warn!(
+                    pane_id,
+                    response,
+                    "failed to close exited managed Agent pane"
+                );
+            }
         }
         self.sync_agent_metadata_deadline();
         if let Some((
@@ -2077,6 +2111,63 @@ mod tests {
                 }
             )));
         }
+    }
+
+    #[test]
+    fn managed_agent_exit_closes_its_dedicated_pane_and_workspace() {
+        let event_hub = crate::api::EventHub::default();
+        let (_api_tx, api_rx) = tokio::sync::mpsc::unbounded_channel();
+        let mut app = App::new(
+            &crate::config::Config::default(),
+            crate::app::AppPolicy::TEST,
+            None,
+            api_rx,
+            event_hub.clone(),
+        );
+        let workspace = crate::workspace::Workspace::test_new("managed-agent-exit");
+        let pane_id = workspace.tabs[0].root_pane;
+        let terminal_id = workspace.terminal_id(pane_id).cloned().unwrap();
+        app.state.workspaces = vec![workspace];
+        app.state.ensure_test_terminals();
+        let now = std::time::Instant::now();
+        let terminal = app.state.terminals.get_mut(&terminal_id).unwrap();
+        terminal.begin_managed_agent(
+            "codex".into(),
+            Agent::Codex,
+            false,
+            now,
+            std::time::Duration::ZERO,
+            std::time::Duration::from_secs(10),
+        );
+        terminal.set_detected_state(Some(Agent::Codex), AgentState::Idle);
+
+        app.handle_internal_event(AppEvent::StateChanged {
+            pane_id,
+            agent: Some(Agent::Codex),
+            state: AgentState::Idle,
+            visible_blocker: false,
+            visible_working: false,
+            process_exited: true,
+            observed_at: now + std::time::Duration::from_secs(1),
+        });
+
+        assert!(app.state.workspaces.is_empty());
+        assert!(!app.state.terminals.contains_key(&terminal_id));
+        let events = event_hub.events_after(0);
+        let released = events
+            .iter()
+            .position(|(_, event)| {
+                matches!(
+                    event.data,
+                    crate::api::schema::EventData::PaneAgentDetected { released: true, .. }
+                )
+            })
+            .expect("managed Agent release event");
+        let closed = events
+            .iter()
+            .position(|(_, event)| event.event == crate::api::schema::EventKind::PaneClosed)
+            .expect("managed Agent pane close event");
+        assert!(released < closed);
     }
 
     #[test]
