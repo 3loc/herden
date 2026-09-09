@@ -131,6 +131,7 @@ pub struct TerminalState {
     pub terminal_title: Option<String>,
     pub manual_label: Option<String>,
     pub agent_name: Option<String>,
+    pub agent_name_is_user_set: bool,
     agent_name_owner: Option<AgentNameOwner>,
     managed_agent: Option<ManagedAgent>,
     managed_agent_launch_session: Option<crate::agent_resume::PersistedAgentSession>,
@@ -166,6 +167,7 @@ impl TerminalState {
             terminal_title: None,
             manual_label: None,
             agent_name: None,
+            agent_name_is_user_set: false,
             agent_name_owner: None,
             managed_agent: None,
             managed_agent_launch_session: None,
@@ -1882,6 +1884,7 @@ impl TerminalState {
 
     pub fn set_agent_name(&mut self, name: String) {
         self.agent_name = (!name.is_empty()).then_some(name);
+        self.agent_name_is_user_set = self.agent_name.is_some();
         self.agent_name_owner = self.agent_name.as_ref().and_then(|_| {
             self.hook_authority
                 .as_ref()
@@ -1911,11 +1914,13 @@ impl TerminalState {
         &mut self,
         name: String,
         kind: Agent,
+        name_is_user_set: bool,
         now: Instant,
         settle_delay: Duration,
         timeout: Duration,
     ) {
         self.set_agent_name(name);
+        self.agent_name_is_user_set = name_is_user_set;
         self.agent_name_owner = Some(AgentNameOwner {
             agent_label: crate::detect::agent_label(kind).to_string(),
             session_ref: None,
@@ -2044,8 +2049,9 @@ impl TerminalState {
         false
     }
 
-    pub fn restore_managed_agent(&mut self, name: String, kind: Agent) {
+    pub fn restore_managed_agent(&mut self, name: String, kind: Agent, name_is_user_set: bool) {
         self.set_agent_name(name);
+        self.agent_name_is_user_set = name_is_user_set;
         self.agent_name_owner = Some(AgentNameOwner {
             agent_label: crate::detect::agent_label(kind).to_string(),
             session_ref: None,
@@ -2066,6 +2072,7 @@ impl TerminalState {
             self.persisted_agent_session = None;
         }
         self.agent_name = None;
+        self.agent_name_is_user_set = false;
         self.agent_name_owner = None;
         self.managed_agent = None;
     }
@@ -2233,6 +2240,7 @@ mod tests {
         terminal.begin_managed_agent(
             "reviewer".into(),
             Agent::Pi,
+            false,
             now,
             Duration::from_millis(100),
             Duration::from_secs(1),
@@ -2276,6 +2284,7 @@ mod tests {
         mismatch.begin_managed_agent(
             "reviewer".into(),
             Agent::Pi,
+            false,
             now,
             Duration::ZERO,
             Duration::from_secs(1),
@@ -2289,6 +2298,7 @@ mod tests {
         timed_out.begin_managed_agent(
             "reviewer".into(),
             Agent::Pi,
+            false,
             now,
             Duration::from_millis(10),
             Duration::from_millis(20),
@@ -5010,6 +5020,7 @@ mod tests {
         terminal.begin_managed_agent(
             "reviewer".into(),
             Agent::OpenCode,
+            false,
             now,
             Duration::ZERO,
             Duration::from_secs(1),
@@ -5030,6 +5041,7 @@ mod tests {
         }
 
         assert_eq!(terminal.agent_name.as_deref(), Some("reviewer"));
+        assert!(!terminal.agent_name_is_user_set);
         assert!(terminal.managed_agent_interactive_ready());
         assert_eq!(
             terminal
@@ -5038,6 +5050,27 @@ mod tests {
                 .map(|session| session.session_ref.value.as_str()),
             Some("opencode-new")
         );
+    }
+
+    #[test]
+    fn explicit_agent_name_is_distinguished_from_the_managed_launch_name() {
+        let mut terminal = test_terminal();
+        terminal.begin_managed_agent(
+            "codex".into(),
+            Agent::Codex,
+            false,
+            Instant::now(),
+            Duration::ZERO,
+            Duration::from_secs(1),
+        );
+
+        assert_eq!(terminal.agent_name.as_deref(), Some("codex"));
+        assert!(!terminal.agent_name_is_user_set);
+
+        terminal.set_agent_name("release-helper".into());
+
+        assert_eq!(terminal.agent_name.as_deref(), Some("release-helper"));
+        assert!(terminal.agent_name_is_user_set);
     }
 
     #[test]

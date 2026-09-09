@@ -32,6 +32,7 @@ struct AgentInfo: Codable, Equatable, Sendable {
     let interactiveReady: Bool?
     let launchPending: Bool?
     let name: String?
+    let nameIsUserSet: Bool?
     let paneID: String
     let revision: Int
     let screenDetectionSkipped: Bool?
@@ -61,6 +62,7 @@ struct AgentInfo: Codable, Equatable, Sendable {
         interactiveReady: Bool? = nil,
         launchPending: Bool? = nil,
         name: String? = nil,
+        nameIsUserSet: Bool? = nil,
         screenDetectionSkipped: Bool? = nil,
         stateChangeSeq: Int? = nil,
         stateLabels: [String: String]? = nil,
@@ -84,6 +86,7 @@ struct AgentInfo: Codable, Equatable, Sendable {
         self.interactiveReady = interactiveReady
         self.launchPending = launchPending
         self.name = name
+        self.nameIsUserSet = nameIsUserSet
         self.screenDetectionSkipped = screenDetectionSkipped
         self.stateChangeSeq = stateChangeSeq
         self.stateLabels = stateLabels
@@ -104,6 +107,7 @@ struct AgentInfo: Codable, Equatable, Sendable {
         case interactiveReady = "interactive_ready"
         case launchPending = "launch_pending"
         case name
+        case nameIsUserSet = "name_is_user_set"
         case paneID = "pane_id"
         case revision
         case screenDetectionSkipped = "screen_detection_skipped"
@@ -263,6 +267,7 @@ struct AgentStartParams: Codable, Equatable, Sendable {
     let args: [String]?
     let kind: String
     let name: String
+    let nameIsUserSet: Bool?
     let paneID: String
     let timeoutMs: Int?
 
@@ -271,12 +276,14 @@ struct AgentStartParams: Codable, Equatable, Sendable {
         name: String,
         paneID: String,
         args: [String]? = nil,
+        nameIsUserSet: Bool? = nil,
         timeoutMs: Int? = nil
     ) {
         self.kind = kind
         self.name = name
         self.paneID = paneID
         self.args = args
+        self.nameIsUserSet = nameIsUserSet
         self.timeoutMs = timeoutMs
     }
 
@@ -284,6 +291,7 @@ struct AgentStartParams: Codable, Equatable, Sendable {
         case args
         case kind
         case name
+        case nameIsUserSet = "name_is_user_set"
         case paneID = "pane_id"
         case timeoutMs = "timeout_ms"
     }

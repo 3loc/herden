@@ -1456,7 +1456,10 @@ struct AgentTerminalView: View {
     }
 
     static func displayTitle(for agent: ConsoleAgent) -> String {
-        agent.agent.title.isEmpty ? agent.agent.displayName : agent.agent.title
+        if agent.agent.nameIsUserSet, let name = agent.agent.name {
+            return name
+        }
+        return agent.agent.title.isEmpty ? agent.agent.displayName : agent.agent.title
     }
 }
 

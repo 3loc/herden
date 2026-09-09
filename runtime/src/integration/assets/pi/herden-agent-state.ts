@@ -1,8 +1,8 @@
-// installed by herdr
-// managed by herdr; reinstalling or updating the integration overwrites this file.
+// installed by Herden
+// managed by Herden; reinstalling or updating the integration overwrites this file.
 // add custom hooks/plugins beside this file instead of editing it.
 // HERDR_INTEGRATION_ID=pi
-// HERDR_INTEGRATION_VERSION=8
+// HERDR_INTEGRATION_VERSION=9
 // @ts-nocheck
 
 import net from "node:net";
@@ -127,6 +127,32 @@ function reportSession(sessionStartSource?: string): Promise<void> {
   });
 }
 
+function reportSessionTitle(ctx: any): Promise<void> {
+  let title: string | undefined;
+  try {
+    const candidate = ctx?.sessionManager?.getSessionName?.();
+    title = typeof candidate === "string" && candidate.trim().length > 0
+      ? candidate.trim()
+      : undefined;
+  } catch {
+    title = undefined;
+  }
+
+  return sendRequest({
+    id: `${source}:title:${Date.now()}:${Math.random().toString(36).slice(2)}`,
+    method: "pane.report_metadata",
+    params: {
+      pane_id: paneId,
+      source,
+      agent: "pi",
+      applies_to_source: source,
+      title,
+      clear_title: title === undefined,
+      seq: nextReportSeq(),
+    },
+  });
+}
+
 function sendState(state: AgentState, message?: string, seq = nextReportSeq()): Promise<void> {
   return sendRequest({
     id: `${source}:${Date.now()}:${Math.random().toString(36).slice(2)}`,
@@ -231,9 +257,17 @@ export default function (pi) {
     rootSession = true;
     updateSessionRef(ctx);
     await reportSession(event?.reason);
+    await reportSessionTitle(ctx);
     // A reload can replace this extension mid-run without emitting another agent_start.
     agentActive = ctx?.isIdle?.() === false;
     publishState(true);
+  });
+
+  pi.on("session_info_changed", async (_event, ctx) => {
+    if (!rootSession) {
+      return;
+    }
+    await reportSessionTitle(ctx);
   });
 
   pi.on("agent_start", (_event, ctx) => {

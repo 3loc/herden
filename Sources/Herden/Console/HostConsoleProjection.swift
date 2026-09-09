@@ -769,6 +769,13 @@ final class HostConsoleProjection {
         latestStatusChanges[paneID] = (statusChangeRevision, status)
         guard var row = agentsByPane[paneID] else { return status }
         row.agent.status = status
+        if let title = data["title"]?.stringValue {
+            let trimmed = title.trimmingCharacters(in: .whitespacesAndNewlines)
+            row.agent.automaticName = trimmed.isEmpty ? nil : trimmed
+            if !trimmed.isEmpty {
+                row.agent.title = trimmed
+            }
+        }
         agentsByPane[paneID] = row
         publish()
         Task { [weak self] in

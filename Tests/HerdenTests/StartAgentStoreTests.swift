@@ -94,6 +94,7 @@ struct StartAgentStoreTests {
         await store.submit()
         #expect(recorder.destinations == [.newWorkspace(NewWorkspaceSpec(label: "reviewer"))])
         #expect(recorder.params.first?.workspaceID == nil)
+        #expect(recorder.params.first?.nameIsUserSet == true)
         #expect(store.state == started(on: host))
     }
 
@@ -413,6 +414,7 @@ struct StartAgentStoreTests {
 
         #expect(store.state == started(on: host))
         #expect(recorder.params.map(\.name) == ["claude-3"])
+        #expect(recorder.params.first?.nameIsUserSet == false)
     }
 
     @Test func aFreshKindNeedsNoSuffix() async {

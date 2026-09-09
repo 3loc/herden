@@ -1289,7 +1289,7 @@ fn codex_v2_integration_status_is_outdated() {
 
     assert_eq!(codex.path, hook_path);
     assert_eq!(codex.installed_version, Some(2));
-    assert_eq!(codex.expected_version, 8);
+    assert_eq!(codex.expected_version, CODEX_INTEGRATION_VERSION);
     assert_eq!(codex.state, IntegrationStatusKind::Outdated);
 
     std::env::remove_var("HOME");
@@ -2807,6 +2807,30 @@ fn bundled_integration_asset_versions_match_expected_versions() {
             parse_integration_version(asset),
             Some(expected_version),
             "{name} asset version must match its integration version constant"
+        );
+    }
+}
+
+#[test]
+fn bundled_codex_and_pi_integrations_report_native_session_titles() {
+    for needle in [
+        "state_*.sqlite",
+        "SELECT name FROM threads WHERE id = ?",
+        "pane.report_metadata",
+    ] {
+        assert!(
+            CODEX_HOOK_ASSET.contains(needle),
+            "Codex integration must contain {needle:?}"
+        );
+    }
+    for needle in [
+        "getSessionName",
+        "session_info_changed",
+        "pane.report_metadata",
+    ] {
+        assert!(
+            PI_EXTENSION_ASSET.contains(needle),
+            "Pi integration must contain {needle:?}"
         );
     }
 }

@@ -166,6 +166,8 @@ pub enum AgentViewSortOrder {
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, schemars::JsonSchema)]
 pub struct AgentStartParams {
     pub name: String,
+    #[serde(default, skip_serializing_if = "super::is_false")]
+    pub name_is_user_set: bool,
     pub kind: String,
     pub pane_id: String,
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
@@ -188,6 +190,8 @@ pub struct AgentInfo {
     pub terminal_id: String,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub name: Option<String>,
+    #[serde(default, skip_serializing_if = "super::is_false")]
+    pub name_is_user_set: bool,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub agent: Option<String>,
     #[serde(default, skip_serializing_if = "Option::is_none")]

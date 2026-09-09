@@ -1346,6 +1346,9 @@
             "name": {
               "type": "string"
             },
+            "name_is_user_set": {
+              "type": "boolean"
+            },
             "pane_id": {
               "type": "string"
             },
@@ -6659,6 +6662,9 @@
                 "string",
                 "null"
               ]
+            },
+            "name_is_user_set": {
+              "type": "boolean"
             },
             "pane_id": {
               "type": "string"

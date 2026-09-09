@@ -8,6 +8,10 @@ use crate::layout::Node;
 use crate::terminal::TerminalRuntimeRegistry;
 use crate::workspace::Workspace;
 
+fn is_false(value: &bool) -> bool {
+    !*value
+}
+
 /// Current snapshot format version.
 pub(super) const SNAPSHOT_VERSION: u32 = 3;
 
@@ -101,6 +105,8 @@ pub struct PaneSnapshot {
     pub label: Option<String>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub agent_name: Option<String>,
+    #[serde(default, skip_serializing_if = "is_false")]
+    pub agent_name_is_user_set: bool,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub managed_agent_kind: Option<String>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
@@ -323,11 +329,12 @@ fn capture_tab(
             .get(id)
             .and_then(|pane| terminals.get(&pane.attached_terminal_id));
         let label = terminal.and_then(|terminal| terminal.manual_label.clone());
-        let (agent_name, managed_agent_kind) = terminal
+        let (agent_name, agent_name_is_user_set, managed_agent_kind) = terminal
             .filter(|terminal| !terminal.managed_agent_launch_pending())
             .map(|terminal| {
                 (
                     terminal.agent_name.clone(),
+                    terminal.agent_name_is_user_set,
                     terminal
                         .managed_agent_kind()
                         .map(|agent| crate::detect::agent_label(agent).to_string()),
@@ -362,6 +369,7 @@ fn capture_tab(
                 cwd,
                 label,
                 agent_name,
+                agent_name_is_user_set,
                 managed_agent_kind,
                 agent_session,
                 launch_argv,
@@ -567,6 +575,7 @@ mod tests {
             .begin_managed_agent(
                 "reviewer".into(),
                 crate::detect::Agent::Pi,
+                false,
                 now,
                 std::time::Duration::ZERO,
                 std::time::Duration::from_secs(1),
@@ -575,6 +584,7 @@ mod tests {
         let pending = capture_from_state(&state);
         let pending_pane = &pending.workspaces[0].tabs[0].panes[&root.raw()];
         assert_eq!(pending_pane.agent_name, None);
+        assert!(!pending_pane.agent_name_is_user_set);
         assert_eq!(pending_pane.managed_agent_kind, None);
 
         let terminal = state.terminals.get_mut(&terminal_id).unwrap();
@@ -586,7 +596,18 @@ mod tests {
         let active = capture_from_state(&state);
         let active_pane = &active.workspaces[0].tabs[0].panes[&root.raw()];
         assert_eq!(active_pane.agent_name.as_deref(), Some("reviewer"));
+        assert!(!active_pane.agent_name_is_user_set);
         assert_eq!(active_pane.managed_agent_kind.as_deref(), Some("pi"));
+
+        state
+            .terminals
+            .get_mut(&terminal_id)
+            .unwrap()
+            .set_agent_name("my-reviewer".into());
+        let renamed = capture_from_state(&state);
+        let renamed_pane = &renamed.workspaces[0].tabs[0].panes[&root.raw()];
+        assert_eq!(renamed_pane.agent_name.as_deref(), Some("my-reviewer"));
+        assert!(renamed_pane.agent_name_is_user_set);
     }
 
     #[test]
@@ -639,6 +660,7 @@ mod tests {
                 cwd: PathBuf::from("/home/can/Projects/herdr"),
                 label: None,
                 agent_name: None,
+                agent_name_is_user_set: false,
                 managed_agent_kind: None,
                 agent_session: None,
                 launch_argv: None,
@@ -650,6 +672,7 @@ mod tests {
                 cwd: PathBuf::from("/home/can/Projects/website"),
                 label: Some("website".into()),
                 agent_name: None,
+                agent_name_is_user_set: false,
                 managed_agent_kind: None,
                 agent_session: None,
                 launch_argv: None,
@@ -1203,6 +1226,7 @@ mod tests {
                 cwd: PathBuf::from("/tmp/this-directory-does-not-exist-for-herdr-test"),
                 label: None,
                 agent_name: None,
+                agent_name_is_user_set: false,
                 managed_agent_kind: None,
                 agent_session: None,
                 launch_argv: None,
@@ -1216,6 +1240,7 @@ mod tests {
                     .unwrap_or_else(|_| PathBuf::from("/tmp")),
                 label: None,
                 agent_name: None,
+                agent_name_is_user_set: false,
                 managed_agent_kind: None,
                 agent_session: None,
                 launch_argv: None,

@@ -792,7 +792,8 @@ actor HerdenSSHTransport: Transport {
             kind: launch.kind,
             name: launch.name,
             paneID: paneID,
-            args: launch.arguments.isEmpty ? nil : launch.arguments)
+            args: launch.arguments.isEmpty ? nil : launch.arguments,
+            nameIsUserSet: launch.nameIsUserSet)
         let deadline = ContinuousClock.now + Self.shellReadinessBudget
         while true {
             do {

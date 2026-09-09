@@ -24,7 +24,7 @@ pub(crate) use types::{IntegrationRecommendation, IntegrationStatus, Integration
 
 const PI_EXTENSION_INSTALL_NAME: &str = "herden-agent-state.ts";
 const PI_EXTENSION_ASSET: &str = include_str!("assets/pi/herden-agent-state.ts");
-const PI_INTEGRATION_VERSION: u32 = 8;
+const PI_INTEGRATION_VERSION: u32 = 9;
 const OMP_EXTENSION_INSTALL_NAME: &str = "herden-omp-agent-state.ts";
 const OMP_EXTENSION_ASSET: &str = include_str!("assets/omp/herden-agent-state.ts");
 const OMP_INTEGRATION_VERSION: u32 = 9;
@@ -49,7 +49,7 @@ const CODEX_HOOK_ASSET: &str = if cfg!(windows) {
 } else {
     include_str!("assets/codex/herden-agent-state.sh")
 };
-const CODEX_INTEGRATION_VERSION: u32 = 8;
+const CODEX_INTEGRATION_VERSION: u32 = 9;
 const KIMI_HOOK_INSTALL_NAME: &str = if cfg!(windows) {
     "herden-agent-state.ps1"
 } else {

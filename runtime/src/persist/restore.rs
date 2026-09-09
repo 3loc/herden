@@ -492,6 +492,8 @@ fn restore_tab(
 
         let saved_label = saved_pane.and_then(|p| p.label.clone());
         let saved_agent_name = saved_pane.and_then(|p| p.agent_name.clone());
+        let saved_agent_name_is_user_set =
+            saved_pane.is_some_and(|pane| pane.agent_name_is_user_set);
         let saved_managed_agent = saved_pane
             .and_then(|pane| pane.managed_agent_kind.as_deref())
             .and_then(crate::detect::parse_canonical_agent_label);
@@ -545,7 +547,7 @@ fn restore_tab(
             }
             match (saved_agent_name, saved_managed_agent) {
                 (Some(agent_name), Some(agent)) => {
-                    terminal.restore_managed_agent(agent_name, agent)
+                    terminal.restore_managed_agent(agent_name, agent, saved_agent_name_is_user_set)
                 }
                 (Some(_), None) => {}
                 (None, _) => {}
@@ -641,9 +643,8 @@ fn restore_tab(
                     terminal.set_persisted_agent_session(session);
                 }
                 match (saved_agent_name, saved_managed_agent) {
-                    (Some(agent_name), Some(agent)) if was_imported => {
-                        terminal.restore_managed_agent(agent_name, agent)
-                    }
+                    (Some(agent_name), Some(agent)) if was_imported => terminal
+                        .restore_managed_agent(agent_name, agent, saved_agent_name_is_user_set),
                     (Some(_), Some(_)) => {}
                     (Some(agent_name), None) if was_imported => terminal.set_agent_name(agent_name),
                     (Some(_), None) => {}
@@ -1190,6 +1191,7 @@ mod tests {
                             cwd,
                             label: Some("reviewer".into()),
                             agent_name: Some("reviewer".into()),
+                            agent_name_is_user_set: false,
                             managed_agent_kind: Some("opencode".into()),
                             agent_session: Some(super::super::snapshot::PaneAgentSessionSnapshot {
                                 source: "herdr:opencode".into(),
@@ -1276,6 +1278,7 @@ mod tests {
                                 cwd: cwd.clone(),
                                 label: None,
                                 agent_name: None,
+                                agent_name_is_user_set: false,
                                 managed_agent_kind: None,
                                 agent_session: None,
                                 launch_argv: None,
@@ -1287,6 +1290,7 @@ mod tests {
                                 cwd: cwd.clone(),
                                 label: None,
                                 agent_name: None,
+                                agent_name_is_user_set: false,
                                 managed_agent_kind: None,
                                 agent_session: None,
                                 launch_argv: None,
@@ -1340,6 +1344,7 @@ mod tests {
                     cwd: cwd.clone(),
                     label: None,
                     agent_name: None,
+                    agent_name_is_user_set: false,
                     managed_agent_kind: None,
                     agent_session: None,
                     launch_argv: None,
@@ -1350,6 +1355,7 @@ mod tests {
             cwd: cwd.clone(),
             label: Some("planner".into()),
             agent_name: Some("planner".into()),
+            agent_name_is_user_set: false,
             managed_agent_kind: None,
             agent_session: Some(super::super::snapshot::PaneAgentSessionSnapshot {
                 source: "herdr:codex".into(),
@@ -1501,6 +1507,7 @@ mod tests {
                             cwd,
                             label: None,
                             agent_name: None,
+                            agent_name_is_user_set: false,
                             managed_agent_kind: None,
                             agent_session: Some(super::super::snapshot::PaneAgentSessionSnapshot {
                                 source: "herdr:codex".into(),
@@ -1667,6 +1674,7 @@ mod tests {
                 cwd: cwd.clone(),
                 label: None,
                 agent_name: None,
+                agent_name_is_user_set: false,
                 managed_agent_kind: None,
                 agent_session: None,
                 launch_argv: None,

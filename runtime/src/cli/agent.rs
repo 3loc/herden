@@ -373,6 +373,7 @@ fn agent_start(args: &[String]) -> std::io::Result<i32> {
             id: "cli:agent:start".into(),
             method: Method::AgentStart(AgentStartParams {
                 name: name.clone(),
+                name_is_user_set: true,
                 kind: kind.clone(),
                 pane_id: pane_id.clone(),
                 args: agent_args.clone(),

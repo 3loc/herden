@@ -395,6 +395,7 @@ enum SupportedAgentKind: String, CaseIterable, Identifiable, Sendable, Equatable
 struct AgentLaunchRequest: Sendable, Equatable {
     let kind: String
     let name: String
+    let nameIsUserSet: Bool
     let arguments: [String]
     let workspaceID: String?
     /// Working directory for the fresh tab, carried when the launch starts
@@ -404,10 +405,11 @@ struct AgentLaunchRequest: Sendable, Equatable {
 
     init(
         kind: String, name: String, arguments: [String] = [], workspaceID: String? = nil,
-        cwd: String? = nil
+        cwd: String? = nil, nameIsUserSet: Bool = false
     ) {
         self.kind = kind
         self.name = name
+        self.nameIsUserSet = nameIsUserSet
         self.arguments = arguments
         self.workspaceID = workspaceID
         self.cwd = cwd
@@ -604,8 +606,14 @@ struct Agent: Sendable, Equatable {
     /// The server-reported agent name the herden TUI shows (`display_agent`,
     /// falling back to `name`); nil when the server reports neither.
     let name: String?
+    /// Whether `agent.rename` supplied the operational name. Managed launch
+    /// names such as `codex-2` remain targets, not presentation overrides.
+    let nameIsUserSet: Bool
+    /// Agent-native session name, when the Host can distinguish one from a
+    /// generic cwd/terminal title.
+    var automaticName: String?
     /// Terminal title with spinner/status glyphs stripped.
-    let title: String
+    var title: String
     /// Mutable: the Console applies `pane.agent_status_changed` deltas in
     /// place between snapshots.
     var status: AgentStatus
@@ -623,11 +631,13 @@ struct Agent: Sendable, Equatable {
     init(
         terminalID: String, kind: String, title: String, status: AgentStatus,
         workspaceID: String, tabID: String, paneID: String, cwd: String, revision: Int,
-        name: String? = nil
+        name: String? = nil, nameIsUserSet: Bool? = nil, automaticName: String? = nil
     ) {
         self.terminalID = terminalID
         self.kind = kind
         self.name = name
+        self.nameIsUserSet = nameIsUserSet ?? (name != nil)
+        self.automaticName = automaticName
         self.title = title
         self.status = status
         self.workspaceID = workspaceID
@@ -641,25 +651,60 @@ struct Agent: Sendable, Equatable {
     /// fields degrade instead of failing: herden's API has no stability
     /// guarantee, and a missing title must not drop the Agent from the list.
     init(_ info: AgentInfo) {
+        let kind = info.agent ?? "unknown"
+        let serverName = Self.nonEmpty(info.name)
+        let displayAgent = Self.nonEmpty(info.displayAgent)
+        let nameIsUserSet = info.nameIsUserSet
+            ?? (displayAgent == nil && Self.inferLegacyUserSetName(serverName, kind: kind))
+        let terminalTitle = TerminalTitleGlyphs.strip(
+            info.terminalTitleStripped ?? info.terminalTitle ?? "")
+        let metadataTitle = Self.nonEmpty(info.title)
         self.init(
             terminalID: info.terminalID,
-            kind: info.agent ?? "unknown",
-            title: TerminalTitleGlyphs.strip(
-                info.terminalTitleStripped ?? info.terminalTitle ?? ""),
+            kind: kind,
+            title: metadataTitle ?? terminalTitle,
             status: info.agentStatus,
             workspaceID: info.workspaceID,
             tabID: info.tabID,
             paneID: info.paneID,
             cwd: info.cwd ?? "",
             revision: info.revision,
-            name: Self.nonEmpty(info.displayAgent) ?? Self.nonEmpty(info.name)
+            name: nameIsUserSet
+                ? serverName
+                : displayAgent ?? serverName,
+            nameIsUserSet: nameIsUserSet,
+            automaticName: metadataTitle
+                ?? Self.meaningfulTerminalTitle(terminalTitle, cwd: info.cwd, kind: kind)
         )
     }
 
     /// An empty wire string carries no name; treating it as missing keeps the
     /// fallback chain from rendering a blank card label.
     private static func nonEmpty(_ value: String?) -> String? {
-        value.flatMap { $0.isEmpty ? nil : $0 }
+        value.flatMap {
+            let trimmed = $0.trimmingCharacters(in: .whitespacesAndNewlines)
+            return trimmed.isEmpty ? nil : trimmed
+        }
+    }
+
+    private static func meaningfulTerminalTitle(
+        _ title: String, cwd: String?, kind: String
+    ) -> String? {
+        guard let title = nonEmpty(title) else { return nil }
+        let cwdName = cwd.map { URL(fileURLWithPath: $0).lastPathComponent }
+        if title.caseInsensitiveCompare(kind) == .orderedSame
+            || cwdName?.caseInsensitiveCompare(title) == .orderedSame
+        {
+            return nil
+        }
+        return title
+    }
+
+    private static func inferLegacyUserSetName(_ name: String?, kind: String) -> Bool {
+        guard let name else { return false }
+        if name == kind { return false }
+        guard name.hasPrefix("\(kind)-") else { return true }
+        return Int(name.dropFirst(kind.count + 1)) == nil
     }
 }
 

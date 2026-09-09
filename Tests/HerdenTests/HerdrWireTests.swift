@@ -110,6 +110,22 @@ import Testing
         // The raw terminal title still backfills a missing stripped title,
         // but agent spinner glyphs are shaved off either way.
         #expect(agent.title == "Fix")
+        #expect(agent.automaticName == "Fix")
+    }
+
+    @Test func agentMappingPrefersNativeSessionTitleUnlessHerdenNameWasUserSet() throws {
+        let automatic = #"{"terminal_id":"t","agent":"codex","name":"codex-2","name_is_user_set":false,"title":"Fix session naming","terminal_title":"herden","agent_status":"working","workspace_id":"w","tab_id":"w:t","pane_id":"w:p","focused":true,"cwd":"/src/herden","revision":1}"#
+        let overridden = #"{"terminal_id":"t","agent":"codex","name":"release-captain","name_is_user_set":true,"title":"Fix session naming","agent_status":"working","workspace_id":"w","tab_id":"w:t","pane_id":"w:p","focused":true,"cwd":"/src/herden","revision":1}"#
+
+        let automaticAgent = Agent(
+            try JSONDecoder().decode(AgentInfo.self, from: Data(automatic.utf8)))
+        let overriddenAgent = Agent(
+            try JSONDecoder().decode(AgentInfo.self, from: Data(overridden.utf8)))
+
+        #expect(automaticAgent.automaticName == "Fix session naming")
+        #expect(!automaticAgent.nameIsUserSet)
+        #expect(overriddenAgent.nameIsUserSet)
+        #expect(overriddenAgent.name == "release-captain")
     }
 
     @Test func errorEnvelopeThrowsHerdrAPIError() throws {

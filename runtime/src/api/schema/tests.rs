@@ -96,6 +96,7 @@ fn agent_start_and_prompt_requests_round_trip() {
         id: "start".into(),
         method: Method::AgentStart(AgentStartParams {
             name: "reviewer".into(),
+            name_is_user_set: true,
             kind: "pi".into(),
             pane_id: "w1:p2".into(),
             args: vec!["--no-session".into()],
@@ -105,6 +106,7 @@ fn agent_start_and_prompt_requests_round_trip() {
     let start_json = serde_json::to_value(&start).unwrap();
     assert_eq!(start_json["method"], "agent.start");
     assert_eq!(start_json["params"]["pane_id"], "w1:p2");
+    assert_eq!(start_json["params"]["name_is_user_set"], true);
     assert_eq!(
         serde_json::from_value::<Request>(start_json).unwrap(),
         start

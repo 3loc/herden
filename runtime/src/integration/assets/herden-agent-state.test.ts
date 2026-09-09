@@ -333,6 +333,7 @@ test("Pi reports the session replacement source", async () => {
       sessionManager: {
         getSessionFile: () => "/tmp/pi-new.jsonl",
         getSessionId: () => "pi-new",
+        getSessionName: () => "Investigate reconnect",
       },
     },
   );
@@ -348,6 +349,12 @@ test("Pi reports the session replacement source", async () => {
   expect(request).toBeDefined();
   expect(isRecord(request) && isRecord(request.params) ? request.params.session_start_source : null)
     .toBe("new");
+  const titleRequest = requests.find(
+    (candidate) => isRecord(candidate) && candidate.method === "pane.report_metadata",
+  );
+  expect(
+    isRecord(titleRequest) && isRecord(titleRequest.params) ? titleRequest.params.title : null,
+  ).toBe("Investigate reconnect");
 });
 
 test("Pi waits for a replacement session report before publishing state", async () => {
@@ -422,6 +429,7 @@ test("Pi waits for a replacement session report before publishing state", async 
   }
   expect(requests.map((request) => (isRecord(request) ? request.method : undefined))).toEqual([
     "pane.report_agent_session",
+    "pane.report_metadata",
     "pane.report_agent",
   ]);
 });

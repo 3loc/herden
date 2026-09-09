@@ -638,6 +638,7 @@ mod tests {
         terminal.begin_managed_agent(
             "reviewer".into(),
             Agent::OpenCode,
+            false,
             now,
             std::time::Duration::from_secs(3),
             std::time::Duration::from_secs(10),

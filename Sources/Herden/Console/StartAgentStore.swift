@@ -385,7 +385,8 @@ final class StartAgentStore {
             name: agentName,
             arguments: arguments,
             workspaceID: workspaceID,
-            cwd: origin?.cwd)
+            cwd: origin?.cwd,
+            nameIsUserSet: !trimmedName.isEmpty)
         do {
             let agent = try await start(request, destination, hostID)
             if case .newWorkspace = destination {

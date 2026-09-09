@@ -147,6 +147,7 @@ impl App {
         params: AgentStartParams,
     ) -> Result<(crate::api::schema::AgentInfo, Vec<String>), AgentStartError> {
         let name = params.name;
+        let name_is_user_set = params.name_is_user_set;
         if !valid_agent_name(&name) {
             return Err(AgentStartError::InvalidName);
         }
@@ -219,7 +220,14 @@ impl App {
             .terminals
             .get_mut(&terminal_id)
             .ok_or_else(|| AgentStartError::TargetUnavailable(params.pane_id.clone()))?;
-        terminal.begin_managed_agent(name.clone(), kind, now, AGENT_START_SETTLE_DELAY, timeout);
+        terminal.begin_managed_agent(
+            name.clone(),
+            kind,
+            name_is_user_set,
+            now,
+            AGENT_START_SETTLE_DELAY,
+            timeout,
+        );
         if let Err(err) = runtime.try_send_bytes(Bytes::from(bytes)) {
             terminal.clear_agent_name();
             return Err(AgentStartError::InputFailed(err.to_string()));
@@ -383,6 +391,7 @@ impl App {
         Some(crate::api::schema::AgentInfo {
             terminal_id: pane.terminal_id,
             name: terminal.agent_name.clone(),
+            name_is_user_set: terminal.agent_name_is_user_set,
             agent: pane.agent,
             title: pane.title,
             terminal_title: pane.terminal_title,

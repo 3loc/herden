@@ -2791,6 +2791,7 @@ mod tests {
             id: "req_agent_start_target".into(),
             method: crate::api::schema::Method::AgentStart(crate::api::schema::AgentStartParams {
                 name: "worker".into(),
+                name_is_user_set: false,
                 kind: "pi".into(),
                 pane_id,
                 args: Vec::new(),
@@ -2833,6 +2834,7 @@ mod tests {
             id: "req_agent_start_input".into(),
             method: crate::api::schema::Method::AgentStart(crate::api::schema::AgentStartParams {
                 name: "worker".into(),
+                name_is_user_set: false,
                 kind: "codex".into(),
                 pane_id: pane_id.clone(),
                 args: vec!["resume".into(), "codex-session".into()],

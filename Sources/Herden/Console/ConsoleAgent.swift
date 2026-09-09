@@ -70,6 +70,13 @@ struct ConsoleAgent: Identifiable, Sendable, Equatable {
     /// room for one word, and a console full of `claude` is told apart by
     /// where each one is working.
     var switcherLabel: String {
+        if agent.nameIsUserSet,
+           let name = agent.name?.trimmingCharacters(in: .whitespacesAndNewlines),
+           !name.isEmpty
+        {
+            return name
+        }
+        if let automaticName = agent.automaticName { return automaticName }
         if let name = agent.name?.trimmingCharacters(in: .whitespacesAndNewlines), !name.isEmpty {
             return name
         }
