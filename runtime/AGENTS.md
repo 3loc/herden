@@ -9,6 +9,9 @@ Herden's terminal-based agent runtime, derived from upstream herdr.
 | `src/client/shell/brand.rs` | Persistent `[herden]` identity row in every desktop sidebar. |
 | `src/client/shell/sidebar.rs` | Local Host sidebar geometry and hit targets below the identity row. |
 | `src/client/shell/endpoint_sidebar.rs` | Federated endpoint sidebar geometry and hit targets below the identity row. |
+| `src/app/agents.rs` | Agent launch validation and assembly, including optional terminal defaults. |
+| `src/platform/` | Platform-specific shell encoding; Unix keeps terminal-default OSC writes in the Agent's foreground job. |
+| `src/terminal_theme.rs` | RGB parsing plus Host terminal colour query, set, reset and restore primitives. |
 | `../scripts/build-host-release-asset.sh` | Cross-platform release build and mandatory identity verification before checksumming. |
 | `../scripts/verify-host-release-asset.sh` | Exact native version check plus embedded `[herden]` marker check for every asset. |
 | `../install.sh` | Public idempotent installer; mirrored byte-for-byte at `../landing/public/install.sh`. |
