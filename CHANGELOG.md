@@ -10,6 +10,10 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ### Fixed
 
+- Make Space rows open their Agent terminal again on compact iPhone layouts.
+- Render the Fold at a legible home-screen size on a bright brand-green app
+  icon instead of as a tiny dot on a black tile.
+
 - Keep the iPhone's selected terminal background authoritative when Codex,
   Claude Code or another attached Agent cached a neutral light/dark panel from
   the persistent Host terminal.

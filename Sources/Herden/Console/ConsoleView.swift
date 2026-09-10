@@ -409,7 +409,7 @@ struct ConsoleView: View {
                 .tint(Brand.vine)
             }
         case .rows:
-            List {
+            List(selection: selectedAgent) {
                 Section {
                     spaceListRows
                 } header: {
@@ -446,11 +446,26 @@ struct ConsoleView: View {
         }
     }
 
+    @ViewBuilder
     private func spaceRow(_ space: ConsoleSpace) -> some View {
-        Button {
-            openSpace(space)
-        } label: {
-            SpaceCardView(space: space, isOpening: openingSpaceID == space.id)
+        Group {
+            if case .agent(_, _, let paneID) = space.occupant {
+                // A compact NavigationSplitView only reveals its detail when
+                // its List selection changes through a NavigationLink. The
+                // Space-first refactor replaced this with a Button that
+                // updated the detail model invisibly behind the sidebar.
+                NavigationLink(value: ConsoleAgent.ID(
+                    hostID: space.hostID, paneID: paneID)
+                ) {
+                    SpaceCardView(space: space, isOpening: false)
+                }
+            } else {
+                Button {
+                    openSpace(space)
+                } label: {
+                    SpaceCardView(space: space, isOpening: openingSpaceID == space.id)
+                }
+            }
         }
         .buttonStyle(.plain)
         .listRowBackground(Brand.card)
@@ -467,6 +482,15 @@ struct ConsoleView: View {
         .accessibilityHint(space.agentCount > 1
             ? "Shows the Agents in this Space"
             : "Opens this Space")
+    }
+
+    /// The sidebar selection is the same durable Agent selection used by
+    /// notification deep links. On iPhone, writing this binding is also what
+    /// makes NavigationSplitView push its detail column.
+    private var selectedAgent: Binding<ConsoleAgent.ID?> {
+        Binding(
+            get: { notificationRouter.path.last },
+            set: { notificationRouter.path = $0.map { [$0] } ?? [] })
     }
 
     private func openSpace(_ space: ConsoleSpace) {
