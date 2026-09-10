@@ -95,7 +95,9 @@ fn focused_workspace_change_reveals_new_workspace_in_full_sidebar() {
 
 #[test]
 fn client_owned_sidebar_dividers_resize_live() {
-    let mut state = ClientShellState::new(ClientShellConfig::from_config(&Config::default()));
+    let mut config = Config::default();
+    config.ui.show_separate_agent_panel = true;
+    let mut state = ClientShellState::new(ClientShellConfig::from_config(&config));
     state.set_snapshot(Box::new(snapshot()));
     state.set_pane_surface(surface());
     state.compose(106, 30).expect("expanded sidebar");
@@ -212,31 +214,15 @@ fn context_menus_capture_stable_targets_and_route_actions() {
         modifiers: KeyModifiers::empty(),
     })]);
     state.compose(106, 20).expect("pane context menu");
-    let split_index = match state.overlay.as_ref() {
-        Some(ClientShellOverlay::ContextMenu(menu)) => menu
-            .items()
-            .iter()
-            .position(|item| item.action == ClientContextMenuAction::SplitRight)
-            .expect("split right item"),
+    match state.overlay.as_ref() {
+        Some(ClientShellOverlay::ContextMenu(menu)) => {
+            assert!(!menu
+                .items()
+                .iter()
+                .any(|item| item.label.starts_with("Split")));
+        }
         _ => panic!("pane context menu"),
-    };
-    let split = state.hits.context_menu_rows[split_index].0;
-    let outcome =
-        state.handle_raw_events(vec![RawInputEvent::Mouse(crossterm::event::MouseEvent {
-            kind: MouseEventKind::Down(MouseButton::Left),
-            column: split.x + 1,
-            row: split.y,
-            modifiers: KeyModifiers::empty(),
-        })]);
-    let [ClientShellAction::Endpoint { request, .. }] = &outcome.actions[..] else {
-        panic!("pane split context action should use endpoint API");
-    };
-    assert!(matches!(
-        &request.method,
-        crate::api::schema::Method::PaneSplit(params)
-            if params.target_pane_id.as_deref() == Some("pane_1")
-                && params.direction == crate::api::schema::SplitDirection::Right
-    ));
+    }
 }
 
 #[test]

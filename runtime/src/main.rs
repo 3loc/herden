@@ -181,8 +181,8 @@ const DEFAULT_CONFIG: &str = r##"# herden configuration
 # cycle_pane_next = "prefix+tab"
 # cycle_pane_previous = "prefix+shift+tab"
 # last_pane = ""          # optional, unset by default; bind e.g. "prefix+tab" for global back-and-forth
-# split_vertical = "prefix+v"
-# split_horizontal = "prefix+minus"
+# split_vertical = ""     # advanced layout option, unbound by default; e.g. "prefix+v"
+# split_horizontal = ""   # advanced layout option, unbound by default; e.g. "prefix+minus"
 # close_pane = "prefix+x"
 # zoom = "prefix+z"       # legacy alias: fullscreen
 # resize_mode = "prefix+r"
@@ -309,7 +309,11 @@ const DEFAULT_CONFIG: &str = r##"# herden configuration
 
 # Hide the tab row when a workspace has exactly one tab.
 # New tabs can still be created with the configured keybinding.
-# hide_tab_bar_when_single_tab = false
+# hide_tab_bar_when_single_tab = true
+
+# Restore the legacy Agent panel below Spaces. The unified Space list already
+# shows each Space's Agent or Terminal occupant.
+# show_separate_agent_panel = false
 
 # Desktop tab row placement: "top" or "bottom".
 # tab_bar_position = "top"
@@ -328,8 +332,8 @@ const DEFAULT_CONFIG: &str = r##"# herden configuration
 # Set to "" to leave the outer terminal title alone.
 # window_title = "{hostname}: {workspace}"
 
-# Agent panel ordering: "spaces" (grouped by space) or "priority" (attention queue).
-# "workspaces" is accepted as an alias for "spaces".
+# Legacy Agent panel ordering remains accepted for upstream-compatible config.
+# Herden presents Agent attention directly on its unified Space rows.
 # agent_panel_sort = "spaces"
 
 # Agent status indicators: "dots" preserves the compact color marks; "symbols" uses
@@ -349,13 +353,14 @@ const DEFAULT_CONFIG: &str = r##"# herden configuration
 # [ui.sidebar.agents.rows_by_agent]
 # claude = [["state_icon", "machine", "workspace", "tab"], ["terminal_title_stripped"], ["agent"]]
 
-# Expanded space rows. Built-ins are state_icon, state_text, workspace, branch, and git_status.
+# Expanded Space rows. Built-ins are state_icon, state_text, workspace, occupant,
+# branch, and git_status. Occupant is the Agent kind, "terminal", or an Agent count.
 # Custom values reported through workspace metadata use a $name token, for example $jj_status.
 # Inline token styles accept strict #RGB/#RRGGBB foregrounds plus bold and dim booleans.
 # [ui.sidebar.spaces]
 # Blank rows between space entries. Set to 1 to restore the previous spacing.
 # row_gap = 0
-# rows = [["state_icon", "workspace"], ["branch", "git_status"]]
+# rows = [["state_icon", "workspace"], ["occupant", "branch", "git_status"]]
 
 # Accent color for highlights, borders, and navigation UI.
 # Accepts: hex (#89b4fa), named colors (cyan, blue, magenta), or rgb(r,g,b)

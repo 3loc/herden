@@ -128,6 +128,8 @@ pub enum SpaceSidebarToken {
     StateIcon,
     StateText,
     Workspace,
+    /// The Space's current role: an Agent kind, "terminal", or an Agent count.
+    Occupant,
     Branch,
     GitStatus,
     Custom(String),
@@ -289,6 +291,7 @@ fn space_token_name(token: &SpaceSidebarToken) -> String {
         SpaceSidebarToken::StateIcon => "state_icon".into(),
         SpaceSidebarToken::StateText => "state_text".into(),
         SpaceSidebarToken::Workspace => "workspace".into(),
+        SpaceSidebarToken::Occupant => "occupant".into(),
         SpaceSidebarToken::Branch => "branch".into(),
         SpaceSidebarToken::GitStatus => "git_status".into(),
         SpaceSidebarToken::Custom(name) => format!("${name}"),
@@ -385,6 +388,7 @@ impl<'de> Deserialize<'de> for SpaceSidebarToken {
                 ("state_icon", Self::StateIcon),
                 ("state_text", Self::StateText),
                 ("workspace", Self::Workspace),
+                ("occupant", Self::Occupant),
                 ("branch", Self::Branch),
                 ("git_status", Self::GitStatus),
             ],
@@ -468,7 +472,11 @@ impl Default for SpacesSidebarConfig {
         Self {
             rows: vec![
                 vec![SpaceSidebarToken::StateIcon, SpaceSidebarToken::Workspace],
-                vec![SpaceSidebarToken::Branch, SpaceSidebarToken::GitStatus],
+                vec![
+                    SpaceSidebarToken::Occupant,
+                    SpaceSidebarToken::Branch,
+                    SpaceSidebarToken::GitStatus,
+                ],
             ],
             row_gap: DEFAULT_SIDEBAR_ROW_GAP,
         }
@@ -507,7 +515,11 @@ mod tests {
             config.spaces.rows,
             vec![
                 vec![SpaceSidebarToken::StateIcon, SpaceSidebarToken::Workspace],
-                vec![SpaceSidebarToken::Branch, SpaceSidebarToken::GitStatus],
+                vec![
+                    SpaceSidebarToken::Occupant,
+                    SpaceSidebarToken::Branch,
+                    SpaceSidebarToken::GitStatus,
+                ],
             ]
         );
         assert_eq!(config.spaces.row_gap, 0);

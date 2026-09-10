@@ -22,7 +22,8 @@ pub(super) fn render_collapsed(
     let palette = &config.palette;
     super::render::render_sidebar_background(buffer, area, palette);
     let area = super::brand::render_header(buffer, area, config);
-    let (workspace_area, divider_y, detail_area) = super::sidebar::collapsed_sidebar_sections(area);
+    let (workspace_area, divider_y, detail_area) =
+        super::sidebar::collapsed_sidebar_sections(area, config.show_separate_agent_panel);
     let mut y = workspace_area.y;
     for (index, endpoint) in state.endpoints.iter().enumerate() {
         if y >= workspace_area.bottom() {
@@ -132,15 +133,15 @@ pub(super) fn render_collapsed(
             &"─".repeat(workspace_area.width as usize),
             Style::default().fg(palette.surface_dim),
         );
+        super::endpoint_agents::render_collapsed(
+            buffer,
+            detail_area,
+            state.endpoints,
+            state.active_endpoint_id,
+            config,
+            hits,
+        );
     }
-    super::endpoint_agents::render_collapsed(
-        buffer,
-        detail_area,
-        state.endpoints,
-        state.active_endpoint_id,
-        config,
-        hits,
-    );
     hits.sidebar_toggle = if area.is_empty() || workspace_area.width == 0 {
         Rect::default()
     } else {
@@ -177,10 +178,19 @@ pub(super) fn render_expanded(
     } else {
         Rect::new(area.right().saturating_sub(1), area.y, 1, area.height)
     };
-    let (workspace_area, detail_area) =
-        crate::ui::expanded_sidebar_sections(area, state.sidebar_section_split);
-    hits.sidebar_section_divider =
-        crate::ui::sidebar_section_divider_rect(area, state.sidebar_section_split);
+    let (workspace_area, detail_area) = if config.show_separate_agent_panel {
+        crate::ui::expanded_sidebar_sections(area, state.sidebar_section_split)
+    } else {
+        (
+            Rect::new(area.x, area.y, area.width.saturating_sub(1), area.height),
+            Rect::default(),
+        )
+    };
+    hits.sidebar_section_divider = if config.show_separate_agent_panel {
+        crate::ui::sidebar_section_divider_rect(area, state.sidebar_section_split)
+    } else {
+        Rect::default()
+    };
     put_text(
         buffer,
         workspace_area.x,
@@ -244,6 +254,7 @@ pub(super) fn render_expanded(
                         let workspace = snapshot.workspaces.get(entry.index)?;
                         Some(
                             super::sidebar::workspace_rows(
+                                snapshot,
                                 workspace,
                                 super::sidebar::displayed_workspace_status(
                                     snapshot,
@@ -323,6 +334,7 @@ pub(super) fn render_expanded(
                     collapsed_groups,
                 );
                 let tokens = super::sidebar::workspace_rows(
+                    snapshot,
                     workspace,
                     status,
                     entry.indented,
@@ -388,32 +400,40 @@ pub(super) fn render_expanded(
 
     let footer_y = workspace_area.bottom().saturating_sub(1);
     if config.mouse_capture {
-        let label = format!(" new · {}", active_endpoint_label(state));
-        hits.new_workspace = Rect::new(
+        let footer_area = Rect::new(
             workspace_area.x,
             footer_y,
-            display_width(&label).min(workspace_area.width),
+            workspace_area
+                .width
+                .saturating_sub(u16::from(!config.show_separate_agent_panel)),
+            1,
+        );
+        let label = format!(" new · {}", active_endpoint_label(state));
+        hits.new_workspace = Rect::new(
+            footer_area.x,
+            footer_y,
+            display_width(&label).min(footer_area.width),
             u16::from(workspace_area.height > 0),
         );
         put_text(
             buffer,
-            workspace_area.x,
+            footer_area.x,
             footer_y,
-            workspace_area.width,
+            footer_area.width,
             &label,
             Style::default().fg(palette.overlay0),
         );
         let attention = active_snapshot.is_some_and(super::global_menu::global_menu_attention);
-        let width = if attention { 8 } else { 6 }.min(workspace_area.width);
+        let width = if attention { 8 } else { 6 }.min(footer_area.width);
         hits.global_launcher = Rect::new(
-            workspace_area.right().saturating_sub(width),
+            footer_area.right().saturating_sub(width),
             footer_y,
             width,
             1,
         );
         put_right_text(
             buffer,
-            workspace_area,
+            footer_area,
             footer_y,
             if attention { "● menu" } else { "menu" },
             Style::default().fg(if attention {
@@ -423,16 +443,18 @@ pub(super) fn render_expanded(
             }),
         );
     }
-    super::endpoint_agents::render_expanded(
-        buffer,
-        detail_area,
-        active_snapshot.and_then(|snapshot| snapshot.agent_view_label.as_deref()),
-        state.endpoints,
-        state.active_endpoint_id,
-        config,
-        state.agent_scroll,
-        hits,
-    );
+    if config.show_separate_agent_panel {
+        super::endpoint_agents::render_expanded(
+            buffer,
+            detail_area,
+            active_snapshot.and_then(|snapshot| snapshot.agent_view_label.as_deref()),
+            state.endpoints,
+            state.active_endpoint_id,
+            config,
+            state.agent_scroll,
+            hits,
+        );
+    }
     hits.sidebar_toggle = Rect::new(
         area.right().saturating_sub(2),
         area.bottom().saturating_sub(1),

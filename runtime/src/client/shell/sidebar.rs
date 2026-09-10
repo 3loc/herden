@@ -6,21 +6,31 @@ use ratatui::{
 
 pub(in crate::client::shell) fn collapsed_sidebar_sections(
     area: Rect,
+    show_separate_agent_panel: bool,
 ) -> (Rect, Option<u16>, Rect) {
     let content = Rect::new(area.x, area.y, area.width.saturating_sub(1), area.height);
     if content.is_empty() {
         return (Rect::default(), None, Rect::default());
     }
-    if content.height < 7 {
-        return (content, None, Rect::default());
+    if show_separate_agent_panel && content.height >= 7 {
+        let workspace_height = content.height.div_ceil(2);
+        let divider_y = content.y + workspace_height;
+        let detail_height = content.height.saturating_sub(workspace_height + 1);
+        return (
+            Rect::new(content.x, content.y, content.width, workspace_height),
+            Some(divider_y),
+            Rect::new(content.x, divider_y + 1, content.width, detail_height),
+        );
     }
-    let workspace_height = content.height.div_ceil(2);
-    let divider_y = content.y + workspace_height;
-    let detail_height = content.height.saturating_sub(workspace_height + 1);
     (
-        Rect::new(content.x, content.y, content.width, workspace_height),
-        Some(divider_y),
-        Rect::new(content.x, divider_y + 1, content.width, detail_height),
+        Rect::new(
+            content.x,
+            content.y,
+            content.width,
+            content.height.saturating_sub(1),
+        ),
+        None,
+        Rect::default(),
     )
 }
 
@@ -35,7 +45,8 @@ pub(crate) fn render_collapsed_sidebar(
     let palette = &config.palette;
     render_sidebar_background(buffer, area, palette);
     let area = super::super::brand::render_header(buffer, area, config);
-    let (workspace_area, divider_y, detail_area) = collapsed_sidebar_sections(area);
+    let (workspace_area, divider_y, detail_area) =
+        collapsed_sidebar_sections(area, config.show_separate_agent_panel);
     for (index, workspace) in snapshot
         .workspaces
         .iter()
@@ -104,57 +115,57 @@ pub(crate) fn render_collapsed_sidebar(
             &"─".repeat(workspace_area.width as usize),
             Style::default().fg(palette.surface_dim),
         );
+        let detail_content = Rect::new(
+            detail_area.x,
+            detail_area.y,
+            detail_area.width,
+            detail_area.height.saturating_sub(1),
+        );
+        for (index, pane_id) in super::ordered_agent_pane_ids(snapshot, config.agent_panel_sort)
+            .into_iter()
+            .take(detail_content.height as usize)
+            .enumerate()
+        {
+            let Some(agent) = snapshot
+                .agents
+                .iter()
+                .find(|agent| agent.pane_id == pane_id)
+            else {
+                continue;
+            };
+            let rect = Rect::new(
+                detail_content.x,
+                detail_content.y + index as u16,
+                detail_content.width,
+                1,
+            );
+            if agent.focused {
+                buffer.set_style(rect, Style::default().bg(palette.active_row_bg));
+            }
+            put_text(
+                buffer,
+                rect.x,
+                rect.y,
+                rect.width.min(2),
+                &format!("{:<2}", index + 1),
+                Style::default().fg(if agent.focused {
+                    palette.text
+                } else {
+                    palette.overlay0
+                }),
+            );
+            put_text(
+                buffer,
+                rect.x.saturating_add(2),
+                rect.y,
+                rect.width.saturating_sub(2),
+                status_icon(agent.agent_status, config.status_indicators),
+                Style::default().fg(status_color(agent.agent_status, palette)),
+            );
+            hits.agents.push((rect, pane_id));
+        }
     }
 
-    let detail_content = Rect::new(
-        detail_area.x,
-        detail_area.y,
-        detail_area.width,
-        detail_area.height.saturating_sub(1),
-    );
-    for (index, pane_id) in super::ordered_agent_pane_ids(snapshot, config.agent_panel_sort)
-        .into_iter()
-        .take(detail_content.height as usize)
-        .enumerate()
-    {
-        let Some(agent) = snapshot
-            .agents
-            .iter()
-            .find(|agent| agent.pane_id == pane_id)
-        else {
-            continue;
-        };
-        let rect = Rect::new(
-            detail_content.x,
-            detail_content.y + index as u16,
-            detail_content.width,
-            1,
-        );
-        if agent.focused {
-            buffer.set_style(rect, Style::default().bg(palette.active_row_bg));
-        }
-        put_text(
-            buffer,
-            rect.x,
-            rect.y,
-            rect.width.min(2),
-            &format!("{:<2}", index + 1),
-            Style::default().fg(if agent.focused {
-                palette.text
-            } else {
-                palette.overlay0
-            }),
-        );
-        put_text(
-            buffer,
-            rect.x.saturating_add(2),
-            rect.y,
-            rect.width.saturating_sub(2),
-            status_icon(agent.agent_status, config.status_indicators),
-            Style::default().fg(status_color(agent.agent_status, palette)),
-        );
-        hits.agents.push((rect, pane_id));
-    }
     hits.sidebar_toggle = if area.is_empty() || workspace_area.width == 0 {
         Rect::default()
     } else {
@@ -197,10 +208,19 @@ pub(crate) fn render_sidebar(
     } else {
         Rect::new(area.right().saturating_sub(1), area.y, 1, area.height)
     };
-    let (workspace_area, detail_area) =
-        crate::ui::expanded_sidebar_sections(area, state.sidebar_section_split);
-    hits.sidebar_section_divider =
-        crate::ui::sidebar_section_divider_rect(area, state.sidebar_section_split);
+    let (workspace_area, detail_area) = if config.show_separate_agent_panel {
+        crate::ui::expanded_sidebar_sections(area, state.sidebar_section_split)
+    } else {
+        (
+            Rect::new(area.x, area.y, area.width.saturating_sub(1), area.height),
+            Rect::default(),
+        )
+    };
+    hits.sidebar_section_divider = if config.show_separate_agent_panel {
+        crate::ui::sidebar_section_divider_rect(area, state.sidebar_section_split)
+    } else {
+        Rect::default()
+    };
     put_text(
         buffer,
         workspace_area.x,
@@ -230,6 +250,7 @@ pub(crate) fn render_sidebar(
                 .get(entry.index)
                 .map(|workspace| {
                     workspace_rows(
+                        snapshot,
                         workspace,
                         displayed_workspace_status(snapshot, workspace, state.collapsed_groups),
                         entry.indented,
@@ -290,7 +311,7 @@ pub(crate) fn render_sidebar(
             continue;
         };
         let status = displayed_workspace_status(snapshot, workspace, state.collapsed_groups);
-        let rows = workspace_rows(workspace, status, entry.indented, &config.spaces);
+        let rows = workspace_rows(snapshot, workspace, status, entry.indented, &config.spaces);
         let row_height = (rows.len().max(1).min(u16::MAX as usize) as u16).min(body.height);
         if y.saturating_add(row_height) > body.bottom() {
             break;
@@ -361,30 +382,38 @@ pub(crate) fn render_sidebar(
 
     let footer_y = workspace_area.bottom().saturating_sub(1);
     if config.mouse_capture {
-        hits.new_workspace = Rect::new(
+        let footer_area = Rect::new(
             workspace_area.x,
             footer_y,
-            5.min(workspace_area.width),
+            workspace_area
+                .width
+                .saturating_sub(u16::from(!config.show_separate_agent_panel)),
+            1,
+        );
+        hits.new_workspace = Rect::new(
+            footer_area.x,
+            footer_y,
+            5.min(footer_area.width),
             u16::from(workspace_area.height > 0),
         );
         put_text(
             buffer,
-            workspace_area.x,
+            footer_area.x,
             footer_y,
-            workspace_area.width,
+            footer_area.width,
             " new",
             Style::default().fg(palette.overlay0),
         );
         let attention = super::super::global_menu::global_menu_attention(snapshot);
-        let launcher_width = if attention { 8 } else { 6 }.min(workspace_area.width);
+        let launcher_width = if attention { 8 } else { 6 }.min(footer_area.width);
         hits.global_launcher = Rect::new(
-            workspace_area.right().saturating_sub(launcher_width),
+            footer_area.right().saturating_sub(launcher_width),
             footer_y,
             launcher_width,
             1,
         );
         if attention {
-            let start_x = workspace_area.right().saturating_sub(6);
+            let start_x = footer_area.right().saturating_sub(6);
             put_text(
                 buffer,
                 start_x,
@@ -406,7 +435,7 @@ pub(crate) fn render_sidebar(
         } else {
             put_right_text(
                 buffer,
-                workspace_area,
+                footer_area,
                 footer_y,
                 "menu",
                 Style::default().fg(palette.overlay0),
@@ -414,14 +443,16 @@ pub(crate) fn render_sidebar(
         }
     }
 
-    super::render_agent_panel(
-        buffer,
-        detail_area,
-        snapshot,
-        config,
-        state.agent_scroll,
-        hits,
-    );
+    if config.show_separate_agent_panel {
+        super::render_agent_panel(
+            buffer,
+            detail_area,
+            snapshot,
+            config,
+            state.agent_scroll,
+            hits,
+        );
+    }
 
     hits.sidebar_toggle = Rect::new(
         area.right().saturating_sub(2),
@@ -608,6 +639,7 @@ pub(in crate::client::shell) fn displayed_workspace_status(
 }
 
 pub(in crate::client::shell) fn workspace_rows(
+    snapshot: &ClientShellSnapshot,
     workspace: &ClientShellWorkspace,
     status: crate::api::schema::AgentStatus,
     indented: bool,
@@ -627,6 +659,7 @@ pub(in crate::client::shell) fn workspace_rows(
         config,
         crate::ui::SpaceTokenContext {
             workspace: label,
+            occupant: &workspace_occupant(snapshot, workspace),
             branch: workspace.branch.as_deref(),
             state_text: status_text(status),
             ahead_behind: workspace.git_ahead_behind,
@@ -634,6 +667,26 @@ pub(in crate::client::shell) fn workspace_rows(
             suppress_git_details: indented,
         },
     )
+}
+
+fn workspace_occupant(snapshot: &ClientShellSnapshot, workspace: &ClientShellWorkspace) -> String {
+    let agents = snapshot
+        .agents
+        .iter()
+        .filter(|agent| agent.workspace_id == workspace.workspace_id)
+        .collect::<Vec<_>>();
+    match agents.as_slice() {
+        [] => "terminal".to_owned(),
+        [agent] => agent
+            .agent
+            .as_deref()
+            .or(agent.display_agent.as_deref())
+            .or(agent.name.as_deref())
+            .or(agent.title.as_deref())
+            .unwrap_or("agent")
+            .to_owned(),
+        _ => format!("{} agents", agents.len()),
+    }
 }
 
 pub(in crate::client::shell) fn render_workspace_rows(

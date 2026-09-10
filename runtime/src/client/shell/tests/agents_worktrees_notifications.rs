@@ -472,6 +472,7 @@ fn agent_sidebar_honors_priority_symbols_tokens_and_stable_hits() {
         },
     ];
     let mut config = Config::default();
+    config.ui.show_separate_agent_panel = true;
     config.ui.agent_panel_sort = crate::config::AgentPanelSortConfig::Priority;
     config.ui.status_indicators = crate::config::StatusIndicatorStyle::Symbols;
     config.ui.sidebar.agents.rows = vec![vec![crate::config::AgentSidebarToken::Agent]];
@@ -634,7 +635,9 @@ fn active_agent_view_controls_sidebar_order_and_focus_indices() {
     ];
     projected.agent_view_label = Some("review".into());
     projected.agent_order = vec!["pane_2".into(), "pane_3".into()];
-    let mut state = ClientShellState::new(ClientShellConfig::from_config(&Config::default()));
+    let mut config = Config::default();
+    config.ui.show_separate_agent_panel = true;
+    let mut state = ClientShellState::new(ClientShellConfig::from_config(&config));
     state.set_snapshot(Box::new(projected));
     state.set_pane_surface(surface());
     state.compose(106, 30).expect("filtered agent sidebar");
@@ -705,8 +708,9 @@ fn agent_sort_toggle_is_client_local_and_persists_per_endpoint() {
         tokens: Vec::new(),
         focused: true,
     });
-    let config =
-        ClientShellConfig::from_config(&Config::default()).with_preferences_path(path.clone());
+    let mut source_config = Config::default();
+    source_config.ui.show_separate_agent_panel = true;
+    let config = ClientShellConfig::from_config(&source_config).with_preferences_path(path.clone());
     let mut state = ClientShellState::new(config);
     state.set_snapshot(Box::new(projected));
     state.set_pane_surface(surface());

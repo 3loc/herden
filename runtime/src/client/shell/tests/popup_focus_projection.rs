@@ -150,7 +150,9 @@ fn non_overlay_ctrl_v_is_forwarded_to_the_focused_pane() {
 
 #[test]
 fn desktop_composition_keeps_shell_outside_origin_relative_surface() {
-    let config = ClientShellConfig::from_config(&Config::default());
+    let mut source = Config::default();
+    source.ui.hide_tab_bar_when_single_tab = false;
+    let config = ClientShellConfig::from_config(&source);
     let mut state = ClientShellState::new(config);
     state.set_snapshot(Box::new(snapshot()));
     state.set_pane_surface(surface());
@@ -909,6 +911,8 @@ fn edit_scrollback_binding_targets_the_focused_endpoint_pane() {
 
 #[test]
 fn sidebar_scrollbars_use_proportional_shared_geometry_and_drag() {
+    let mut config = Config::default();
+    config.ui.show_separate_agent_panel = true;
     let mut projected = snapshot();
     for index in 2..=10 {
         let mut workspace = projected.workspaces[0].clone();
@@ -936,7 +940,7 @@ fn sidebar_scrollbars_use_proportional_shared_geometry_and_drag() {
             focused: false,
         });
     }
-    let mut state = ClientShellState::new(ClientShellConfig::from_config(&Config::default()));
+    let mut state = ClientShellState::new(ClientShellConfig::from_config(&config));
     state.set_snapshot(Box::new(projected));
     state.set_pane_surface(surface());
     state.compose(106, 20).expect("overflowing sidebars");

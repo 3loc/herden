@@ -123,6 +123,7 @@ pub(crate) fn agent_rows(
 
 pub(crate) struct SpaceTokenContext<'a> {
     pub(crate) workspace: &'a str,
+    pub(crate) occupant: &'a str,
     pub(crate) branch: Option<&'a str>,
     pub(crate) state_text: &'a str,
     pub(crate) ahead_behind: Option<(usize, usize)>,
@@ -149,6 +150,9 @@ pub(crate) fn space_rows(
                         }
                         SpaceSidebarToken::Workspace => {
                             Some(ResolvedTokenKind::Workspace(context.workspace.to_string()))
+                        }
+                        SpaceSidebarToken::Occupant => {
+                            Some(ResolvedTokenKind::Agent(context.occupant.to_string()))
                         }
                         SpaceSidebarToken::Branch if !context.suppress_git_details => context
                             .branch
@@ -327,6 +331,7 @@ rows = [[{ token = "$load", rules = [{ lt = 50, dim = true }] }]]
                 &config.spaces,
                 SpaceTokenContext {
                     workspace: "repo",
+                    occupant: "codex",
                     branch: None,
                     state_text: "working",
                     ahead_behind: None,
@@ -484,6 +489,7 @@ rows = [[{ token = "$load", rules = [{ lt = 50, dim = true }] }]]
                 &config,
                 SpaceTokenContext {
                     workspace: "feature",
+                    occupant: "codex",
                     branch: Some("worktree/feature"),
                     state_text: "idle",
                     ahead_behind: Some((2, 1)),
@@ -491,10 +497,15 @@ rows = [[{ token = "$load", rules = [{ lt = 50, dim = true }] }]]
                     suppress_git_details: true,
                 },
             ),
-            vec![vec![
-                ResolvedToken::unstyled(ResolvedTokenKind::StateIcon),
-                ResolvedToken::unstyled(ResolvedTokenKind::Workspace("feature".into())),
-            ]]
+            vec![
+                vec![
+                    ResolvedToken::unstyled(ResolvedTokenKind::StateIcon),
+                    ResolvedToken::unstyled(ResolvedTokenKind::Workspace("feature".into())),
+                ],
+                vec![ResolvedToken::unstyled(ResolvedTokenKind::Agent(
+                    "codex".into()
+                ))],
+            ]
         );
     }
 
@@ -511,6 +522,7 @@ rows = [[{ token = "$load", rules = [{ lt = 50, dim = true }] }]]
                 &config,
                 SpaceTokenContext {
                     workspace: "repo",
+                    occupant: "terminal",
                     branch: None,
                     state_text: "idle",
                     ahead_behind: None,

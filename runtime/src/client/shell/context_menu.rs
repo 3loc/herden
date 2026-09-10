@@ -60,8 +60,6 @@ impl ClientContextMenuOverlay {
                     items.push(item("Swap with focused pane", Action::SwapWithFocusedPane));
                 }
                 items.extend([
-                    item("Split right", Action::SplitRight),
-                    item("Split down", Action::SplitDown),
                     item("Zoom", Action::Zoom),
                     item(
                         if *right_click_passthrough {
@@ -156,7 +154,6 @@ impl ClientShellState {
         self.overlay = Some(ClientShellOverlay::ContextMenu(ClientContextMenuOverlay {
             target: ClientContextMenuTarget::Pane {
                 pane_id,
-                workspace_id: pane.workspace_id.clone(),
                 source_pane_id,
                 has_manual_label: pane.label.is_some(),
                 right_click_passthrough: pane.right_click_passthrough,
@@ -201,13 +198,11 @@ impl ClientShellState {
             } => self.activate_tab_context_action(tab_id, workspace_id, action, outcome),
             ClientContextMenuTarget::Pane {
                 pane_id,
-                workspace_id,
                 source_pane_id,
                 right_click_passthrough,
                 ..
             } => self.activate_pane_context_action(
                 pane_id,
-                workspace_id,
                 source_pane_id,
                 right_click_passthrough,
                 action,
@@ -370,15 +365,14 @@ impl ClientShellState {
     fn activate_pane_context_action(
         &mut self,
         pane_id: String,
-        workspace_id: String,
         source_pane_id: Option<String>,
         right_click_passthrough: bool,
         action: ClientContextMenuAction,
         outcome: &mut ClientShellInput,
     ) {
         use crate::api::schema::{
-            Method, PaneInputSetParams, PaneRenameParams, PaneRightClickTarget, PaneSplitParams,
-            PaneSwapParams, PaneTarget, PaneZoomMode, PaneZoomParams, SplitDirection,
+            Method, PaneInputSetParams, PaneRenameParams, PaneRightClickTarget, PaneSwapParams,
+            PaneTarget, PaneZoomMode, PaneZoomParams,
         };
 
         match action {
@@ -422,25 +416,6 @@ impl ClientShellState {
                         outcome,
                     );
                 }
-            }
-            ClientContextMenuAction::SplitRight | ClientContextMenuAction::SplitDown => {
-                self.push_endpoint_method(
-                    Method::PaneSplit(PaneSplitParams {
-                        workspace_id: Some(workspace_id),
-                        target_pane_id: Some(pane_id),
-                        direction: if action == ClientContextMenuAction::SplitRight {
-                            SplitDirection::Right
-                        } else {
-                            SplitDirection::Down
-                        },
-                        ratio: None,
-                        cwd: None,
-                        focus: true,
-                        right_click: Default::default(),
-                        env: Default::default(),
-                    }),
-                    outcome,
-                );
             }
             ClientContextMenuAction::Zoom => self.push_endpoint_method(
                 Method::PaneZoom(PaneZoomParams {
