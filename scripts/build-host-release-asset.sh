@@ -8,6 +8,11 @@ target=$1
 output_dir=$2
 repo_dir=$(CDPATH='' cd -- "$(dirname -- "$0")/.." && pwd)
 
+# Resolve the caller's path before changing into runtime/. The documented
+# OUT_DIR=release/... form is relative to the repository root.
+mkdir -p "$output_dir"
+output_dir=$(CDPATH='' cd -- "$output_dir" && pwd)
+
 case "$target" in
     x86_64-unknown-linux-musl) asset=herden-linux-x86_64 ;;
     aarch64-unknown-linux-musl) asset=herden-linux-aarch64 ;;
@@ -34,7 +39,6 @@ else
     cargo build --release --locked --target "$target"
 fi
 
-mkdir -p "$output_dir"
 install -m 0755 "${CARGO_TARGET_DIR:-target}/$target/release/herden" "$output_dir/$asset"
 
 version=$(awk -F'"' '/^version = "/ { print $2; exit }' Cargo.toml)

@@ -58,6 +58,12 @@ Run the full locked Host suite, pairing/upgrade PTY checks, exported-schema
 comparison, installer suite, and the performance gate against the previous
 public binary. Record exact pass/fail counts and hashes.
 
+For the full Host suite, set `HOME` to a fresh task-local directory while
+preserving the real `CARGO_HOME`, `RUSTUP_HOME`, and shared `CARGO_TARGET_DIR`.
+User shell/config state can otherwise make command-spawning tests fail even
+though the runtime is correct. If a first run omitted this isolation, rerun the
+affected tests under the clean home before diagnosing product code.
+
 ## Publish as one coherent bundle
 
 1. Upload the complete versioned directory to
