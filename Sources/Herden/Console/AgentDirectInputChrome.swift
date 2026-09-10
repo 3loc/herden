@@ -113,7 +113,7 @@ struct AgentConsoleButton: View {
     var body: some View {
         Button(action: action) {
             HStack(spacing: 6) {
-                HerdenMark(size: 18)
+                HerdenAgentMark(size: 18)
                 Text("Agents")
                     .font(Brand.sans(.caption, weight: .semibold))
             }

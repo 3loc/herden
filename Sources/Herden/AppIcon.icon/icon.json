@@ -1,13 +1,14 @@
 {
   "fill" : {
-    "automatic-gradient" : "extended-srgb:0.00000,0.00000,0.00000,0.00000"
+    "automatic-gradient" : "extended-srgb:0.03137,0.03137,0.03922,1.00000"
   },
   "groups" : [
     {
       "layers" : [
         {
-          "image-name" : "herden-side-profile.png",
-          "name" : "herden-side-profile"
+          "glass" : false,
+          "image-name" : "herden-fold.svg",
+          "name" : "herden-fold"
         }
       ],
       "shadow" : {

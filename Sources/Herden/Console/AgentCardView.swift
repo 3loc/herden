@@ -15,7 +15,7 @@ struct AgentCardView: View {
 
     var body: some View {
         HStack(spacing: 12) {
-            HerdenMark(size: 42)
+            HerdenAgentMark(size: 42)
             VStack(alignment: .leading, spacing: 6) {
                 HStack(alignment: .firstTextBaseline) {
                     Text(presentation.headline)

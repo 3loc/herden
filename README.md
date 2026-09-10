@@ -1,6 +1,6 @@
 <div align="center">
 
-<img src="docs/images/logo.png" width="100" alt="Herden sheep logo" />
+<img src="docs/images/logo.png" width="100" alt="Herden Fold logo" />
 
 # Herden
 

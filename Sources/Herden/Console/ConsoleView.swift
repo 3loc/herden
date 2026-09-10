@@ -76,7 +76,7 @@ struct ConsoleView: View {
                 .toolbar {
                     ToolbarItem(placement: .principal) {
                         HStack(spacing: 8) {
-                            HerdenMark(size: 30)
+                            HerdenLogoMark(size: 30)
                             Text("Herden.")
                                 .font(Brand.display(.title3))
                                 .foregroundStyle(Brand.ink)
@@ -432,13 +432,7 @@ struct ConsoleView: View {
         case .noAgents:
             ContentUnavailableView {
                 VStack(spacing: 12) {
-                    Image("HerdenFieldsAndSheep")
-                        .resizable()
-                        .interpolation(.none)
-                        .scaledToFit()
-                        .frame(maxWidth: 260, maxHeight: 260)
-                        .clipShape(.rect(cornerRadius: 22))
-                        .accessibilityHidden(true)
+                    HerdenLogoMark(size: 104)
                     Label("No Agents", systemImage: "plus.bubble")
                 }
             } description: {

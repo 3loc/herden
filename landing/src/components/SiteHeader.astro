@@ -1,6 +1,6 @@
 ---
 import { Image } from 'astro:assets';
-import logo from '../assets/logo.png';
+import logo from '../assets/logo-dark.svg';
 import Button from './Button.astro';
 
 const links = [
@@ -50,9 +50,7 @@ const links = [
     color: var(--text-primary);
   }
 
-  .mark {
-    border-radius: 5px;
-  }
+  .mark { flex: none; }
 
   .wordmark {
     font: var(--fw-medium) 17px/1 var(--font-sans);

@@ -69,6 +69,8 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ### Changed
 
+- Replace the pixel-art shepherd and field illustrations with a clean,
+  appearance-aware Fold mark across the app, Agent and Space rows, and website.
 - Show Agents from every Host in one Console list, remove the Host filter, and
   identify each Host in the in-terminal Agent switcher.
 - Highlight iOS sharing, media and document attachments, on-device dictation,

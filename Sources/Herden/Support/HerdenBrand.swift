@@ -75,30 +75,39 @@ private extension Font.TextStyle {
     }
 }
 
-/// Herden's transparent pixel-art shepherd mark. Nearest-neighbour sampling
-/// preserves the deliberately hard pixel edges at every rendered size.
-struct HerdenMark: View {
+/// Herden's paired Fold: two fields turning around one shared passage.
+struct HerdenLogoMark: View {
     var size: CGFloat = 32
 
     var body: some View {
-        Image("HerdenMuddyBoot")
+        Image("HerdenFold")
             .resizable()
-            .interpolation(.none)
             .scaledToFit()
-        .frame(width: size, height: size)
-        .accessibilityHidden(true)
+            .frame(width: size, height: size)
+            .accessibilityHidden(true)
     }
 }
 
-/// A Space is the field itself. Keeping this separate from `HerdenMark`
-/// prevents the sheep/Agent metaphor from leaking onto Workspace rows.
+/// The active half of the Fold identifies one Agent.
+struct HerdenAgentMark: View {
+    var size: CGFloat = 32
+
+    var body: some View {
+        Image("HerdenAgentFold")
+            .resizable()
+            .scaledToFit()
+            .frame(width: size, height: size)
+            .accessibilityHidden(true)
+    }
+}
+
+/// The enclosing half of the Fold identifies one Space.
 struct HerdenSpaceMark: View {
     var size: CGFloat = 40
 
     var body: some View {
-        Image("HerdenField")
+        Image("HerdenSpaceFold")
             .resizable()
-            .interpolation(.none)
             .scaledToFit()
             .frame(width: size, height: size)
             .accessibilityHidden(true)
