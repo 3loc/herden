@@ -48,6 +48,12 @@ after all binaries and checksum files exist. Do not overlap cross-builds or
 native tests because libghostty-vt shares `zig-out`. Follow the SDK and cache
 constraints in the release guide.
 
+Keep the pinned Zig 0.15.2 and cargo-zigbuild 0.23.4 under
+`~/.cache/herden-release-tools/` on Studio and put them first on `PATH`; install
+them once when absent, not on every release. The Make targets automatically
+route Zig's macOS SDK lookup through the CLT 15.4 SDK when it exists, avoiding
+the Xcode 26 linker failure without changing machine-wide developer tools.
+
 Run the full locked Host suite, pairing/upgrade PTY checks, exported-schema
 comparison, installer suite, and the performance gate against the previous
 public binary. Record exact pass/fail counts and hashes.

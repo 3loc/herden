@@ -40,15 +40,19 @@ help: ## Show available targets
 
 .PHONY: host-build host-install host-check host-test host-test-one host-perf host-release-asset host-release-assemble
 
+# Pinned Zig 0.15.2 cannot link its build runner against Xcode 26's macOS SDK.
+# On macOS, route only the SDK-path lookup through the compatible CLT 15.4 SDK.
+HOST_BUILD_ENV = $(if $(filter Darwin,$(shell uname -s)),HERDEN_REAL_XCRUN="$(shell command -v xcrun)" PATH="$(CURDIR)/scripts/macos15-sdk-bin:$(PATH)",)
+
 host-build: ## Compile only the Rust Host runtime
-	cd runtime && cargo build --locked
+	cd runtime && $(HOST_BUILD_ENV) cargo build --locked
 
 host-test: ## Run the locked Host suite serially (avoids upstream parallel fixture races)
-	cd runtime && cargo test --locked -- --test-threads=1
+	cd runtime && $(HOST_BUILD_ENV) cargo test --locked -- --test-threads=1
 
 host-test-one: ## Run one Host test substring (FILTER=test_name)
 	@test -n "$(FILTER)" || { echo "FILTER is required" >&2; exit 2; }
-	cd runtime && cargo test --locked "$(FILTER)" -- --test-threads=1
+	cd runtime && $(HOST_BUILD_ENV) cargo test --locked "$(FILTER)" -- --test-threads=1
 
 host-perf: ## Compare candidate and published Host CPU use (HOST_CANDIDATE=... HOST_BASELINE=...)
 	@test -n "$(HOST_CANDIDATE)" -a -n "$(HOST_BASELINE)" || { echo "HOST_CANDIDATE and HOST_BASELINE are required" >&2; exit 2; }
@@ -63,7 +67,7 @@ host-check: ## Check Host source-build prerequisites without installing anything
 host-release-asset: ## Build one Host release asset (TARGET=... OUT_DIR=...)
 	@test -n "$(TARGET)" || { echo "TARGET is required" >&2; exit 2; }
 	@test -n "$(OUT_DIR)" || { echo "OUT_DIR is required" >&2; exit 2; }
-	sh scripts/build-host-release-asset.sh "$(TARGET)" "$(OUT_DIR)"
+	$(HOST_BUILD_ENV) sh scripts/build-host-release-asset.sh "$(TARGET)" "$(OUT_DIR)"
 
 host-release-assemble: ## Assemble Host release metadata (HOST_VERSION=... OUT_DIR=...)
 	@test -n "$(HOST_VERSION)" || { echo "HOST_VERSION is required" >&2; exit 2; }
