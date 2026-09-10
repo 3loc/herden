@@ -10,21 +10,21 @@ this release path. App releases and interim TestFlight builds follow
 
 Use a clean source snapshot. The build checks the pinned Zig version and writes
 a SHA-256 checksum beside each binary. Linux targets use `cargo-zigbuild` on the
-Mac; install both Rust musl targets and both Darwin targets first.
+Mac. The aggregate target records a source-input receipt, verifies and reuses
+completed assets after an interruption, and builds only missing or corrupt ones.
 
 For Host 0.9.0:
 
 ```sh
-mkdir -p release/host-v0.9.0
-for target in x86_64-unknown-linux-musl aarch64-unknown-linux-musl \
-              aarch64-apple-darwin x86_64-apple-darwin; do
-  make host-release-asset TARGET="$target" OUT_DIR=release/host-v0.9.0
-done
-make host-release-assemble HOST_VERSION=0.9.0 OUT_DIR=release/host-v0.9.0
+make host-release HOST_VERSION=0.9.0 OUT_DIR=release/host-v0.9.0
 make host-test
 make host-perf HOST_BASELINE=/path/to/previous-public-herden \
   HOST_CANDIDATE="$PWD/release/host-v0.9.0/herden-macos-aarch64"
 ```
+
+Resume with the same command and directory. A mismatched source receipt is a
+hard failure: use a new empty directory rather than mixing assets from two
+source states.
 
 Keep the performance baseline binary from the previous public release. Run the Linux
 pairing/upgrade PTY checks with both the candidate and previous public binary,

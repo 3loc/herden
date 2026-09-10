@@ -20,10 +20,14 @@ Studio before installing; its hardware UDID must be resolved live from
   bundle ID `ltd.3loc.herden`; do not reinstall or revive the retired
   `com.3loc.herden` identity.
 - Run the relevant iOS test gate once per source snapshot, then run
-  `make install DEVICE=28309636-A280-52AE-8936-EE3440A1D74B` on macOS. Set
-  `DERIVED` to a run-specific directory; the shared default can reuse generated
-  Info.plist values from another snapshot even when Xcode reports the new build
-  setting. Set `IOS_BUILD_DESTINATION=id=<hardware-UDID>` so automatic signing
+  `make install DEVICE=28309636-A280-52AE-8936-EE3440A1D74B` on macOS. When the
+  release-all workflow already built the exact app and its embedded profiles
+  contain Tedda's live hardware UDID, use `make install-built` instead; this must
+  not invoke Xcode again. Reuse the master workflow's locked, fixed-path Studio
+  source and DerivedData lane. For a standalone install, use that same lane rather
+  than a new timestamped checkout, and verify the built Info.plist before install;
+  invalidate only its scoped products if metadata is stale. Set
+  `IOS_BUILD_DESTINATION=id=<hardware-UDID>` so automatic signing
   selects a profile valid for Tedda. Pass the authorised development team without
   committing it.
 - If SSH codesigning fails with `errSecInternalComponent`, run the exact command

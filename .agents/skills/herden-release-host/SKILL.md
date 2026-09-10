@@ -36,16 +36,19 @@ metadata, or Host-facing compatibility inputs changed.
 
 ## Build and validate on Studio
 
-Build serially through the Make targets for:
+Build serially through the resumable `make host-release HOST_VERSION=X.Y.Z
+OUT_DIR=...` target. It verifies and reuses any already-complete asset in that
+version-specific directory, builds only missing or corrupt assets, then assembles
+metadata after all four are valid. Its targets are:
 
 - `x86_64-unknown-linux-musl`
 - `aarch64-unknown-linux-musl`
 - `x86_64-apple-darwin`
 - `aarch64-apple-darwin`
 
-Use one explicit release directory and run `make host-release-assemble` only
-after all binaries and checksum files exist. Do not overlap cross-builds or
-native tests because libghostty-vt shares `zig-out`. Follow the SDK and cache
+Use one explicit, durable release directory from the start. Do not delete it or
+restart completed target builds after a disconnect. Do not overlap cross-builds
+or native tests because libghostty-vt shares `zig-out`. Follow the SDK and cache
 constraints in the release guide.
 
 Keep the pinned Zig 0.15.2 and cargo-zigbuild 0.23.4 under

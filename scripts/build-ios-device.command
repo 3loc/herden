@@ -7,7 +7,11 @@ set -o pipefail
 # intentionally changing project.yml.
 
 repo_root="${0:A:h:h}"
-derived_data="${HERDEN_DERIVED_DATA:-/tmp/herden-ios-device-derived}"
+cache_root="${XDG_CACHE_HOME:-$HOME/.cache}/herden-build"
+derived_data="${HERDEN_DERIVED_DATA:-$cache_root/release-lane/AppDerivedData}"
+source_packages="${HERDEN_SOURCE_PACKAGES:-$cache_root/source-packages}"
+ios_destination="${HERDEN_IOS_BUILD_DESTINATION:-generic/platform=iOS}"
+resolution_args="${HERDEN_XCODE_RESOLUTION_ARGS:-}"
 build_log="${HERDEN_BUILD_LOG:-/tmp/herden-ios-device-build.log}"
 build_status="${HERDEN_BUILD_STATUS:-/tmp/herden-ios-device-build.status}"
 development_team="${HERDEN_DEVELOPMENT_TEAM:-}"
@@ -25,13 +29,10 @@ finish() {
 trap finish EXIT
 
 cd "$repo_root"
-xcodebuild build \
-    -project Herden.xcodeproj \
-    -scheme Herden \
-    -configuration Debug \
-    -destination 'generic/platform=iOS' \
-    -derivedDataPath "$derived_data" \
-    -allowProvisioningUpdates \
+make ios-build \
+    DERIVED="$derived_data" \
+    SOURCE_PACKAGES="$source_packages" \
+    IOS_BUILD_DESTINATION="$ios_destination" \
     DEVELOPMENT_TEAM="$development_team" \
-    CODE_SIGN_STYLE=Automatic \
+    XCODE_RESOLUTION_ARGS="$resolution_args" \
     2>&1 | tee "$build_log"

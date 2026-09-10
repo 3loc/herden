@@ -34,14 +34,20 @@ the build commands. A successful upload alone does not complete submission.
    fix those inputs and run `make generate`, rather than bumping a second time.
 3. Run `make test` on the exact snapshot. Report executed/skipped suites accurately;
    local real-SSH fixtures may be absent. Fix relevant failures before uploading.
-   Set `DERIVED` and `SSH_DERIVED` to run-specific directories for release-all
-   snapshots so generated version metadata cannot leak across staged checkouts.
+   Use the locked, fixed-path Studio source and DerivedData lane from the
+   release-all skill. Keeping both the project and DerivedData paths stable lets
+   Xcode incrementally compile changed sources. Hash the staged source and verify
+   the built Info.plists so cache reuse cannot hide stale version metadata. Keep
+   `SOURCE_PACKAGES` stable across runs.
 4. Authenticate using the environment variables documented in the release guide.
    For this fleet, the available Infisical skill explains authentication and secret
    discovery. Keep secret-store coordinates, credentials and private keys out of
    this public repo. The API helper needs Python 3 and `cryptography`.
 5. Set `HERDEN_DEVELOPMENT_TEAM` from the authorised signing-team configuration
-   and run `make testflight` with that same run-specific `DERIVED`. Use Studio's logged-in GUI Terminal if SSH signing
+   and run `make testflight` with that same fixed-lane `DERIVED`. After an
+   earlier Xcode action has resolved the pinned packages successfully, pass
+   `XCODE_RESOLUTION_ARGS=-disableAutomaticPackageResolution` so archive does not
+   repeat network resolution. Use Studio's logged-in GUI Terminal if SSH signing
    fails with `errSecInternalComponent`; this has succeeded without changing
    accounts, provisioning, or Keychain policy. A script launched via Terminal's
    `do script` should write a log and exit-status file for independent verification.

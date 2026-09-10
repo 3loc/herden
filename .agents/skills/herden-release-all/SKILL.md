@@ -26,11 +26,22 @@ manifest, app version/build, Host version, public versions, Apple build state,
 and both device states. Re-hash before every irreversible publication boundary.
 If the source changes concurrently, stop rather than mixing builds.
 
-Use a single isolated, hashed Studio snapshot for iOS tests, both physical-device
-installs, archive, and upload. Choose exactly one run-specific `DERIVED` directory
-and one run-specific `SSH_DERIVED` directory and pass those same two paths through
-the tests, both device installs, archive, and upload; changing them between stages
-needlessly rebuilds the Swift package graph. A build already on a device or TestFlight counts as
+Use a single isolated, hash-checked Studio source lane for iOS tests, both
+physical-device installs, archive, and upload. Keep its absolute path stable at
+`~/.cache/herden-build/release-lane/source`, with stable sibling `AppDerivedData`
+and `HerdenSSHDerivedData` directories. Acquire the lane with an atomic lock
+directory, record its owner, and never replace another live run. Sync the new
+source into that exact lane only after validating the destination; this stable
+project path lets Xcode incrementally compile source changes instead of rebuilding
+the dependency graph for every timestamped snapshot. Hash the staged inputs before
+and after every publication boundary, and independently verify generated app and
+extension Info.plists. If either contains stale metadata, invalidate only this
+scoped lane's affected build products and rebuild. Pass the same `DERIVED` and
+`SSH_DERIVED` paths through tests, both installs, archive, and upload. Reuse the
+Makefile's stable `SOURCE_PACKAGES` checkout cache across runs. After the
+first successful dependency resolution, pass
+`XCODE_RESOLUTION_ARGS=-disableAutomaticPackageResolution` to the remaining Xcode
+actions in that run. A build already on a device or TestFlight counts as
 current only when its preserved source manifest matches—not merely its version
 number. Conversely, if Apple's valid, approved build already matches the exact
 source, verify it and do not create a needless new build.
@@ -50,9 +61,11 @@ artifacts whose source manifest is already deployed.
 - Host/runtime/installer changes run the full Host release and fleet flow.
 - skill or documentation-only changes need no product rebuild.
 
-Sync the working source directly to one new Studio directory with `rsync`,
-excluding `.git`, `node_modules`, `.build`, `DerivedData`, and other generated
-outputs. Do not make an intermediate `/tmp` copy. Hash only release inputs, and
+Sync the working source directly into the locked fixed-path Studio release lane
+with `rsync`, excluding `.git`, `node_modules`, `.build`, `DerivedData`, and other
+generated outputs. Do not make an intermediate `/tmp` or timestamped source copy.
+Use deletion only inside the exact validated lane so files removed from the source
+cannot linger in the next build. Hash only release inputs, and
 reuse successful test/build receipts keyed by that exact manifest. Use existing
 dependency caches and run independent read-only preflights concurrently. Run long
 Studio builds inside a named reconnectable session under `caffeinate -dimsu`, with
@@ -69,7 +82,12 @@ restarting already-proven unchanged surfaces.
    disk space, and source stability.
 2. Create and verify the shared iOS snapshot. Run the complete iOS and HerdenSSH
    test surfaces once.
-3. Install and independently verify the same app on Tedda and Vivian.
+3. Prefer one signed Debug device build for both phones. Inspect the app and Share
+   Extension embedded profiles and require both live hardware UDIDs in their
+   `ProvisionedDevices` arrays. When they are present, run `make ios-build` once,
+   then `make install-built DEVICE=...` for Tedda and Vivian; never invoke Xcode
+   between those installs. If either profile excludes a phone, rebuild only for
+   that phone with its valid profile. Independently verify both installations.
 4. Upload only if the exact source is absent from TestFlight. Wait for processing,
    update notes/groups, enable automatic notification, submit for beta review,
    and replace only the specifically superseded build when necessary. Re-read

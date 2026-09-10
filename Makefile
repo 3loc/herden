@@ -18,6 +18,8 @@ HERDEN_CACHE_ROOT ?= $(if $(strip $(XDG_CACHE_HOME)),$(XDG_CACHE_HOME),$(HOME)/.
 CARGO_TARGET_DIR ?= $(HERDEN_CACHE_ROOT)/cargo-target
 DERIVED ?= $(HOME)/Library/Developer/Xcode/DerivedData/Herden-Local
 SSH_DERIVED ?= $(HOME)/Library/Developer/Xcode/DerivedData/HerdenSSH-Local
+SOURCE_PACKAGES ?= $(HERDEN_CACHE_ROOT)/source-packages
+XCODE_PACKAGE_ARGS = -clonedSourcePackagesDirPath "$(SOURCE_PACKAGES)" $(XCODE_RESOLUTION_ARGS)
 export CARGO_TARGET_DIR
 export HERDEN_SSH_DERIVED_DATA := $(SSH_DERIVED)
 
@@ -33,12 +35,12 @@ DEVICE ?= $(shell xcrun devicectl list devices 2>/dev/null | awk '/physical[a-z]
 IOS_BUILD_DESTINATION ?= generic/platform=iOS
 IOS_SIGNING_ARGS ?=
 
-.PHONY: help generate build ios-build ios-build-sim test ios-test ios-test-one ios-test-ssh ios-test-all test-all install watch-ios-device sim archive upload testflight bump publish clean check-device cache-info ssh-artifacts verify-ssh-artifacts
+.PHONY: help generate build prepare-ios-cache ios-build ios-build-sim test ios-test ios-test-one ios-test-ssh ios-test-all test-all install install-built watch-ios-device sim archive upload testflight bump publish clean check-device cache-info ssh-artifacts verify-ssh-artifacts
 
 help: ## Show available targets
 	@awk -F':.*## ' '/^[a-z-]+:.*## / { printf "  make %-20s %s\n", $$1, $$2 }' $(MAKEFILE_LIST)
 
-.PHONY: host-build host-install host-check host-test host-test-one host-perf host-release-asset host-release-assemble
+.PHONY: host-build host-install host-check host-test host-test-one host-perf host-release host-release-asset host-release-assemble
 
 # Pinned Zig 0.15.2 cannot link its build runner against Xcode 26's macOS SDK.
 # On macOS, route only the SDK-path lookup through the compatible CLT 15.4 SDK.
@@ -69,6 +71,11 @@ host-release-asset: ## Build one Host release asset (TARGET=... OUT_DIR=...)
 	@test -n "$(OUT_DIR)" || { echo "OUT_DIR is required" >&2; exit 2; }
 	$(HOST_BUILD_ENV) sh scripts/build-host-release-asset.sh "$(TARGET)" "$(OUT_DIR)"
 
+host-release: ## Build/resume all four Host assets and metadata (HOST_VERSION=... OUT_DIR=...)
+	@test -n "$(HOST_VERSION)" || { echo "HOST_VERSION is required" >&2; exit 2; }
+	@test -n "$(OUT_DIR)" || { echo "OUT_DIR is required" >&2; exit 2; }
+	$(HOST_BUILD_ENV) sh scripts/build-host-release.sh "$(HOST_VERSION)" "$(OUT_DIR)"
+
 host-release-assemble: ## Assemble Host release metadata (HOST_VERSION=... OUT_DIR=...)
 	@test -n "$(HOST_VERSION)" || { echo "HOST_VERSION is required" >&2; exit 2; }
 	@test -n "$(OUT_DIR)" || { echo "OUT_DIR is required" >&2; exit 2; }
@@ -85,29 +92,34 @@ generate: ## Regenerate the Xcode project from project.yml (XcodeGen)
 
 build: ios-build ## Compatibility alias for ios-build
 
-ios-build: ## Build only the iOS app for a physical device
+prepare-ios-cache:
+	@mkdir -p "$(SOURCE_PACKAGES)"
+
+ios-build: prepare-ios-cache ## Build only the iOS app for a physical device
 	xcodebuild -project $(PROJECT) -scheme $(SCHEME) -configuration Debug \
 		-destination '$(IOS_BUILD_DESTINATION)' -derivedDataPath "$(DERIVED)" \
+		$(XCODE_PACKAGE_ARGS) \
 		-allowProvisioningUpdates -allowProvisioningDeviceRegistration \
 		$(SIGNING_ARGS) $(IOS_SIGNING_ARGS) build
 
-ios-build-sim: ## Compile only the iOS app for the simulator
+ios-build-sim: prepare-ios-cache ## Compile only the iOS app for the simulator
 	xcodebuild -project $(PROJECT) -scheme $(SCHEME) -configuration Debug \
 		-destination 'platform=iOS Simulator,name=$(SIM)' \
-		-derivedDataPath "$(DERIVED)" build
+		-derivedDataPath "$(DERIVED)" $(XCODE_PACKAGE_ARGS) build
 
 test: ios-test-all ## Compatibility alias for the complete iOS test surface
 
-ios-test: ## Run only the iOS app tests (skip the separate HerdenSSH suite)
+ios-test: prepare-ios-cache ## Run only the iOS app tests (skip the separate HerdenSSH suite)
 	xcodebuild -project $(PROJECT) -scheme $(SCHEME) \
 		-destination 'platform=iOS Simulator,name=$(SIM)' \
-		-derivedDataPath "$(DERIVED)" test
+		-derivedDataPath "$(DERIVED)" $(XCODE_PACKAGE_ARGS) test
 
-ios-test-one: ## Run one iOS suite (SUITE=PairingCodeTests)
+ios-test-one: prepare-ios-cache ## Run one iOS suite (SUITE=PairingCodeTests)
 	@test -n "$(SUITE)" || { echo "SUITE is required" >&2; exit 2; }
 	xcodebuild test -project $(PROJECT) -scheme $(SCHEME) \
 		-destination 'platform=iOS Simulator,name=$(SIM)' \
 		-derivedDataPath "$(DERIVED)" \
+		$(XCODE_PACKAGE_ARGS) \
 		-only-testing:HerdenTests/$(SUITE)
 
 ios-test-ssh: ## Run only the repository-local HerdenSSH package tests
@@ -125,6 +137,14 @@ install: check-device build ## Build Debug, install on the iPhone, and relaunch 
 		$(DERIVED)/Build/Products/Debug-iphoneos/Herden.app
 	xcrun devicectl device process launch --terminate-existing --device $(DEVICE) $(APP_ID)
 
+install-built: check-device ## Install/relaunch an already-built Debug app without invoking Xcode
+	@test -d "$(DERIVED)/Build/Products/Debug-iphoneos/Herden.app" || { \
+		echo "No built app in $(DERIVED); run make ios-build first" >&2; exit 1; \
+	}
+	xcrun devicectl device install app --device $(DEVICE) \
+		$(DERIVED)/Build/Products/Debug-iphoneos/Herden.app
+	xcrun devicectl device process launch --terminate-existing --device $(DEVICE) $(APP_ID)
+
 watch-ios-device: ## Watch iOS code and install to a connected iPhone/iPad
 	@command -v watchexec >/dev/null || { echo "watchexec not found. Install with: brew install watchexec"; exit 1; }
 	watchexec \
@@ -138,18 +158,20 @@ watch-ios-device: ## Watch iOS code and install to a connected iPhone/iPad
 		--on-busy-update queue \
 		-- make install DEVICE="$(DEVICE)"
 
-sim: ## Build Debug and run it on the simulator (override with SIM=<name>)
+sim: prepare-ios-cache ## Build Debug and run it on the simulator (override with SIM=<name>)
 	xcodebuild -project $(PROJECT) -scheme $(SCHEME) -configuration Debug \
-		-destination 'platform=iOS Simulator,name=$(SIM)' -derivedDataPath "$(DERIVED)" build
+		-destination 'platform=iOS Simulator,name=$(SIM)' -derivedDataPath "$(DERIVED)" \
+		$(XCODE_PACKAGE_ARGS) build
 	xcrun simctl boot '$(SIM)' 2>/dev/null || true
 	open -a Simulator
 	xcrun simctl install booted $(DERIVED)/Build/Products/Debug-iphonesimulator/Herden.app
 	xcrun simctl launch --terminate-running-process booted $(APP_ID)
 
-archive: ## Archive a Release build for distribution
+archive: prepare-ios-cache ## Archive a Release build for distribution
 	xcodebuild -project $(PROJECT) -scheme $(SCHEME) -configuration Release \
 		-destination 'generic/platform=iOS' -archivePath $(ARCHIVE) \
 		-derivedDataPath "$(DERIVED)" \
+		$(XCODE_PACKAGE_ARGS) \
 		-allowProvisioningUpdates $(SIGNING_ARGS) archive
 
 upload: ## Upload the existing archive to App Store Connect (TestFlight)
@@ -179,3 +201,4 @@ cache-info: ## Show the persistent Cargo and Xcode cache locations
 	@printf 'Cargo:     %s\n' '$(CARGO_TARGET_DIR)'
 	@printf 'iOS app:   %s\n' '$(DERIVED)'
 	@printf 'HerdenSSH: %s\n' '$(SSH_DERIVED)'
+	@printf 'SwiftPM:   %s\n' '$(SOURCE_PACKAGES)'
