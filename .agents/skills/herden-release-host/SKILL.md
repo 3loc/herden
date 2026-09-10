@@ -54,6 +54,12 @@ them once when absent, not on every release. The Make targets automatically
 route Zig's macOS SDK lookup through the CLT 15.4 SDK when it exists, avoiding
 the Xcode 26 linker failure without changing machine-wide developer tools.
 
+Before starting a long Studio command, verify AC power/network reachability and
+run it in a named `tmux` session under `caffeinate -dimsu`, redirecting its output
+to the release directory. Poll the log and reconnect to that session after an SSH
+drop instead of restarting the command. Include `/usr/sbin:/sbin` in an isolated
+test `PATH`; macOS PTY ownership tests invoke `/usr/sbin/lsof`.
+
 Run the full locked Host suite, pairing/upgrade PTY checks, exported-schema
 comparison, installer suite, and the performance gate against the previous
 public binary. Record exact pass/fail counts and hashes.
@@ -63,6 +69,12 @@ preserving the real `CARGO_HOME`, `RUSTUP_HOME`, and shared `CARGO_TARGET_DIR`.
 User shell/config state can otherwise make command-spawning tests fail even
 though the runtime is correct. If a first run omitted this isolation, rerun the
 affected tests under the clean home before diagnosing product code.
+
+Immediately after assembly and checksum verification, copy the complete artifact
+directory and test log to `/vm-share/software/herden/host-vX.Y.Z/`, before the
+performance and publication gates. The shared copy is the recovery source if the
+build Mac sleeps or goes offline. Never wait until the end of the release to make
+the first durable copy.
 
 ## Publish as one coherent bundle
 

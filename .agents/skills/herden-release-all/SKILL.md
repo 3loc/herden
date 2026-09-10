@@ -27,8 +27,10 @@ and both device states. Re-hash before every irreversible publication boundary.
 If the source changes concurrently, stop rather than mixing builds.
 
 Use a single isolated, hashed Studio snapshot for iOS tests, both physical-device
-installs, archive, and upload, with run-specific `DERIVED` and `SSH_DERIVED`
-directories rather than shared defaults. A build already on a device or TestFlight counts as
+installs, archive, and upload. Choose exactly one run-specific `DERIVED` directory
+and one run-specific `SSH_DERIVED` directory and pass those same two paths through
+the tests, both device installs, archive, and upload; changing them between stages
+needlessly rebuilds the Swift package graph. A build already on a device or TestFlight counts as
 current only when its preserved source manifest matches—not merely its version
 number. Conversely, if Apple's valid, approved build already matches the exact
 source, verify it and do not create a needless new build.
@@ -52,7 +54,10 @@ Sync the working source directly to one new Studio directory with `rsync`,
 excluding `.git`, `node_modules`, `.build`, `DerivedData`, and other generated
 outputs. Do not make an intermediate `/tmp` copy. Hash only release inputs, and
 reuse successful test/build receipts keyed by that exact manifest. Use existing
-dependency caches and run independent read-only preflights concurrently. Report
+dependency caches and run independent read-only preflights concurrently. Run long
+Studio commands inside a named reconnectable session under `caffeinate -dimsu`,
+with output written to the release evidence directory; an SSH disconnect must not
+kill or obscure an otherwise healthy build. Report
 the active gate promptly; if a command fails, diagnose that gate without
 restarting already-proven unchanged surfaces.
 
