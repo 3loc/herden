@@ -32,6 +32,7 @@ eliminating several dead ends.
 | Path | Responsibility |
 | --- | --- |
 | `docs/agents/ios-console.md` | Agent-first navigation/creation map and Space compatibility boundaries (ADR 0020). |
+| `Sources/Herden/Console/StartAgentView.swift` + `ConsoleView.swift` + `AgentTerminalView.swift` | Successful Agent launch handoff: record the destination before dismissing the sheet, then open its terminal after dismissal yields. |
 | `Sources/Herden/Terminal/SharedTerminalKeyboard.swift` | The single Agent/Space control deck, including dictation, language selection, attachments and Paste. |
 | `Sources/Herden/Transport/SSHTransportSettings.swift` | Host command defaults and injectable SSH environment boundaries. |
 | `Sources/Herden/Settings/TerminalAppearancePane.swift` + `TerminalThemeSettings.swift` | Selected daylight/nighttime theme and the exact foreground/background colours supplied to new Agents. |
@@ -64,6 +65,11 @@ Terminal appearance flows from the selected Ghostty theme into
 `AgentLaunchTerminalColors`, through optional `agent.start.terminal_colors`,
 then into a platform launch wrapper that writes OSC 10/11 and `exec`s the Agent
 in the same foreground job.
+
+New-Agent navigation is a two-stage presentation handoff: `StartAgentView`
+records the started Agent ID before it dismisses, and the presenting view opens
+that ID after one main-actor yield. Reversing either order can create the
+Ghostty surface during sheet teardown and leave the first-open terminal blank.
 
 The installer persists PATH in shell startup files; the quick-start export
 updates the current Terminal. Keep both: a `curl ... | sh` child cannot update

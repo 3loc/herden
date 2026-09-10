@@ -12,7 +12,7 @@ Paths below are relative to `Sources/Herden/`.
 | File | Responsibility |
 | --- | --- |
 | `Console/ConsoleView.swift` | Primary Agent list, New Agent, secondary Spaces & Terminals browser and navigation after sheet dismissal. |
-| `Console/StartAgentView.swift` | Default automatic Space creation; explicit reuse and Worktree location options. |
+| `Console/StartAgentView.swift` | Default automatic Space creation, explicit reuse and Worktree options, plus the ordered success handoff used by both presentation sites. |
 | `Console/StartAgentStore.swift` | Launch destination policy, inherited directory and backing Space label. |
 | `Console/ConsoleStore.swift`, `Console/HostConsoleProjection.swift` | Snapshot-backed existing Space destination: first Agent, otherwise first terminal. |
 | `Console/ConsoleAgent.swift`, `Console/AgentCardView.swift` | Name-first presentation; Host + pane identity stays independent of display labels. |
@@ -22,7 +22,9 @@ Paths below are relative to `Sources/Herden/`.
 
 New Agent flows through StartAgentStore to the transport, which creates a
 Space and starts the Agent in its existing root pane; the refreshed snapshot
-supplies the Host/pane destination that opens after the creation sheet dismisses.
+supplies the Host/pane destination. StartAgentView records that destination
+before dismissing, then the presenting view yields once after dismissal before
+opening the terminal surface.
 
 ## Boundaries and failure modes
 
@@ -34,10 +36,10 @@ supplies the Host/pane destination that opens after the creation sheet dismisses
 - Close still uses `pane.close`. The Host can close the Space on its last pane
   and retains worktree-group confirmation. No extra workspace or file deletion
   belongs in this UI simplification.
-- Launch acceptance does not prove the attached terminal rendered. For a blank
-  cursor-only screen, check Agent readiness and remote pane content separately
-  from the PTY attach/display path. The reported blank-terminal issue remains
-  unverified; this navigation change is not evidence of a fix.
+- Never call `dismiss()` before recording the started Agent ID, and never build
+  its terminal in the sheet teardown transaction. Either race can produce a
+  blank first-open surface that appears after leaving and re-entering; keep the
+  ordering in `StartAgentPresentationTransition` covered by tests.
 
 Regression coverage: `StartAgentStoreTests`, `TerminalAgentSwitcherTests`,
 `ConsoleListPresentationStoreTests`, `ConsoleStoreTests` and the new-Space launch
