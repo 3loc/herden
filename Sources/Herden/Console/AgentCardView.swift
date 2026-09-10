@@ -104,6 +104,70 @@ struct AgentCardPresentation: Equatable {
     }
 }
 
+/// The Console's one durable destination. A Space leads; its current Agent or
+/// shell is state carried by the row rather than a second navigation object.
+struct SpaceCardView: View {
+    let space: ConsoleSpace
+    var isOpening = false
+
+    private var occupantLabel: String {
+        switch space.occupant {
+        case .terminal:
+            "Terminal"
+        case .agent(let kind, _, _):
+            SupportedAgentKind(rawValue: kind)?.displayName ?? kind.capitalized
+        case .agents(let count, _):
+            "\(count) Agents"
+        }
+    }
+
+    var body: some View {
+        HStack(spacing: 12) {
+            HerdenSpaceMark(size: 42)
+            VStack(alignment: .leading, spacing: 6) {
+                HStack(alignment: .firstTextBaseline) {
+                    Text(space.workspace.label)
+                        .font(Brand.sans(.headline, weight: .semibold))
+                        .foregroundStyle(Brand.ink)
+                        .lineLimit(1)
+                    if space.pinRank != nil {
+                        Image(systemName: "pin.fill")
+                            .font(.caption2)
+                            .foregroundStyle(.tertiary)
+                            .layoutPriority(1)
+                            .accessibilityLabel("Pinned")
+                    }
+                    Spacer(minLength: 8)
+                    if let status = space.occupant.status {
+                        AgentStatusBadge(status: status)
+                    } else {
+                        Image(systemName: "apple.terminal")
+                            .font(.caption.weight(.semibold))
+                            .foregroundStyle(Brand.muted)
+                            .accessibilityHidden(true)
+                    }
+                }
+                HStack(spacing: 6) {
+                    Text(occupantLabel)
+                        .font(Brand.sans(.caption, weight: .semibold))
+                        .foregroundStyle(space.occupant.status == nil ? Brand.muted : Brand.vine)
+                    Spacer(minLength: 8)
+                    Text(space.hostName)
+                        .font(Brand.mono(.caption2))
+                        .foregroundStyle(Brand.subtle)
+                        .lineLimit(1)
+                }
+            }
+            if isOpening {
+                ProgressView()
+                    .controlSize(.small)
+                    .tint(Brand.vine)
+            }
+        }
+        .padding(.vertical, 4)
+    }
+}
+
 /// Status rendered as a tinted capsule; Blocked gets the loudest color
 /// because it is the one asking for the user. Working keeps a live solving
 /// orb inside the capsule — a still badge cannot tell a busy Agent from a

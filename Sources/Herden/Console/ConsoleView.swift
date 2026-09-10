@@ -1,6 +1,6 @@
 import SwiftUI
 
-/// The picker for Spaces and Agents. One stable list, with creation and Host
+/// The Space picker. One stable list, with creation and Host
 /// management in the toolbar; sessions remain a horizontal gesture away.
 struct ConsoleView: View {
     let hosts: HostStore
@@ -27,9 +27,6 @@ struct ConsoleView: View {
     @State private var createsSpaceAfterHostSheetCloses = false
     @State private var isStartingAgent = false
     @State private var isShowingSettings = false
-    @State private var isBrowsingSpaces = false
-    @State private var spaceAfterBrowserDismissal: ConsoleSpace?
-    @State private var createsTerminalAfterBrowserDismissal = false
     @State private var startedAgentAfterDismissal: ConsoleAgent.ID?
     @State private var selectedSpace: ConsoleSpace?
     @State private var openedSpace: OpenedSpace?
@@ -60,7 +57,7 @@ struct ConsoleView: View {
 
     var body: some View {
         // A split view instead of a plain stack for the iPad's sake: regular
-        // width shows the Agent list beside the Attach terminal; compact
+        // width shows the Space list beside the Attach terminal; compact
         // width collapses into the familiar push navigation. The router's
         // path stays the single source of truth — the sidebar selection is a
         // projection of it, so notification deep links keep working.
@@ -85,16 +82,21 @@ struct ConsoleView: View {
                     }
                     ToolbarItem(placement: .primaryAction) {
                         Menu("Settings", systemImage: "ellipsis.circle") {
-                            Button("Spaces & Terminals", systemImage: "apple.terminal") { isBrowsingSpaces = true }
                             Button("Hosts", systemImage: "server.rack") { presentHosts() }
                             Button("Settings", systemImage: "gearshape") { isShowingSettings = true }
                         }
                     }
                     if !hosts.hosts.isEmpty {
                         ToolbarItem(placement: .primaryAction) {
-                            Button("New Agent", systemImage: "plus") {
-                                newSpaceHostID = nil
-                                isStartingAgent = true
+                            Menu("New Space", systemImage: "plus") {
+                                Button("Agent", systemImage: "bubble.left.and.bubble.right") {
+                                    newSpaceHostID = nil
+                                    isStartingAgent = true
+                                }
+                                Button("Terminal", systemImage: "apple.terminal") {
+                                    newSpaceHostID = nil
+                                    isCreatingSpace = true
+                                }
                             }
                         }
                     }
@@ -176,36 +178,6 @@ struct ConsoleView: View {
                 .sheet(item: $selectedSpace) { space in
                     spaceDetail(space)
                 }
-                .sheet(isPresented: $isBrowsingSpaces, onDismiss: {
-                    if let space = spaceAfterBrowserDismissal {
-                        spaceAfterBrowserDismissal = nil
-                        openSpace(space)
-                    } else if createsTerminalAfterBrowserDismissal {
-                        createsTerminalAfterBrowserDismissal = false
-                        isCreatingSpace = true
-                    }
-                }) {
-                    NavigationStack {
-                        List {
-                            ForEach(filteredSpaces) { space in
-                                spaceRow(space)
-                            }
-                            Button("New Terminal", systemImage: "plus") {
-                                createsTerminalAfterBrowserDismissal = true
-                                isBrowsingSpaces = false
-                                newSpaceHostID = nil
-                            }
-                        }
-                        .scrollContentBackground(.hidden)
-                        .background(Brand.background)
-                        .navigationTitle("Spaces & Terminals")
-                        .toolbar {
-                            ToolbarItem(placement: .confirmationAction) {
-                                Button("Done") { isBrowsingSpaces = false }
-                            }
-                        }
-                    }
-                }
                 .fullScreenCover(item: $openedSpace) { opened in
                     NavigationStack {
                         ShellTerminalView(
@@ -214,7 +186,7 @@ struct ConsoleView: View {
                             activity: activity,
                             isReturning: false,
                             title: opened.label,
-                            backLabel: "Back to Agents",
+                            backLabel: "Back to Spaces",
                             isClosingTerminal: isClosingOpenedSpace,
                             onCloseTerminal: { closeOpenedSpace(opened) },
                             closeActionTitle: "Close Space",
@@ -295,15 +267,6 @@ struct ConsoleView: View {
         }
     }
 
-    /// The sidebar selection as a projection of the router's path. Setting
-    /// it (a row tap, or the collapsed stack popping) writes the path back,
-    /// so user navigation and deep links keep one source of truth.
-    private var selectedAgent: Binding<ConsoleAgent.ID?> {
-        Binding(
-            get: { notificationRouter.path.last },
-            set: { notificationRouter.path = $0.map { [$0] } ?? [] })
-    }
-
     /// The split view owns the window's status-bar appearance on iPhone. A
     /// pushed terminal cannot reliably override it from the detail subtree.
     private var terminalStatusBarColorScheme: ColorScheme? {
@@ -365,7 +328,7 @@ struct ConsoleView: View {
         } else {
             ContentUnavailableView(
                 "Nothing Open", systemImage: "rectangle.on.rectangle",
-                description: Text("Choose an Agent to open its terminal."))
+                description: Text("Choose a Space to open its terminal."))
         }
     }
 
@@ -419,7 +382,7 @@ struct ConsoleView: View {
 
     @ViewBuilder
     private var content: some View {
-        switch agentsSurface {
+        switch spacesSurface {
         case .noHosts:
             ContentUnavailableView {
                 Label("No Hosts", systemImage: "server.rack")
@@ -433,10 +396,10 @@ struct ConsoleView: View {
             ContentUnavailableView {
                 VStack(spacing: 12) {
                     HerdenLogoMark(size: 104)
-                    Label("No Agents", systemImage: "plus.bubble")
+                    Label("No Spaces", systemImage: "plus.bubble")
                 }
             } description: {
-                Text("Start an Agent. Its Space is created automatically.")
+                Text("Create a Space for an Agent or a terminal.")
             } actions: {
                 Button("New Agent", systemImage: "plus") {
                     newSpaceHostID = nil
@@ -446,11 +409,11 @@ struct ConsoleView: View {
                 .tint(Brand.vine)
             }
         case .rows:
-            List(selection: selectedAgent) {
+            List {
                 Section {
-                    flatAgentListRows
+                    spaceListRows
                 } header: {
-                    consoleSectionLabel("Agents")
+                    consoleSectionLabel("Spaces")
                 }
             }
             .listStyle(.plain)
@@ -460,7 +423,7 @@ struct ConsoleView: View {
     }
 
     @ViewBuilder
-    private var flatAgentListRows: some View {
+    private var spaceListRows: some View {
         ForEach(hostIssues) { issue in
             if issue.navigates {
                 Button { presentHosts(issue.hostID) } label: {
@@ -472,87 +435,46 @@ struct ConsoleView: View {
                 hostIssueRow(issue, showsChevron: false)
             }
         }
-        ForEach(console.agents) { agent in
-            agentRow(agent)
+        ForEach(filteredSpaces) { space in
+            spaceRow(space)
         }
-        if console.agents.isEmpty && hostIssues.isEmpty {
-            Text("No Agents")
+        if filteredSpaces.isEmpty && hostIssues.isEmpty {
+            Text("No Spaces")
                 .font(Brand.sans(.subheadline))
                 .foregroundStyle(Brand.muted)
                 .listRowBackground(Brand.elevated)
         }
     }
 
-    private func agentRow(_ agent: ConsoleAgent) -> some View {
-        NavigationLink(value: agent.id) {
-            AgentCardView(
-                agent: agent,
-                isPinned: console.pins.isPinned(
-                    hostID: agent.hostID, paneID: agent.agent.paneID))
-        }
-        .contextMenu {
-            let pinned = console.pins.isPinned(
-                hostID: agent.hostID, paneID: agent.agent.paneID)
-            Button(
-                pinned ? "Unpin" : "Pin",
-                systemImage: pinned ? "pin.slash" : "pin"
-            ) {
-                console.togglePin(
-                    hostID: agent.hostID, paneID: agent.agent.paneID)
-            }
-        }
-        .listRowBackground(Brand.elevated)
-    }
-
     private func spaceRow(_ space: ConsoleSpace) -> some View {
         Button {
-            if isBrowsingSpaces {
-                spaceAfterBrowserDismissal = space
-                isBrowsingSpaces = false
-            } else {
-                openSpace(space)
-            }
+            openSpace(space)
         } label: {
-            HStack(spacing: 12) {
-                HerdenSpaceMark(size: 42)
-                VStack(alignment: .leading, spacing: 3) {
-                    Text(space.workspace.label)
-                        .font(Brand.sans(.headline, weight: .semibold))
-                        .foregroundStyle(Brand.ink)
-                        .lineLimit(1)
-                    Text(space.hostName)
-                        .font(Brand.mono(.caption2))
-                        .foregroundStyle(Brand.subtle)
-                        .lineLimit(1)
-                }
-                Spacer(minLength: 8)
-                if space.agentCount > 0 {
-                    Text("\(space.agentCount) \(space.agentCount == 1 ? "Agent" : "Agents")")
-                        .font(Brand.mono(.caption2, weight: .semibold))
-                        .foregroundStyle(Brand.vine)
-                }
-                if openingSpaceID == space.id {
-                    ProgressView()
-                        .controlSize(.small)
-                        .tint(Brand.vine)
-                } else {
-                    Image(systemName: "apple.terminal")
-                        .font(.caption.weight(.semibold))
-                        .foregroundStyle(Brand.subtle)
-                }
-            }
-            .padding(.vertical, 5)
+            SpaceCardView(space: space, isOpening: openingSpaceID == space.id)
         }
         .buttonStyle(.plain)
         .listRowBackground(Brand.card)
+        .contextMenu {
+            if let paneID = space.occupant.paneID {
+                let pinned = console.pins.isPinned(hostID: space.hostID, paneID: paneID)
+                Button(pinned ? "Unpin" : "Pin", systemImage: pinned ? "pin.slash" : "pin") {
+                    console.togglePin(hostID: space.hostID, paneID: paneID)
+                }
+            }
+        }
         .accessibilityElement(children: .combine)
         .disabled(openingSpaceID != nil)
-        .accessibilityHint("Opens the first Agent, or the first terminal in this Space")
+        .accessibilityHint(space.agentCount > 1
+            ? "Shows the Agents in this Space"
+            : "Opens this Space")
     }
 
     private func openSpace(_ space: ConsoleSpace) {
         guard openingSpaceID == nil else { return }
-        isBrowsingSpaces = false
+        if case .agents = space.occupant {
+            selectedSpace = space
+            return
+        }
         openingSpaceID = space.id
         Task { @MainActor in
             defer { openingSpaceID = nil }
@@ -735,11 +657,11 @@ struct ConsoleView: View {
             .foregroundStyle(Brand.vine)
     }
 
-    private var agentsSurface: ConsoleAgentsSurface {
+    private var spacesSurface: ConsoleAgentsSurface {
         ConsoleAgentsSurface(
             hostCount: hosts.hosts.count,
             agentCount: console.agents.count,
-            filteredSpaceCount: 0,
+            filteredSpaceCount: filteredSpaces.count,
             visibleIssueCount: hostIssues.count,
             presentationMode: .flat,
             projectedSectionCount: 0)
@@ -749,7 +671,8 @@ struct ConsoleView: View {
         ConsoleSpace.project(
             hosts: hosts.hosts,
             workspacesByHost: console.workspacesByHost,
-            agents: console.agents)
+            agents: console.agents,
+            pinRank: { console.pins.pinRank(hostID: $0.hostID, paneID: $0.agent.paneID) })
     }
 
     private struct HostSheet: Identifiable {

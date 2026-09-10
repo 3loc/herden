@@ -1,8 +1,7 @@
 import Foundation
 
-/// One row of the Console (#8): an Agent joined with its Host identity and
-/// workspace context. The list is flat across Hosts; the workspace is a
-/// context tag only, never a grouping level.
+/// One Agent projection used by terminal navigation, notifications, and the
+/// occupant state shown on a Space row.
 struct ConsoleAgent: Identifiable, Sendable, Equatable {
     /// Pane addresses are unique per herden session, not across Hosts; the
     /// row identity pairs them.
@@ -172,6 +171,28 @@ struct ConsoleSpace: Identifiable, Hashable, Sendable {
     let hostName: String
     let workspace: ConsoleWorkspace
     let agentCount: Int
+    let occupant: Occupant
+    /// The most recent pin rank among Agents in this Space. A terminal-only
+    /// Space has no pin because pins address Agent panes.
+    let pinRank: Int?
+
+    enum Occupant: Hashable, Sendable {
+        case terminal
+        case agent(kind: String, status: AgentStatus, paneID: String)
+        case agents(count: Int, status: AgentStatus)
+
+        var status: AgentStatus? {
+            switch self {
+            case .terminal: nil
+            case .agent(_, let status, _), .agents(_, let status): status
+            }
+        }
+
+        var paneID: String? {
+            guard case .agent(_, _, let paneID) = self else { return nil }
+            return paneID
+        }
+    }
 
     var id: ID { ID(hostID: hostID, workspaceID: workspace.id) }
 
@@ -179,25 +200,59 @@ struct ConsoleSpace: Identifiable, Hashable, Sendable {
         hosts: [Host],
         workspacesByHost: [Host.ID: [ConsoleWorkspace]],
         agents: [ConsoleAgent],
-        filteredHostID: Host.ID? = nil
+        filteredHostID: Host.ID? = nil,
+        pinRank: (ConsoleAgent) -> Int? = { _ in nil }
     ) -> [ConsoleSpace] {
-        let agentCounts = Dictionary(grouping: agents) {
+        let agentsBySpace = Dictionary(grouping: agents) {
             ID(hostID: $0.hostID, workspaceID: $0.agent.workspaceID)
-        }.mapValues(\.count)
+        }
 
         return hosts
             .filter { filteredHostID == nil || $0.id == filteredHostID }
             .flatMap { host in
                 (workspacesByHost[host.id] ?? []).map { workspace in
                     let id = ID(hostID: host.id, workspaceID: workspace.id)
+                    let spaceAgents = agentsBySpace[id] ?? []
+                    let occupant: Occupant
+                    switch spaceAgents.count {
+                    case 0:
+                        occupant = .terminal
+                    case 1:
+                        let agent = spaceAgents[0]
+                        occupant = .agent(
+                            kind: agent.agent.kind,
+                            status: agent.agent.status,
+                            paneID: agent.agent.paneID)
+                    default:
+                        let status = spaceAgents
+                            .map(\.agent.status)
+                            .min { $0.consoleSortBucket < $1.consoleSortBucket }
+                            ?? .unknown
+                        occupant = .agents(count: spaceAgents.count, status: status)
+                    }
                     return ConsoleSpace(
                         hostID: host.id,
                         hostName: host.displayName,
                         workspace: workspace,
-                        agentCount: agentCounts[id] ?? 0)
+                        agentCount: spaceAgents.count,
+                        occupant: occupant,
+                        pinRank: spaceAgents.compactMap(pinRank).min())
                 }
             }
             .sorted {
+                switch ($0.pinRank, $1.pinRank) {
+                case (let lhs?, let rhs?) where lhs != rhs:
+                    return lhs < rhs
+                case (_?, nil):
+                    return true
+                case (nil, _?):
+                    return false
+                default:
+                    break
+                }
+                let lhsBucket = $0.occupant.status?.consoleSortBucket ?? Int.max
+                let rhsBucket = $1.occupant.status?.consoleSortBucket ?? Int.max
+                if lhsBucket != rhsBucket { return lhsBucket < rhsBucket }
                 let labelOrder = $0.workspace.label.localizedCaseInsensitiveCompare(
                     $1.workspace.label)
                 if labelOrder != .orderedSame { return labelOrder == .orderedAscending }

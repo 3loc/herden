@@ -174,7 +174,7 @@ struct ConsoleListPresentationStoreTests {
 
 @Suite("Console Space presentation")
 struct ConsoleSpacePresentationTests {
-    @Test func spacesSortByLabelAndCountTheirAgentsPerHost() {
+    @Test func spacesSortByAttentionAndDescribeTheirOccupants() {
         let alpha = Host.fixture(name: "alpha")
         let beta = Host.fixture(name: "beta")
         let agents = [
@@ -209,9 +209,42 @@ struct ConsoleSpacePresentationTests {
             ],
             agents: agents)
 
-        #expect(spaces.map(\.workspace.label) == ["Alpha", "Zulu", "Zulu"])
-        #expect(spaces.map(\.agentCount) == [0, 2, 1])
+        #expect(spaces.map(\.workspace.label) == ["Zulu", "Zulu", "Alpha"])
+        #expect(spaces.map(\.agentCount) == [2, 1, 0])
+        #expect(spaces.map(\.occupant) == [
+            .agents(count: 2, status: .idle),
+            .agent(kind: "claude", status: .idle, paneID: "p3"),
+            .terminal,
+        ])
         #expect(Set(spaces.map(\.id)).count == 3)
+    }
+
+    @Test func aPinnedAgentRaisesItsSpaceAboveAttentionOrder() {
+        let host = Host.fixture(name: "studio")
+        let blocked = ConsoleAgent(
+            hostID: host.id,
+            hostName: host.displayName,
+            agent: Agent(.fixture(paneID: "blocked", status: .blocked, workspaceID: "w1")),
+            workspaceLabel: "Blocked",
+            repositoryCheckout: nil)
+        let pinned = ConsoleAgent(
+            hostID: host.id,
+            hostName: host.displayName,
+            agent: Agent(.fixture(paneID: "pinned", status: .idle, workspaceID: "w2")),
+            workspaceLabel: "Pinned",
+            repositoryCheckout: nil)
+
+        let spaces = ConsoleSpace.project(
+            hosts: [host],
+            workspacesByHost: [host.id: [
+                ConsoleWorkspace(id: "w1", label: "Blocked"),
+                ConsoleWorkspace(id: "w2", label: "Pinned"),
+            ]],
+            agents: [blocked, pinned],
+            pinRank: { $0.id == pinned.id ? 0 : nil })
+
+        #expect(spaces.map(\.workspace.label) == ["Pinned", "Blocked"])
+        #expect(spaces.first?.pinRank == 0)
     }
 
     @Test func hostFilterAppliesToSpacesAsWellAsAgents() {
