@@ -10,6 +10,9 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ### Fixed
 
+- Open a newly created Agent on the first attempt instead of occasionally
+  showing a blank terminal until the user leaves and re-enters it.
+
 - Fresh Agents now keep the active iPhone terminal palette for the lifetime of
   their managed launch, so Codex and other colour-aware TUIs cannot cache the
   Host's restored dark palette before startup.

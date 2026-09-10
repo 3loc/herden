@@ -436,7 +436,9 @@ struct AgentTerminalView: View {
         .sheet(isPresented: $isStartingAgent, onDismiss: {
             guard let id = startedAgentAfterDismissal else { return }
             startedAgentAfterDismissal = nil
-            switchToAgent(id)
+            StartAgentPresentationTransition.openAfterDismissal(id: id) { id in
+                switchToAgent(id)
+            }
         }) {
             // StartAgentView brings its own NavigationStack.
             StartAgentView(

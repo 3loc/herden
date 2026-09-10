@@ -234,14 +234,44 @@ struct StartAgentView: View {
             }
             .onChange(of: store.state) {
                 if case .started(let id) = store.state {
-                    dismiss()
-                    onStarted(id)
+                    StartAgentPresentationTransition.finish(
+                        id: id,
+                        onStarted: onStarted,
+                        dismiss: { dismiss() })
                 }
             }
             .task(id: store.selectedHostID) {
                 await store.discoverAgents()
             }
             .interactiveDismissDisabled(!store.canDismiss)
+        }
+    }
+}
+
+/// Keeps the successful-launch handoff outside SwiftUI's sheet teardown.
+///
+/// The owner must receive the Agent ID before dismissal begins: `onDismiss`
+/// may run synchronously enough to otherwise observe no pending destination.
+/// Opening the terminal is then deferred one main-actor turn so its UIKit
+/// surface is not created while the modal presentation is still unwinding.
+@MainActor
+enum StartAgentPresentationTransition {
+    static func finish(
+        id: ConsoleAgent.ID,
+        onStarted: (ConsoleAgent.ID) -> Void,
+        dismiss: () -> Void
+    ) {
+        onStarted(id)
+        dismiss()
+    }
+
+    static func openAfterDismissal(
+        id: ConsoleAgent.ID,
+        open: @escaping @MainActor (ConsoleAgent.ID) -> Void
+    ) {
+        Task { @MainActor in
+            await Task.yield()
+            open(id)
         }
     }
 }

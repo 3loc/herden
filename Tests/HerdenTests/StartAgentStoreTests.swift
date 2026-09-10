@@ -1133,4 +1133,34 @@ struct StartAgentStoreTests {
         #expect(store.state == .editing)
         #expect(recorder.params.isEmpty)
     }
+
+    @Test func successfulPresentationRecordsTheAgentBeforeDismissing() {
+        let id = ConsoleAgent.ID(hostID: Host.ID(), paneID: "w1:p1")
+        var events: [String] = []
+
+        StartAgentPresentationTransition.finish(
+            id: id,
+            onStarted: { startedID in
+                #expect(startedID == id)
+                events.append("started")
+            },
+            dismiss: { events.append("dismissed") })
+
+        #expect(events == ["started", "dismissed"])
+    }
+
+    @Test func successfulPresentationDefersOpeningUntilAfterDismissal() async {
+        let id = ConsoleAgent.ID(hostID: Host.ID(), paneID: "w1:p1")
+        var openedID: ConsoleAgent.ID?
+
+        StartAgentPresentationTransition.openAfterDismissal(id: id) {
+            openedID = $0
+        }
+
+        #expect(openedID == nil)
+        for _ in 0..<10 where openedID == nil {
+            await Task.yield()
+        }
+        #expect(openedID == id)
+    }
 }

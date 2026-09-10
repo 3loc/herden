@@ -122,7 +122,9 @@ struct ConsoleView: View {
                 .sheet(isPresented: $isStartingAgent, onDismiss: {
                     guard let id = startedAgentAfterDismissal else { return }
                     startedAgentAfterDismissal = nil
-                    notificationRouter.path = [id]
+                    StartAgentPresentationTransition.openAfterDismissal(id: id) { id in
+                        notificationRouter.path = [id]
+                    }
                 }) {
                     // StartAgentView brings its own NavigationStack.
                     StartAgentView(
