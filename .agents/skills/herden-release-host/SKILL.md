@@ -94,8 +94,9 @@ the first durable copy.
 6. Test the public installer in disposable amd64 and arm64 Linux environments:
    fresh install, repeat, and upgrade from the previous public version. Verify
    installed version and SHA-256 against live metadata. If local emulation cannot
-   execute one architecture, use a real matching fleet host; a digest-only check
-   is not the complete release gate.
+   execute one architecture, use a real matching fleet host. The 3loc controller
+   has Debian `qemu-user-static` available for arm64 Docker execution when no
+   Linux arm64 Host is reachable; a digest-only check is not the complete gate.
 7. From the `3loc` fleet controller run the public-installer rollout, canarying
    `3loc,studio` first, then all reachable `herden_hosts`, followed by the
    independent `make herden-check` audit. Source/snapshot rollout modes are not
