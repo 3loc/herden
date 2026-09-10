@@ -1,0 +1,5 @@
+interface:
+  display_name: "Install Herden on Vivian"
+  short_description: "Build, install, launch, and verify Vivian"
+  default_prompt: "Use $herden-install-vivian to install the latest Herden iOS source on Vivian's iPhone."
+

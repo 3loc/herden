@@ -149,6 +149,24 @@ designed; they are compatibility surfaces, not public branding.
 
 ## Agent skills
 
+### Release all
+
+Use `.agents/skills/herden-release-all/SKILL.md` when Ted asks to update or
+release every Herden distribution surface. It composes the Host, Tedda, Vivian,
+and TestFlight skills around one verified source ledger.
+
+### Host release
+
+Use `.agents/skills/herden-release-host/SKILL.md` for the complete four-platform
+Host, public site/installer, GitHub release, and fleet rollout. A partial asset
+upload is not a Host release.
+
+### Physical devices
+
+Use `.agents/skills/herden-install-tedda/SKILL.md` and
+`.agents/skills/herden-install-vivian/SKILL.md` for direct installs. Both require
+independent CoreDevice verification after `make install`.
+
 ### TestFlight
 
 Use `.agents/skills/herden-testflight/SKILL.md` for the source-to-archive-to-beta-review

@@ -1,0 +1,5 @@
+interface:
+  display_name: "Release Herden Host"
+  short_description: "Publish Host binaries, site, installer, and fleet"
+  default_prompt: "Use $herden-release-host to publish the latest Herden Host everywhere and verify the rollout."
+

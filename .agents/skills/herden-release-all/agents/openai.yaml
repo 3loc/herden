@@ -1,0 +1,5 @@
+interface:
+  display_name: "Release All Herden"
+  short_description: "Deploy iOS, TestFlight, Host, site, and fleet"
+  default_prompt: "Use $herden-release-all to update and verify every Herden distribution surface."
+

@@ -2554,3 +2554,45 @@ private final class TextInputDelegateRecorder: NSObject, UITextInputDelegate {
     @available(iOS 18.4, *)
     func conversationContext(_: UIConversationContext?, didChange _: (any UITextInput)?) {}
 }
+@Suite("Agent terminal theme authority")
+struct AgentTerminalThemeAuthorityFilterTests {
+    @Test("neutral true-colour backgrounds inherit the phone theme")
+    func neutralBackgroundsBecomeDefault() {
+        var filter = AgentTerminalThemeAuthorityFilter()
+        let input = Data("before\u{1B}[0;48;2;30;30;30;38;2;255;0;0mafter".utf8)
+
+        let output = filter.consume(input)
+
+        #expect(
+            String(decoding: output, as: UTF8.self)
+                == "before\u{1B}[0;49;38;2;255;0;0mafter")
+    }
+
+    @Test("coloured semantic backgrounds stay explicit")
+    func colouredBackgroundsStayExplicit() {
+        var filter = AgentTerminalThemeAuthorityFilter()
+        let input = Data("\u{1B}[48;2;20;90;40mgreen diff".utf8)
+
+        #expect(filter.consume(input) == input)
+    }
+
+    @Test("split SGR commands are rewritten only after completion")
+    func splitSequenceWaitsForCompletion() {
+        var filter = AgentTerminalThemeAuthorityFilter()
+
+        #expect(filter.consume(Data("text\u{1B}[48;2;244".utf8)) == Data("text".utf8))
+        #expect(
+            filter.consume(Data(";244;244mcomposer".utf8))
+                == Data("\u{1B}[49mcomposer".utf8))
+        #expect(filter.finish().isEmpty)
+    }
+
+    @Test("an incomplete command is recoverable when the stream ends")
+    func incompleteSequenceFlushes() {
+        var filter = AgentTerminalThemeAuthorityFilter()
+        let partial = Data("\u{1B}[48;2;30".utf8)
+
+        #expect(filter.consume(partial).isEmpty)
+        #expect(filter.finish() == partial)
+    }
+}

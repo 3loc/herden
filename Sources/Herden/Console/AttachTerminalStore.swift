@@ -1,6 +1,115 @@
 import Foundation
 import Observation
 
+/// Makes the iPhone terminal's selected default background authoritative for
+/// attached coding-agent TUIs.
+///
+/// Codex and Claude can paint neutral, true-colour panels after probing the
+/// Host's persistent virtual terminal. Those RGB cells survive a later attach
+/// from a differently themed phone, even though ordinary default-colour cells
+/// correctly use Ghostty's active iPhone theme. Turning only achromatic RGB
+/// backgrounds back into SGR default-background keeps semantic coloured
+/// backgrounds (diffs, warnings, selections) intact while preventing a stale
+/// Host light/dark choice from becoming a black or white slab on the phone.
+///
+/// Attach output is arbitrarily chunked, so an incomplete CSI sequence is held
+/// until the next call rather than leaking half of a colour command to Ghostty.
+struct AgentTerminalThemeAuthorityFilter {
+    private static let escape: UInt8 = 0x1B
+    private static let csi: UInt8 = 0x5B
+    private static let sgr: UInt8 = 0x6D
+    private static let maximumCSIBytes = 256
+
+    private var pending: [UInt8] = []
+
+    mutating func consume(_ data: Data) -> Data {
+        pending.append(contentsOf: data)
+        var output: [UInt8] = []
+        var cursor = 0
+
+        while cursor < pending.count {
+            guard pending[cursor] == Self.escape else {
+                output.append(pending[cursor])
+                cursor += 1
+                continue
+            }
+            guard cursor + 1 < pending.count else { break }
+            guard pending[cursor + 1] == Self.csi else {
+                output.append(pending[cursor])
+                cursor += 1
+                continue
+            }
+
+            var end = cursor + 2
+            while end < pending.count, !(0x40...0x7E).contains(pending[end]) {
+                end += 1
+                if end - cursor > Self.maximumCSIBytes { break }
+            }
+            guard end < pending.count else {
+                if pending.count - cursor > Self.maximumCSIBytes {
+                    output.append(pending[cursor])
+                    cursor += 1
+                    continue
+                }
+                break
+            }
+
+            let sequence = Array(pending[cursor...end])
+            if pending[end] == Self.sgr {
+                output.append(contentsOf: Self.rewriteSGR(sequence))
+            } else {
+                output.append(contentsOf: sequence)
+            }
+            cursor = end + 1
+        }
+
+        if cursor > 0 {
+            pending.removeFirst(cursor)
+        }
+        return Data(output)
+    }
+
+    mutating func finish() -> Data {
+        defer { pending.removeAll(keepingCapacity: true) }
+        return Data(pending)
+    }
+
+    private static func rewriteSGR(_ sequence: [UInt8]) -> [UInt8] {
+        guard sequence.count >= 3,
+            let parameters = String(bytes: sequence[2..<(sequence.count - 1)], encoding: .ascii)
+        else { return sequence }
+
+        let fields = parameters.split(separator: ";", omittingEmptySubsequences: false)
+        var rewritten: [String] = []
+        var index = 0
+        var changed = false
+        while index < fields.count {
+            if index + 4 < fields.count,
+                fields[index] == "48", fields[index + 1] == "2",
+                let red = UInt8(fields[index + 2]),
+                let green = UInt8(fields[index + 3]),
+                let blue = UInt8(fields[index + 4]),
+                isAchromatic(red, green, blue)
+            {
+                rewritten.append("49")
+                index += 5
+                changed = true
+            } else {
+                rewritten.append(String(fields[index]))
+                index += 1
+            }
+        }
+        guard changed else { return sequence }
+        return Array("\u{1B}[\(rewritten.joined(separator: ";"))m".utf8)
+    }
+
+    private static func isAchromatic(_ red: UInt8, _ green: UInt8, _ blue: UInt8) -> Bool {
+        let minimum = min(red, green, blue)
+        let maximum = max(red, green, blue)
+        return maximum - minimum <= 8
+    }
+}
+
 typealias TerminalSessionOperation =
     @MainActor @Sendable (TerminalAttachSession) async throws -> Void
 typealias TerminalSessionRunner =
@@ -231,6 +340,7 @@ final class AttachTerminalStore {
     private var session: TerminalAttachSession?
     private var inputGeneration: TerminalInputController.SessionGeneration?
     private var runTask: Task<Void, Never>?
+    private var themeAuthorityFilter: AgentTerminalThemeAuthorityFilter?
     #if DEBUG
     private(set) var restorationTrace = AttachRestorationTrace()
 
@@ -243,6 +353,7 @@ final class AttachTerminalStore {
         target: TerminalAttachTarget, takeover: Bool = false,
         input: TerminalInputController = TerminalInputController(),
         transportGeneration: UInt64? = nil,
+        enforcesTerminalThemeAuthority: Bool = false,
         observeOutput: @escaping @MainActor @Sendable (Data) -> Void = { _ in },
         finishOutput: @escaping @MainActor @Sendable () -> Void = {},
         transportReady: @escaping @MainActor @Sendable (TerminalSurfaceID, UInt64) -> Void = {
@@ -255,6 +366,8 @@ final class AttachTerminalStore {
         self.takeover = takeover
         self.input = input
         self.transportGeneration = transportGeneration
+        themeAuthorityFilter =
+            enforcesTerminalThemeAuthority ? AgentTerminalThemeAuthorityFilter() : nil
         self.observeOutput = observeOutput
         self.finishOutput = finishOutput
         self.transportReady = transportReady
@@ -279,6 +392,7 @@ final class AttachTerminalStore {
             takeover: takeover,
             input: input,
             transportGeneration: transportGeneration,
+            enforcesTerminalThemeAuthority: true,
             observeOutput: observeOutput,
             finishOutput: finishOutput,
             transportReady: transportReady,
@@ -448,12 +562,14 @@ final class AttachTerminalStore {
                 restorationTrace.emit(.firstOutputBytes, generation: acquiredTransportGeneration)
                 #endif
                 observeOutput(bytes)
-                feed.write(bytes)
+                feed.write(themeAuthorityFilter?.consume(bytes) ?? bytes)
             }
         } catch {
+            feed.write(themeAuthorityFilter?.finish() ?? Data())
             finishSession(inputGeneration)
             throw error
         }
+        feed.write(themeAuthorityFilter?.finish() ?? Data())
         finishSession(inputGeneration)
     }
 

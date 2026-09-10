@@ -22,8 +22,10 @@ const ogImage = new URL('/logo.png', Astro.site);
     <title>{title}</title>
     <meta name="description" content={description} />
     <link rel="canonical" href={canonical} />
-    <link rel="icon" type="image/png" href="/favicon.png" />
-    <link rel="apple-touch-icon" href="/logo.png" />
+    <!-- Keep brand revisions on a new URL: browsers cache favicons independently
+         of normal HTTP cache invalidation and can retain an old mark for days. -->
+    <link rel="icon" type="image/png" href="/favicon.png?v=fold" />
+    <link rel="apple-touch-icon" href="/logo.png?v=fold" />
     <meta name="theme-color" content="#0a0a0a" />
     <meta name="color-scheme" content="dark" />
     <meta property="og:type" content="website" />

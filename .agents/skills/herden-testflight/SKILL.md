@@ -34,12 +34,14 @@ the build commands. A successful upload alone does not complete submission.
    fix those inputs and run `make generate`, rather than bumping a second time.
 3. Run `make test` on the exact snapshot. Report executed/skipped suites accurately;
    local real-SSH fixtures may be absent. Fix relevant failures before uploading.
+   Set `DERIVED` and `SSH_DERIVED` to run-specific directories for release-all
+   snapshots so generated version metadata cannot leak across staged checkouts.
 4. Authenticate using the environment variables documented in the release guide.
    For this fleet, the available Infisical skill explains authentication and secret
    discovery. Keep secret-store coordinates, credentials and private keys out of
    this public repo. The API helper needs Python 3 and `cryptography`.
 5. Set `HERDEN_DEVELOPMENT_TEAM` from the authorised signing-team configuration
-   and run `make testflight`. Use Studio's logged-in GUI Terminal if SSH signing
+   and run `make testflight` with that same run-specific `DERIVED`. Use Studio's logged-in GUI Terminal if SSH signing
    fails with `errSecInternalComponent`; this has succeeded without changing
    accounts, provisioning, or Keychain policy. A script launched via Terminal's
    `do script` should write a log and exit-status file for independent verification.

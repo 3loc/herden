@@ -30,6 +30,8 @@ SIGNING_ARGS = $(if $(strip $(DEVELOPMENT_TEAM)),DEVELOPMENT_TEAM=$(DEVELOPMENT_
 
 # First physical device paired with devicectl; override with `make install DEVICE=<uuid>`.
 DEVICE ?= $(shell xcrun devicectl list devices 2>/dev/null | awk '/physical[a-z]* *$$/ { for (i = 1; i <= NF; i++) if ($$i ~ /^[0-9A-Fa-f-]{36}$$/) { print $$i; exit } }')
+IOS_BUILD_DESTINATION ?= generic/platform=iOS
+IOS_SIGNING_ARGS ?=
 
 .PHONY: help generate build ios-build ios-build-sim test ios-test ios-test-one ios-test-ssh ios-test-all test-all install watch-ios-device sim archive upload testflight bump publish clean check-device cache-info ssh-artifacts verify-ssh-artifacts
 
@@ -81,8 +83,9 @@ build: ios-build ## Compatibility alias for ios-build
 
 ios-build: ## Build only the iOS app for a physical device
 	xcodebuild -project $(PROJECT) -scheme $(SCHEME) -configuration Debug \
-		-destination 'generic/platform=iOS' -derivedDataPath "$(DERIVED)" \
-		-allowProvisioningUpdates $(SIGNING_ARGS) build
+		-destination '$(IOS_BUILD_DESTINATION)' -derivedDataPath "$(DERIVED)" \
+		-allowProvisioningUpdates -allowProvisioningDeviceRegistration \
+		$(SIGNING_ARGS) $(IOS_SIGNING_ARGS) build
 
 ios-build-sim: ## Compile only the iOS app for the simulator
 	xcodebuild -project $(PROJECT) -scheme $(SCHEME) -configuration Debug \

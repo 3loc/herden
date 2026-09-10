@@ -1,0 +1,5 @@
+interface:
+  display_name: "Install Herden on Tedda"
+  short_description: "Build, install, launch, and verify Tedda"
+  default_prompt: "Use $herden-install-tedda to install the latest Herden iOS source on Tedda."
+
