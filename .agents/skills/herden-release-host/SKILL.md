@@ -55,10 +55,13 @@ route Zig's macOS SDK lookup through the CLT 15.4 SDK when it exists, avoiding
 the Xcode 26 linker failure without changing machine-wide developer tools.
 
 Before starting a long Studio command, verify AC power/network reachability and
-run it in a named `tmux` session under `caffeinate -dimsu`, redirecting its output
-to the release directory. Poll the log and reconnect to that session after an SSH
-drop instead of restarting the command. Include `/usr/sbin:/sbin` in an isolated
-test `PATH`; macOS PTY ownership tests invoke `/usr/sbin/lsof`.
+run builds in a named `tmux` session under `caffeinate -dimsu`, redirecting output
+to the release directory. Poll the log and reconnect after an SSH drop instead of
+restarting the command. The Host test suite is stdin-sensitive: run it detached
+under `nohup caffeinate ... </dev/null`, not inside tmux, because tmux makes stdin
+look interactive and invalidates the noninteractive updater tests. Include
+`/usr/sbin:/sbin` in an isolated test `PATH`; macOS PTY ownership tests invoke
+`/usr/sbin/lsof`.
 
 Run the full locked Host suite, pairing/upgrade PTY checks, exported-schema
 comparison, installer suite, and the performance gate against the previous

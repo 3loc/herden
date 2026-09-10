@@ -55,9 +55,10 @@ excluding `.git`, `node_modules`, `.build`, `DerivedData`, and other generated
 outputs. Do not make an intermediate `/tmp` copy. Hash only release inputs, and
 reuse successful test/build receipts keyed by that exact manifest. Use existing
 dependency caches and run independent read-only preflights concurrently. Run long
-Studio commands inside a named reconnectable session under `caffeinate -dimsu`,
-with output written to the release evidence directory; an SSH disconnect must not
-kill or obscure an otherwise healthy build. Report
+Studio builds inside a named reconnectable session under `caffeinate -dimsu`, with
+output written to the release evidence directory. Run stdin-sensitive test suites
+as detached non-TTY `nohup caffeinate ... </dev/null` jobs instead of putting them
+inside tmux. An SSH disconnect must not kill or obscure healthy work. Report
 the active gate promptly; if a command fails, diagnose that gate without
 restarting already-proven unchanged surfaces.
 
