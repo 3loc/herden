@@ -444,12 +444,12 @@ pub fn wait_for_message_variants(
     timeout: Duration,
     variants: &[u32],
 ) -> Result<bool, String> {
-    if let Err(error) = stream.set_read_timeout(Some(Duration::from_millis(200))) {
-        // Darwin rejects SO_RCVTIMEO after the peer has closed, even when its
-        // final ServerShutdown message is still buffered and readable.
-        if !(cfg!(target_os = "macos") && error.raw_os_error() == Some(libc::EINVAL)) {
-            return Err(error.to_string());
-        }
+    let read_timeout = Some(Duration::from_millis(200));
+    // Darwin can reject resetting the timeout after peer closure with queued data.
+    if stream.read_timeout().map_err(|e| e.to_string())? != read_timeout {
+        stream
+            .set_read_timeout(read_timeout)
+            .map_err(|e| e.to_string())?;
     }
     let deadline = Instant::now() + timeout;
     while Instant::now() < deadline {
@@ -754,11 +754,13 @@ fn runtime_dir_owner_alive(runtime_dir: &Path) -> bool {
 }
 
 fn is_test_herden_binary(path: &Path) -> bool {
-    let expected = Path::new(env!("CARGO_BIN_EXE_herden"));
-    let actual = fs::canonicalize(path).unwrap_or_else(|_| path.to_path_buf());
-    let expected = fs::canonicalize(expected).unwrap_or_else(|_| expected.to_path_buf());
-
-    actual == expected
+    // /proc resolves executable symlinks. Match only this Cargo build, including
+    // custom target directories; binary identity alone never grants ownership.
+    static TEST_BINARY: OnceLock<Option<PathBuf>> = OnceLock::new();
+    TEST_BINARY
+        .get_or_init(|| fs::canonicalize(env!("CARGO_BIN_EXE_herden")).ok())
+        .as_deref()
+        .is_some_and(|binary| path == binary)
 }
 
 extern "C" fn run_atexit_cleanup() {
@@ -881,19 +883,48 @@ mod tests {
     }
 
     #[test]
+    fn watchdog_scoping_preserves_registered_live_owner() {
+        let runtime_dir = unique_missing_runtime_dir("live-owner");
+        fs::create_dir_all(&runtime_dir).unwrap();
+        fs::write(
+            runtime_dir.join(RUNTIME_OWNER_MARKER),
+            std::process::id().to_string(),
+        )
+        .unwrap();
+        let registered_runtime_dirs = HashSet::from([runtime_dir.clone()]);
+        let should_terminate = should_terminate_runtime_dir(&runtime_dir, &registered_runtime_dirs);
+        fs::remove_dir_all(runtime_dir).unwrap();
+        assert!(!should_terminate, "a live test owner must remain protected");
+    }
+
+    #[test]
     fn test_binary_matcher_accepts_cargo_test_binary() {
-        let binary = Path::new(env!("CARGO_BIN_EXE_herden"));
+        let binary = std::fs::canonicalize(env!("CARGO_BIN_EXE_herden"))
+            .expect("Cargo-built binary must exist");
         assert!(
-            is_test_herden_binary(binary),
-            "Cargo's test binary should be considered test-owned even when CARGO_TARGET_DIR is external"
+            is_test_herden_binary(&binary),
+            "Cargo-built binary should be considered test-owned regardless of target directory"
         );
     }
 
     #[test]
-    fn test_binary_matcher_rejects_installed_binary() {
-        assert!(
-            !is_test_herden_binary(Path::new("/home/can/.local/bin/herden")),
-            "installed binaries must not be considered test-owned"
-        );
+    fn test_binary_matcher_rejects_other_binaries() {
+        let nested_build = Path::new(env!("CARGO_MANIFEST_DIR")).join("other/target/debug/herden");
+        let sibling_build = Path::new(env!("CARGO_BIN_EXE_herden"))
+            .parent()
+            .unwrap()
+            .join("other-build/herden");
+        for binary in [
+            Path::new("/home/can/.local/bin/herden"),
+            Path::new("/tmp/other-checkout/target/debug/herden"),
+            nested_build.as_path(),
+            sibling_build.as_path(),
+        ] {
+            assert!(
+                !is_test_herden_binary(binary),
+                "other binaries must not be considered test-owned: {}",
+                binary.display()
+            );
+        }
     }
 }

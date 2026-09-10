@@ -920,12 +920,15 @@ pub(crate) struct ClientShellState {
     pub(super) reveal_focused_tab: bool,
     pub(super) last_tab_bar_width: Option<u16>,
     pub(super) last_composed_size: Option<(u16, u16)>,
+    pub(super) last_composed_at: Option<std::time::Instant>,
+    pub(super) selection_repaint_deadline: Option<std::time::Instant>,
     pub(super) hits: ShellHitMap,
     pub(super) endpoints: Vec<ClientShellEndpoint>,
     pub(super) active_endpoint_id: ClientEndpointId,
     pub(super) collapsed_endpoints: HashSet<ClientEndpointId>,
     pub(super) mode: ClientShellMode,
-    pub(super) navigate_workspace_id: Option<String>,
+    pub(super) navigate_workspace_id: Option<WorkspaceNavigationTarget>,
+    pub(super) reveal_navigation_workspace: bool,
     pub(super) overlay: Option<ClientShellOverlay>,
     pub(super) previous_pane_id: Option<String>,
     pub(super) pane_mouse_gesture: Option<ClientPaneMouseGesture>,
@@ -966,6 +969,7 @@ pub(crate) struct ClientShellState {
     pub(super) pending_input_source_changes: Vec<bool>,
     pub(super) host_appearance: Option<crate::terminal_theme::HostAppearance>,
     pub(super) host_appearance_explicit: bool,
+    pub(super) host_background: Option<crate::terminal_theme::RgbColor>,
     pub(super) local_config_diagnostic: Option<String>,
     pub(super) config_diagnostic: Option<String>,
     pub(super) endpoint_error: Option<String>,
@@ -1074,12 +1078,15 @@ impl ClientShellState {
             reveal_focused_tab: true,
             last_tab_bar_width: None,
             last_composed_size: None,
+            last_composed_at: None,
+            selection_repaint_deadline: None,
             hits: ShellHitMap::default(),
             endpoints: vec![local_endpoint()],
             active_endpoint_id: ClientEndpointId::Local,
             collapsed_endpoints: HashSet::new(),
             mode: ClientShellMode::Terminal,
             navigate_workspace_id: None,
+            reveal_navigation_workspace: false,
             overlay,
             previous_pane_id: None,
             pane_mouse_gesture: None,
@@ -1120,6 +1127,7 @@ impl ClientShellState {
             pending_input_source_changes: Vec::new(),
             host_appearance: None,
             host_appearance_explicit: false,
+            host_background: None,
             config_diagnostic: local_config_diagnostic.clone(),
             local_config_diagnostic,
             endpoint_error: None,
@@ -1252,6 +1260,8 @@ impl ClientShellState {
         self.reveal_focused_tab = true;
         self.last_tab_bar_width = None;
         self.last_composed_size = None;
+        self.last_composed_at = None;
+        self.selection_repaint_deadline = None;
         self.pending_requests.clear();
         self.pane_scroll_in_flight.clear();
         self.pane_scroll_queued.clear();
@@ -1359,7 +1369,12 @@ impl ClientShellState {
             self.hits = ShellHitMap::default();
         }
         if boot_changed {
+            // A reboot must not turn Enter on a stale preview into focus on a reused ID.
+            let preview = (self.mode == ClientShellMode::Navigate)
+                .then(|| self.navigate_workspace_id.take())
+                .flatten();
             self.reset_endpoint_projection();
+            self.navigate_workspace_id = preview;
         } else if let Some(previous) = self
             .snapshot
             .as_deref()
@@ -1475,15 +1490,11 @@ impl ClientShellState {
                 }
             }
         }
-        if self.mode == ClientShellMode::Navigate
-            && self.navigate_workspace_id.as_ref().is_none_or(|selected| {
-                !snapshot
-                    .workspaces
-                    .iter()
-                    .any(|workspace| &workspace.workspace_id == selected)
-            })
-        {
-            self.navigate_workspace_id = snapshot.focused_workspace_id.clone();
+        if self.mode == ClientShellMode::Navigate && self.navigate_workspace_id.is_none() {
+            self.navigate_workspace_id = snapshot
+                .focused_workspace_id
+                .as_deref()
+                .and_then(|id| self.navigation_target(&self.active_endpoint_id, id));
             self.reveal_mobile_workspace = self.mobile_layout_active();
         }
         let pane_exists =
@@ -1816,6 +1827,9 @@ impl ClientShellState {
     pub(crate) fn timer_delay(&self, now: std::time::Instant) -> std::time::Duration {
         let default = std::time::Duration::from_millis(100);
         self.selection_autoscroll_deadline
+            .into_iter()
+            .chain(self.selection_repaint_deadline)
+            .min()
             .map(|deadline| deadline.saturating_duration_since(now).min(default))
             .unwrap_or(default)
     }

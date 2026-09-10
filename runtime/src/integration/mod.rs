@@ -242,6 +242,7 @@ const ANTIGRAVITY_CLI_HOOK_ASSET: &str =
 const ANTIGRAVITY_CLI_INTEGRATION_VERSION: u32 = 3;
 /// Antigravity CLI keys `hooks.json` by hook name, so every Herden entry lives
 /// under one Herden-owned block that install rewrites and uninstall removes.
+// This persisted config key is an upstream compatibility identifier.
 const ANTIGRAVITY_CLI_HOOK_BLOCK_NAME: &str = "herdr";
 const ANTIGRAVITY_CLI_HOOK_TIMEOUT_SEC: u64 = 10;
 /// `(event, reported action)`. Session-only: `PreInvocation` is the only event

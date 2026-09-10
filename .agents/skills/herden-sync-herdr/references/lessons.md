@@ -46,3 +46,31 @@
   `CARGO_TARGET_DIR` therefore made live-handoff tests falsely report no
   replacement PID. It now compares `/proc/<pid>/exe` with Cargo's actual
   `CARGO_BIN_EXE_herden`; keep external build caches outside the worktree.
+
+## 2026-09-10 — libghostty and remote-machine sync
+
+- Synchronized 20 mainline commits through
+  `425c86179791cd32e2d4ce0ae7f269940b4b0663`; upstream remained tagged 0.9.0.
+  The update added cross-machine workspace navigation, Windows remote-host
+  support, input/focus fixes, and a large libghostty refresh.
+- The subtree merge had seven conflict paths. The durable combinations are:
+  keep Herden's branded header and optional separate Agent panel while taking
+  upstream workspace reveal/scroll behavior; take upstream's option-order
+  parser and Windows remote executable abstraction while retaining Herden
+  executable names, URLs, and user-facing text.
+- Upstream's new remote framing strings are compatibility identifiers. Keep
+  `herdr-remote-output-ready:1`, `herdr-windows:`, and `HERDR_REMOTE_BINARY`
+  unchanged even though the executable and public messages say Herden.
+- The refreshed vendored libghostty requires Zig 0.16.0. Zig 0.15.2 fails in
+  `build.zig` before Rust compilation; use a persistent 0.16 cache/toolchain so
+  later sync builds do not repeat the expensive first build.
+- `runtime/docs/next/api/herdr-api.schema.json` is upstream-owned and does not
+  describe Herden's `name_is_user_set` and `terminal_colors` extensions. The
+  live Host schema now lives at `runtime/herden-api.schema.json`; the CLI,
+  schema-currentness test, Cargo package, and Nix source set use that file.
+  This keeps `runtime/docs/` byte-identical to upstream without shrinking the
+  iOS wire contract.
+- The full single-threaded Host suite passed (3,120 unit tests, 4 ignored, plus
+  all integration binaries). The pairing/TUI input script passed all 13 checks.
+  The exported compatibility snapshot and generated Swift types were unchanged,
+  so no Studio schema-migration gate was required.

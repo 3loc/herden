@@ -1,4 +1,7 @@
 use super::*;
+
+#[path = "workspace_navigation.rs"]
+mod workspace_navigation;
 use crate::client::endpoint::{
     ClientEndpointId, ClientEndpointStatus, ProfileId, SavedSshEndpoint,
 };
@@ -1006,6 +1009,22 @@ fn navigator_uses_machine_parents_only_for_federated_clients() {
         ClientNavigatorTarget::Pane { .. } => row.depth == 3 && row.status.is_some(),
     }));
     assert_eq!(rows.iter().filter(|row| row.current).count(), 1);
+
+    let frame = state.compose(106, 30).expect("federated navigator");
+    for (rect, target) in &state.hits.navigator_rows {
+        let expected = match target {
+            ClientNavigatorTarget::Machine { .. } => " ▾ ",
+            ClientNavigatorTarget::Workspace { .. } => "   ▾ ",
+            ClientNavigatorTarget::Tab { .. } => "     └── ",
+            ClientNavigatorTarget::Pane { .. } => "        └── ",
+        };
+        let prefix = frame.cells[rect.y as usize * frame.width as usize + rect.x as usize..]
+            .iter()
+            .take(expected.chars().count())
+            .map(|cell| cell.symbol.as_str())
+            .collect::<String>();
+        assert_eq!(prefix, expected, "{target:?}");
+    }
 
     let mut local = ClientShellState::new(ClientShellConfig::from_config(&Config::default()));
     local.set_snapshot(Box::new(snapshot()));
