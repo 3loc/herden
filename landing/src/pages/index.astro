@@ -104,9 +104,13 @@ const description =
         <div>
           <h3>Install and open Herden</h3>
           <p>Run this on the Linux or macOS computer that runs your agents.</p>
-          <pre><code>curl -fsSL https://herden.3loc.ltd/install.sh | sh
-export PATH="$HOME/.local/bin:$PATH"
-herden</code></pre>
+          <pre><code>curl -fsSL https://herden.3loc.ltd/install.sh | sh</code></pre>
+          <p>
+            The installer adds Herden to your Bash or Zsh PATH permanently.
+            Open a new Terminal and run <code>herden</code>. To refresh this
+            Terminal instead, run <code>exec "$SHELL" -l</code>, then{' '}
+            <code>herden</code>.
+          </p>
         </div>
       </li>
       <li>

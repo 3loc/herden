@@ -56,7 +56,6 @@ Install the release binary on Linux or macOS:
 
 ```sh
 curl -fsSL https://herden.3loc.ltd/install.sh | sh
-export PATH="$HOME/.local/bin:$PATH"
 ```
 
 The installer selects the binary for the Host's OS and architecture, verifies
@@ -67,9 +66,16 @@ profile and `~/.bashrc` for bash, `~/.zprofile` and `~/.zshrc` for zsh (respecti
 `ZDOTDIR`), or `~/.profile` for POSIX shells. Reinstalling does not duplicate
 these entries. Other shells need their own PATH configuration.
 
-The export line makes `herden` available in the current Terminal immediately;
-a piped installer cannot change its parent shell's environment. Run
-`herden --version` or `herden pair` in that same Terminal.
+Open a new Terminal to load the persisted PATH, then run `herden`. To keep using
+the current Terminal, replace its shell with a fresh login shell first:
+
+```sh
+exec "$SHELL" -l
+```
+
+Then run `herden --version` or `herden pair`. A piped installer cannot change
+its parent shell's live environment; the installer also prints an immediate
+`export PATH=…` alternative when it is needed.
 
 The same command upgrades an existing installation. It is idempotent: when the
 installed binary already matches the current release, it is verified and left

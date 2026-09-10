@@ -1,7 +1,6 @@
 ---
 const hostCommands = [
   '<span class="tk-fn">curl</span> -fsSL https://herden.3loc.ltd/install.sh | sh',
-  'export PATH="$HOME/.local/bin:$PATH"',
 ].join('\n');
 
 const sourceCommands = [
@@ -16,7 +15,7 @@ const sourceCommands = [
   <div class="container">
     <div class="eyebrow">Get started</div>
     <h2 class="section-title">Install on your Host.</h2>
-    <p class="section-lede">Paste this block on Linux or macOS. Then run Herden and press <span class="mono">Ctrl-B i</span> to pair the TestFlight app. The source remains available when you want to build and sign the iOS app yourself.</p>
+    <p class="section-lede">Paste this command on Linux or macOS. The installer adds Herden to your Bash or Zsh PATH permanently. Open a new Terminal and run <span class="mono">herden</span>, or refresh the current one with <span class="mono">exec "$SHELL" -l</span>. Then press <span class="mono">Ctrl-B i</span> to pair the TestFlight app. The source remains available when you want to build and sign the iOS app yourself.</p>
 
     <div class="cards">
       <article class="code">

@@ -38,9 +38,11 @@ rail below 1060px, single-column grids on phones) was added here.
 ## Design source
 
 Copy changes should stay in sync with `README.md` at the repo root.
-Install blocks must retain the PATH export after `curl ... | sh`, so the next
-`herden` command works in the same Terminal. The installer configures future
-shells separately; see `../docs/guides/install-host.md`.
+The public install block contains only the installer command because the
+installer persists its directory in Bash and Zsh startup files. Tell users to
+open a new Terminal before running `herden`, or to replace the current shell
+with `exec "$SHELL" -l`; a piped child still cannot alter its parent shell's
+live environment. See `../docs/guides/install-host.md`.
 
 `src/styles/substrate/` is a vendored design-system snapshot, trimmed to what
 this page renders: every token file plus the
