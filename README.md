@@ -94,16 +94,16 @@ would run `herdr`, and run `herden pair` when you want to add the iPhone app.
 Herden stays close to herdr where possible. These are the deliberate product
 differences:
 
-- **Agent-first iOS, by choice:** Herden deliberately diverges from its Heeler
+- **Space-first iOS, by choice:** Herden deliberately diverges from its Heeler
   origins. It targets vibecoders who want to work with coding agents
   without needing to be fluent in terminals, tabs and workspace management.
-  The default is one Agent to one Space: tap New Agent and Herden creates its
-  backing Space automatically, so there is one thing to name, open and return
-  to, rather than two separate setup steps. This simplifies the iPhone app,
-  not the Host's capabilities. Existing Spaces with several Agents stay intact
-  and every Agent remains visible. Explicit Space reuse, linked Worktrees and
-  plain terminals remain available through secondary controls. See the
-  [Agent-first design decision](docs/adr/0020-agent-first-ios-console.md).
+  The default is one primary terminal per Space: choose Agent or Terminal and
+  Herden creates its backing Space automatically, so there is one thing to
+  name, open and return to, rather than two separate setup steps. This
+  simplifies the iPhone app, not the Host's capabilities. Existing Spaces with
+  several Agents stay intact. Explicit Space reuse, linked Worktrees and
+  advanced layouts remain compatible. See the
+  [Space-first design decision](docs/adr/0022-unified-space-first-console.md).
 - **One Herden product:** the Host runtime and iOS console live in one
   repository and are maintained as one product. Public commands, copy, state
   paths and sockets use the Herden name.

@@ -73,6 +73,11 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ### Changed
 
+- Replace separate Space and Agent navigation with one Space-first Console on
+  iPhone and in the Host terminal UI. Each Space now identifies its current
+  Agent, Agent count, or ordinary terminal while the underlying Herdr
+  workspace, tab and pane capabilities remain compatible. Pane split creation
+  is no longer offered by the menu or default keyboard shortcuts.
 - Replace the pixel-art shepherd and field illustrations with a clean,
   appearance-aware Fold mark across the app, Agent and Space rows, and website.
 - Show Agents from every Host in one Console list, remove the Host filter, and

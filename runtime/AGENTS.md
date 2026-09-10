@@ -7,8 +7,10 @@ Herden's terminal-based agent runtime, derived from upstream herdr.
 | Path | Responsibility |
 | --- | --- |
 | `src/client/shell/brand.rs` | Persistent `[herden]` identity row in every desktop sidebar. |
-| `src/client/shell/sidebar.rs` | Local Host sidebar geometry and hit targets below the identity row. |
-| `src/client/shell/endpoint_sidebar.rs` | Federated endpoint sidebar geometry and hit targets below the identity row. |
+| `src/client/shell/sidebar.rs` | Local Space-first sidebar geometry, occupant metadata and hit targets below the identity row. |
+| `src/client/shell/endpoint_sidebar.rs` | Federated Space-first sidebar geometry and occupant metadata below the identity row. |
+| `src/client/shell/config.rs` + `src/config/sidebar.rs` | Conservative default chrome: full-height Space list, hidden duplicate Agent panel, hidden one-tab strip and no default split shortcuts; compatibility opt-ins remain. |
+| `src/client/shell/context_menu.rs` | Context actions exposed by the simplified Host UI; pane splitting remains available through configured actions and the API. |
 | `src/app/agents.rs` | Agent launch validation and assembly, including optional terminal defaults. |
 | `src/platform/` | Platform-specific shell encoding; Unix keeps terminal-default OSC writes in the Agent's foreground job. |
 | `src/terminal_theme.rs` | RGB parsing plus Host terminal colour query, set, reset and restore primitives. |

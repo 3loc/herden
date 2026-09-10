@@ -1,9 +1,9 @@
 # iOS Console
 
-The default is one new Agent per new backing Space, not a runtime constraint.
-This is deliberate: Herden targets vibecoders who should not need to manage
-terminals and Spaces separately before starting an Agent. Preserve existing
-multi-agent Spaces. See [ADR 0020](../adr/0020-agent-first-ios-console.md).
+The Console has one Space list. Each row describes its current Agent or ordinary
+terminal; those are not separate navigation hierarchies. The default remains
+one primary terminal per new Space, not a runtime constraint. Preserve existing
+multi-agent Spaces. See [ADR 0022](../adr/0022-unified-space-first-console.md).
 
 ## Map
 
@@ -11,7 +11,7 @@ Paths below are relative to `Sources/Herden/`.
 
 | File | Responsibility |
 | --- | --- |
-| `Console/ConsoleView.swift` | Primary Agent list, New Agent, secondary Spaces & Terminals browser and navigation after sheet dismissal. |
+| `Console/ConsoleView.swift` | Primary Space list, Agent/Terminal creation and navigation after sheet dismissal. |
 | `Console/StartAgentView.swift` | Default automatic Space creation, explicit reuse and Worktree options, plus the ordered success handoff used by both presentation sites. |
 | `Console/StartAgentStore.swift` | Launch destination policy, inherited directory and backing Space label. |
 | `Console/ConsoleStore.swift`, `Console/HostConsoleProjection.swift` | Snapshot-backed existing Space destination: first Agent, otherwise first terminal. |

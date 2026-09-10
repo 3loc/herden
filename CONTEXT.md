@@ -43,7 +43,8 @@ _Avoid_: install key, authorization
 
 **Agent**:
 A coding agent process (claude, codex, ...) running inside a Herden Host pane,
-as reported by the Host's detection. The primary object of the app.
+as reported by the Host's detection. In the Console it is the active occupant
+of a Space rather than a parallel navigation object.
 _Avoid_: bot, task, session
 
 **Staged Image**:
@@ -86,13 +87,14 @@ _Avoid_: window, tile
 herdr's unit that groups tabs and panes around one working directory. New
 Agent can start in an existing Workspace, a new Worktree of one, or a new
 Workspace opened at a remote directory. The id is an opaque string.
-Herden calls Workspaces **Spaces**, but treats them as Agent context rather
-than a second primary destination on iOS. New Agent creates a backing Space
-and starts in its root pane. An omitted directory resolves to the SSH account's
-home; launches from an Agent inherit its directory, not its Space. Advanced
-location options can explicitly reuse a Space or create a linked Worktree.
-Existing multi-agent Spaces remain unchanged. The secondary Spaces & Terminals
-browser preserves access to existing Spaces and shell-only work.
+Herden calls Workspaces **Spaces** and presents them as its single durable
+destination type. A Space's primary terminal currently contains either an
+Agent or an ordinary shell; Agent kind and status are row metadata, not a
+second navigation hierarchy. New Agent creates a backing Space and starts in
+its root pane. An omitted directory resolves to the SSH account's home;
+launches from an Agent inherit its directory, not its Space. Advanced location
+options can explicitly reuse a Space or create a linked Worktree. Existing
+multi-agent Spaces remain unchanged and appear as one Space with an Agent count.
 _Avoid_: project, folder, window
 
 **Worktree**:
@@ -105,10 +107,11 @@ survives. Snapshot worktree metadata also describes the main checkout; only
 _Avoid_: sandbox, branch copy, checkout folder
 
 **Console**:
-The Agent picker and the terminal selected from it. The picker uses one flat
-list of Agents, an optional Host filter, a New Agent button, and a Settings menu
-with a secondary Spaces & Terminals browser. Agent names lead; Space, directory,
-and Host provide context. Multiple Agents in one Space are never collapsed.
+The Space picker and the terminal selected from it. The picker uses one flat
+list of Spaces across Hosts. Space names lead; `Terminal`, Agent kind/status,
+and Host provide context. Multiple Agents in a legacy Space are summarized and
+open into a compact Agent picker for that Space. New Agent and New Terminal both
+create a Space without exposing tabs or pane layout.
 Swipe right across terminal output to return; swipe left
 across the picker to reopen the last Agent or Space. Horizontal gestures that
 begin in the prompt move its cursor instead. The bottom Agent strip remains

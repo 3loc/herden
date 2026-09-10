@@ -1,5 +1,5 @@
 ---
-status: accepted
+status: superseded by ADR 0022
 ---
 
 # Agent-first iOS Console, without runtime one-to-one enforcement

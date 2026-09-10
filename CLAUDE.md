@@ -31,7 +31,8 @@ eliminating several dead ends.
 
 | Path | Responsibility |
 | --- | --- |
-| `docs/agents/ios-console.md` | Agent-first navigation/creation map and Space compatibility boundaries (ADR 0020). |
+| `docs/agents/ios-console.md` | Space-first navigation and the compatibility boundary that preserves upstream layouts beneath the simplified UI (ADR 0022). |
+| `Sources/Herden/Console/ConsoleAgent.swift` + `AgentCardView.swift` + `ConsoleView.swift` | Projects each workspace as one Space row, with its terminal or Agent occupant and attention/pin ordering. |
 | `Sources/Herden/Console/StartAgentView.swift` + `ConsoleView.swift` + `AgentTerminalView.swift` | Successful Agent launch handoff: record the destination before dismissing the sheet, then open its terminal after dismissal yields. |
 | `Sources/Herden/Terminal/SharedTerminalKeyboard.swift` | The single Agent/Space control deck, including dictation, language selection, attachments and Paste. |
 | `Sources/Herden/Transport/SSHTransportSettings.swift` | Host command defaults and injectable SSH environment boundaries. |
@@ -40,6 +41,7 @@ eliminating several dead ends.
 | `Sources/Herden/Sharing/` | Durable Share Extension transfer ingestion and delivery. |
 | `Sources/Herden/Support/HerdenBrand.swift` + `Resources/Brand.xcassets/` | Appearance-aware Fold, Agent and Space marks used by SwiftUI. |
 | `Sources/Herden/AppIcon.icon/` + `landing/src/assets/logo-*.svg` | App-icon and website renderings of the same Fold geometry. |
+| `runtime/src/client/shell/` + `runtime/src/config/sidebar.rs` | Space-first Host sidebar and conservative default chrome; legacy Agent panel and split controls remain configurable compatibility surfaces. |
 | `runtime/` | Rust Herden Host, CLI and built-in `herden pair`. |
 | `runtime/src/app/agents.rs` + `runtime/src/platform/` | Validates terminal defaults and keeps the OSC write in the launched Agent's foreground job. |
 | `runtime/src/pairing/code.rs` + `Sources/Herden/Pairing/PairingCode.swift` | Paired Host/iOS codecs for compact v2 and legacy v1 pairing envelopes. |
