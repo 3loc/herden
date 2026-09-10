@@ -30,9 +30,10 @@ Legacy `HERDR_*` names are compatibility surfaces, but their values may also
 prove that the calling shell is inside a genuinely old Herdr process. An
 installer cannot rename or replace that live client. If `HERDR_BIN_PATH` ends
 in `herdr` or the inherited socket is under `~/.config/herdr`, detach with
-Ctrl-B then d and launch the installed Herden binary from the outer shell. Use
-explicit Herden socket paths for status or live-handoff commands issued from a
-legacy pane.
+Ctrl-B then q and launch the installed Herden binary from the outer shell. The
+Herden escape is q, not tmux's d; server live-handoff does not replace an
+already-running client UI. Use explicit Herden socket paths for status or
+live-handoff commands issued from a legacy pane.
 
 ## Scope and Audience
 
