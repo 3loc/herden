@@ -38,6 +38,8 @@ eliminating several dead ends.
 | `Sources/Herden/Settings/TerminalAppearancePane.swift` + `TerminalThemeSettings.swift` | Selected daylight/nighttime theme and the exact foreground/background colours supplied to new Agents. |
 | `Sources/Herden/Transport/HerdenSSHTransport.swift` + `Transport.swift` | App-domain launch request and Host `agent.start` wire choreography, including optional terminal defaults. |
 | `Sources/Herden/Sharing/` | Durable Share Extension transfer ingestion and delivery. |
+| `Sources/Herden/Support/HerdenBrand.swift` + `Resources/Brand.xcassets/` | Appearance-aware Fold, Agent and Space marks used by SwiftUI. |
+| `Sources/Herden/AppIcon.icon/` + `landing/src/assets/logo-*.svg` | App-icon and website renderings of the same Fold geometry. |
 | `runtime/` | Rust Herden Host, CLI and built-in `herden pair`. |
 | `runtime/src/app/agents.rs` + `runtime/src/platform/` | Validates terminal defaults and keeps the OSC write in the launched Agent's foreground job. |
 | `runtime/src/pairing/code.rs` + `Sources/Herden/Pairing/PairingCode.swift` | Paired Host/iOS codecs for compact v2 and legacy v1 pairing envelopes. |
@@ -57,6 +59,10 @@ eliminating several dead ends.
 Both Agent and Space terminal views feed the shared keyboard into the same
 terminal input controller; attachment paths and pasted text therefore reach
 the live PTY through one guarded input path.
+
+Brand identity flows from the Fold source geometry into separate light/dark
+asset-catalog images, the Icon Composer app icon, and the website SVGs. Keep
+the shared silhouette and appearance colours in lockstep across those owners.
 
 Pairing facts flow from the Host codec into a Base45 QR envelope and through
 the shared vector into the Swift decoder tests; change all three in lockstep.

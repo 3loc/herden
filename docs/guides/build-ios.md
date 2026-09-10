@@ -254,6 +254,7 @@ normal Mac when those fixtures are unavailable;
 | Bundle identifier is unavailable | Choose a unique reverse-DNS identifier owned by your team and regenerate the project. |
 | App Group capability fails | Create or select an App Group owned by the same team for both app targets; remove the retired 3LOC compatibility group. |
 | Provisioning remains on “Updating” | Keep the phone unlocked, confirm the team and identifiers, then resolve account or Keychain prompts in Xcode. |
+| Codesign fails with `errSecInternalComponent` over SSH | Rerun the same `make` command from Studio's logged-in GUI Terminal so codesign can access the login Keychain; do not change signing identities or Keychain policy. |
 | `make install` builds but cannot launch | Pass the exact configured app bundle identifier as `APP_ID`. |
 | No physical device is selected | Run `xcrun devicectl list devices` and pass its UUID as `DEVICE`. |
 
