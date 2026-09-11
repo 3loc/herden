@@ -1236,6 +1236,10 @@ async fn run_terminal_compression_task(
 pub struct PaneRuntime {
     pane_id: PaneId,
     terminal: Arc<PaneTerminal>,
+    // Ephemeral client observation, never part of persistent Agent state. While
+    // direct attach owns this terminal, foreground desktop reports must not
+    // replace the answers given to applications running inside it.
+    client_appearance_owned: Cell<bool>,
     io: PaneRuntimeIo,
     current_size: Cell<(u16, u16, u32, u32)>,
     child_pid: Arc<AtomicU32>,
@@ -1895,13 +1899,50 @@ impl PaneRuntime {
     }
 
     pub fn apply_host_terminal_theme(&self, theme: crate::terminal_theme::TerminalTheme) {
-        self.terminal.apply_host_terminal_theme(theme);
+        if !self.client_appearance_owned.get() {
+            self.terminal.apply_host_terminal_theme(theme);
+        }
     }
 
     pub fn apply_host_terminal_appearance(
         &self,
         appearance: Option<crate::terminal_theme::HostAppearance>,
     ) {
+        if !self.client_appearance_owned.get() {
+            self.write_terminal_appearance(appearance);
+        }
+    }
+
+    pub(crate) fn set_client_terminal_appearance(
+        &self,
+        theme: crate::terminal_theme::TerminalTheme,
+        appearance: Option<crate::terminal_theme::HostAppearance>,
+    ) {
+        self.client_appearance_owned.set(true);
+        // Update query answers before notifying the child. A subscriber can
+        // immediately query OSC 10/11 in response to the mode notification.
+        let palette_changed = self.terminal.apply_host_terminal_theme(theme);
+        self.io.write_terminal_response(|| {
+            self.terminal
+                .notify_client_terminal_appearance(appearance, palette_changed)
+        });
+    }
+
+    pub(crate) fn release_client_terminal_appearance(
+        &self,
+        theme: crate::terminal_theme::TerminalTheme,
+        appearance: Option<crate::terminal_theme::HostAppearance>,
+    ) {
+        if self.client_appearance_owned.replace(false) {
+            let palette_changed = self.terminal.apply_host_terminal_theme(theme);
+            self.io.write_terminal_response(|| {
+                self.terminal
+                    .notify_client_terminal_appearance(appearance, palette_changed)
+            });
+        }
+    }
+
+    fn write_terminal_appearance(&self, appearance: Option<crate::terminal_theme::HostAppearance>) {
         self.io
             .write_terminal_response(|| self.terminal.apply_host_terminal_appearance(appearance));
     }
@@ -2224,6 +2265,7 @@ impl PaneRuntime {
         Ok(Self {
             pane_id,
             terminal,
+            client_appearance_owned: Cell::new(false),
             io,
             current_size: Cell::new((rows, cols, cell_width_px, cell_height_px)),
             child_pid,
@@ -2800,6 +2842,7 @@ impl PaneRuntime {
         Ok(Self {
             pane_id,
             terminal,
+            client_appearance_owned: Cell::new(false),
             io,
             current_size: Cell::new((rows, cols, 0, 0)),
             child_pid,
@@ -3317,6 +3360,13 @@ impl PaneRuntime {
         Self::test_with_channel_and_scrollback_bytes(cols, rows, 0, &[], 4)
     }
 
+    pub(crate) fn test_terminal_query(&self, bytes: &[u8]) -> Vec<Bytes> {
+        let (tx, _rx) = mpsc::channel(1);
+        self.terminal
+            .process_pty_bytes(self.pane_id, 0, bytes, &tx)
+            .terminal_responses
+    }
+
     pub(crate) fn test_with_channel_capacity(
         cols: u16,
         rows: u16,
@@ -3372,6 +3422,7 @@ impl PaneRuntime {
             Self {
                 pane_id,
                 terminal,
+                client_appearance_owned: Cell::new(false),
                 io: PaneRuntimeIo::TestChannel {
                     sender: tx,
                     resize_tx,
@@ -4036,6 +4087,7 @@ mod tests {
         let runtime = PaneRuntime {
             pane_id,
             terminal,
+            client_appearance_owned: Cell::new(false),
             io: PaneRuntimeIo::TestChannel {
                 sender: tx,
                 resize_tx,
@@ -4073,6 +4125,7 @@ mod tests {
         let runtime = PaneRuntime {
             pane_id,
             terminal,
+            client_appearance_owned: Cell::new(false),
             io: PaneRuntimeIo::TestChannel {
                 sender: tx,
                 resize_tx,

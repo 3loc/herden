@@ -19,10 +19,12 @@ for dependency in cargo cc; do
         || fail "Missing $dependency. Follow docs/guides/install-host.md, then retry."
 done
 zig_binary=${ZIG:-zig}
+required_zig=$(sed -n 's/.*\.minimum_zig_version = "\([^"]*\)".*/\1/p' "$repo_dir/runtime/vendor/libghostty-vt/build.zig.zon")
+[ -n "$required_zig" ] || fail 'vendored libghostty-vt does not declare its Zig version'
 command -v "$zig_binary" >/dev/null 2>&1 \
-    || fail 'Install Zig 0.15.2 and put zig on PATH (or set ZIG to its full path).'
-[ "$("$zig_binary" version)" = 0.15.2 ] \
-    || fail 'This Host needs Zig 0.15.2. Other Zig versions are not supported.'
+    || fail "Install Zig $required_zig and put zig on PATH (or set ZIG to its full path)."
+[ "$("$zig_binary" version)" = "$required_zig" ] \
+    || fail "This Host needs Zig $required_zig. Other Zig versions are not supported."
 printf 'Host build tools are available.\n'
 [ "${1:-}" != --check ] || exit 0
 

@@ -444,8 +444,6 @@ struct AgentTerminalView: View {
             StartAgentView(
                 hosts: hosts,
                 console: console,
-                terminalColors: terminal.themes.selection(for: colorScheme)
-                    .launchColors(for: colorScheme),
                 origin: StartAgentStore.LaunchOrigin(
                     hostID: agent.hostID,
                     workspaceID: agent.agent.workspaceID,

@@ -1,6 +1,6 @@
 [package]
 name = "herden"
-version = "0.9.3"
+version = "0.9.4"
 edition = "2021"
 build = "build.rs"
 description = "Herden host runtime for persistent AI coding agents"

@@ -188,9 +188,9 @@ enum TerminalThemeOption: String, CaseIterable, Identifiable, Sendable {
         }
 }
 
-/// Two independent theme slots, one per system appearance. A paired option in
-/// a slot contributes the half matching that slot; a single dark option in the
-/// light slot is how "dark terminal even in Light Mode" is expressed.
+/// Two independent theme slots whose actual palettes match the app appearance.
+/// Keeping the pixels and reported colour scheme aligned lets remote programs
+/// make the same light/dark choice as the terminal that displays their output.
 @MainActor
 @Observable
 final class TerminalThemeSettings {
@@ -209,12 +209,20 @@ final class TerminalThemeSettings {
         let legacy =
             defaults.string(forKey: Self.legacyDefaultsKey)
             .flatMap(TerminalThemeOption.init(rawValue:))
-        lightSelection =
+        let savedLight =
             defaults.string(forKey: Self.lightDefaultsKey)
             .flatMap(TerminalThemeOption.init(rawValue:)) ?? legacy ?? .followSystem
-        darkSelection =
+        let savedDark =
             defaults.string(forKey: Self.darkDefaultsKey)
             .flatMap(TerminalThemeOption.init(rawValue:)) ?? legacy ?? .vesper
+        lightSelection = Self.matchingOption(savedLight, for: .light)
+        darkSelection = Self.matchingOption(savedDark, for: .dark)
+        if lightSelection != savedLight {
+            defaults.set(lightSelection.rawValue, forKey: Self.lightDefaultsKey)
+        }
+        if darkSelection != savedDark {
+            defaults.set(darkSelection.rawValue, forKey: Self.darkDefaultsKey)
+        }
     }
 
     var theme: TerminalTheme {
@@ -227,7 +235,23 @@ final class TerminalThemeSettings {
         colorScheme == .dark ? darkSelection : lightSelection
     }
 
+    static func options(for colorScheme: ColorScheme) -> [TerminalThemeOption] {
+        TerminalThemeOption.allCases.filter {
+            $0.chromeColorScheme(for: colorScheme) == colorScheme
+        }
+    }
+
+    private static func matchingOption(
+        _ option: TerminalThemeOption, for colorScheme: ColorScheme
+    ) -> TerminalThemeOption {
+        guard option.chromeColorScheme(for: colorScheme) == colorScheme else {
+            return colorScheme == .dark ? .vesper : .followSystem
+        }
+        return option
+    }
+
     func select(_ option: TerminalThemeOption, for colorScheme: ColorScheme) {
+        let option = Self.matchingOption(option, for: colorScheme)
         if colorScheme == .dark {
             guard option != darkSelection else { return }
             darkSelection = option

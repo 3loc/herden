@@ -51,7 +51,9 @@ restart completed target builds after a disconnect. Do not overlap cross-builds
 or native tests because libghostty-vt shares `zig-out`. Follow the SDK and cache
 constraints in the release guide.
 
-Keep the pinned Zig 0.15.2 and cargo-zigbuild 0.23.4 under
+Read the exact Zig version from `runtime/vendor/libghostty-vt/build.zig.zon`
+before compiling (currently 0.16.0); the asset builder validates the selected
+`ZIG` executable against that declaration. Keep that Zig and cargo-zigbuild 0.23.4 under
 `~/.cache/herden-release-tools/` on Studio and put them first on `PATH`; install
 them once when absent, not on every release. The Make targets automatically
 route Zig's macOS SDK lookup through the CLT 15.4 SDK when it exists, avoiding

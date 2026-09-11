@@ -24,38 +24,7 @@ fn is_modal_paste_shortcut(key: &crate::input::TerminalKey) -> bool {
 }
 
 fn host_theme_update(event: &RawInputEvent) -> Option<crate::protocol::ClientHostThemeUpdate> {
-    use crate::protocol::{
-        ClientHostAppearance, ClientHostDefaultColorKind, ClientHostThemeUpdate,
-    };
-
-    match event {
-        RawInputEvent::HostDefaultColor { kind, color } => {
-            Some(ClientHostThemeUpdate::DefaultColor {
-                kind: match kind {
-                    crate::terminal_theme::DefaultColorKind::Foreground => {
-                        ClientHostDefaultColorKind::Foreground
-                    }
-                    crate::terminal_theme::DefaultColorKind::Background => {
-                        ClientHostDefaultColorKind::Background
-                    }
-                },
-                color: (*color).into(),
-            })
-        }
-        RawInputEvent::HostPaletteColors { colors } => Some(ClientHostThemeUpdate::PaletteColors(
-            colors
-                .iter()
-                .map(|(index, color)| (*index, (*color).into()))
-                .collect(),
-        )),
-        RawInputEvent::HostColorSchemeChanged(appearance) => {
-            Some(ClientHostThemeUpdate::Appearance(match appearance {
-                crate::terminal_theme::HostAppearance::Dark => ClientHostAppearance::Dark,
-                crate::terminal_theme::HostAppearance::Light => ClientHostAppearance::Light,
-            }))
-        }
-        _ => None,
-    }
+    super::super::terminal_appearance::host_theme_update(event)
 }
 
 fn push_host_theme_update(

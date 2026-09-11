@@ -22,9 +22,12 @@ case "$target" in
 esac
 
 command -v cargo >/dev/null 2>&1 || fail 'cargo is required'
-command -v zig >/dev/null 2>&1 || fail 'Zig 0.15.2 is required'
-[ "$(zig version)" = 0.15.2 ] || fail 'Zig 0.15.2 is required'
-ZIG=${ZIG:-$(command -v zig)}
+required_zig=$(sed -n 's/.*\.minimum_zig_version = "\([^"]*\)".*/\1/p' "$repo_dir/runtime/vendor/libghostty-vt/build.zig.zon")
+[ -n "$required_zig" ] || fail 'vendored libghostty-vt does not declare its Zig version'
+ZIG=${ZIG:-zig}
+command -v "$ZIG" >/dev/null 2>&1 || fail "Zig $required_zig is required"
+[ "$("$ZIG" version)" = "$required_zig" ] || fail "Zig $required_zig is required"
+ZIG=$(command -v "$ZIG")
 export ZIG
 
 cd "$repo_dir/runtime"

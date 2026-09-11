@@ -4,6 +4,8 @@ use super::*;
 mod pane_graphics_tests;
 #[path = "surface_interest.rs"]
 mod surface_interest_tests;
+#[path = "terminal_appearance.rs"]
+mod terminal_appearance_tests;
 
 fn client_shell_snapshot(message: ServerMessage) -> Box<crate::protocol::ClientShellSnapshot> {
     let ServerMessage::EndpointControl { kind, data } = message else {

@@ -109,9 +109,33 @@ struct SharedTransferTests {
         let reopened = SharedTransferStore(directory: store.directory)
         try reopened.recover()
         #expect(try reopened.read(record.id).status == .added)
+        let history = try reopened.records()
+        #expect(history.count == 1)
+        #expect(SharedTransfersView.bannerRecord(in: history) == nil)
         try await SharedTransferDelivery.run(id: record.id, store: reopened, stage: stage, insert: insert)
         #expect(insertions == 1)
         #expect(!FileManager.default.fileExists(atPath: store.preparedFile(record).fileURL.path))
+    }
+
+    @Test func completedShareDoesNotHideAnOlderUnfinishedTransfer() throws {
+        let (store, original, root) = try fixture()
+        defer { try? FileManager.default.removeItem(at: root) }
+        var completed = original
+        completed.status = .added
+        try store.save(completed)
+        let persistedCompleted = try store.records()
+        var pending = SharedTransfer(
+            id: UUID(), host: original.host, paneID: original.paneID,
+            agentName: original.agentName, filename: "pending.txt",
+            fileExtension: "txt", byteCount: 13)
+        pending.updatedAt = .distantPast
+        for status in [SharedTransfer.Status.waiting, .uploading, .uploaded,
+                       .inserting, .interrupted, .uncertain] {
+            pending.status = status
+            #expect(SharedTransfersView.bannerRecord(in: persistedCompleted + [pending]) == pending)
+        }
+        #expect(SharedTransfersView.bannerRecord(in: []) == nil)
+        #expect(try store.read(original.id).status == .added)
     }
 
     @Test func lostAcknowledgementNeverRetriesPaste() async throws {

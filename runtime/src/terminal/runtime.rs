@@ -230,6 +230,22 @@ impl TerminalRuntime {
         self.0.apply_host_terminal_appearance(appearance);
     }
 
+    pub(crate) fn set_client_terminal_appearance(
+        &self,
+        theme: crate::terminal_theme::TerminalTheme,
+        appearance: Option<crate::terminal_theme::HostAppearance>,
+    ) {
+        self.0.set_client_terminal_appearance(theme, appearance);
+    }
+
+    pub(crate) fn release_client_terminal_appearance(
+        &self,
+        theme: crate::terminal_theme::TerminalTheme,
+        appearance: Option<crate::terminal_theme::HostAppearance>,
+    ) {
+        self.0.release_client_terminal_appearance(theme, appearance);
+    }
+
     pub fn begin_graceful_release(&self, agent: crate::detect::Agent) {
         self.0.begin_graceful_release(agent);
     }
@@ -595,6 +611,10 @@ impl TerminalRuntime {
 
     pub(crate) fn test_process_pty_bytes(&self, bytes: &[u8]) {
         self.0.test_process_pty_bytes(bytes);
+    }
+
+    pub(crate) fn test_terminal_query(&self, bytes: &[u8]) -> Vec<Bytes> {
+        self.0.test_terminal_query(bytes)
     }
 
     pub(crate) fn test_with_scrollback_bytes(

@@ -61,8 +61,10 @@ connect directly to Claude Code or Codex.
 The project is a combined fork of [herdr](https://github.com/herdrdev/herdr)
 and [Heeler](https://github.com/ZingerLittleBee/Heeler). It is deliberately
 still mostly herdr: the Rust runtime, CLI, workspace model and socket API remain
-the foundation of the product. Herden adds Heeler's native iPhone console and
-makes secure phone pairing a built-in Host capability.
+the foundation of the product. Herden's native iPhone app began as a fork of
+Heeler. Herden brings both sides into one Space-first workflow, makes secure
+phone pairing a built-in Host capability, and extends Heeler's file-upload
+foundation with shared terminal controls and an iOS Share Extension.
 
 If you already know herdr, the mental model is simple: run `herden` where you
 would run `herdr`, and run `herden pair` when you want to add the iPhone app.
@@ -76,13 +78,18 @@ would run `herdr`, and run `herden pair` when you want to add the iPhone app.
   agent or its account.
 - **Terminal native:** The Host is one Rust binary. Use it from an ordinary
   terminal, locally or over SSH.
-- **Available from your phone:** The native iOS app puts named Agents first,
-  attaches to their real terminal sessions and lets you keep working away
-  from the computer. Spaces and Hosts provide context.
-- **Share straight to an Agent:** Send a screenshot, photo, video or document
-  from another app's iOS share sheet to Herden, then pick the Agent. Herden
-  uploads the file to its Host, ready for you to add instructions. You can also
-  add media and documents directly in the app.
+- **One Space to return to:** The Host sidebar and native iPhone Console show
+  one list of Spaces. An Agent is what runs inside a Space, not a second place
+  to navigate to. Open the Space to reach its real terminal and keep working.
+- **Add files inside Herden:** Pick Documents or Media from the iOS terminal
+  keyboard. Herden uploads the selected file to the Agent's Host over SSH and
+  inserts its path into the terminal input. Add instructions and press Return
+  when you're ready.
+- **Share from another iOS app:** In Files, Photos or another app supporting
+  file sharing, choose Herden in the iOS share sheet and pick your Agent. The
+  Share Extension uploads the file and inserts its Host path without pressing
+  Return. Open the Agent to add context. Shared Files retains transfer progress
+  and history without keeping completed files pinned above the Console.
 - **Say your next instruction:** Dictate on your iPhone with on-device speech
   recognition. Review the words and send when you're ready.
 - **Your machines, one scan away:** Install the Host on a Linux or macOS
@@ -94,22 +101,30 @@ would run `herdr`, and run `herden pair` when you want to add the iPhone app.
 Herden stays close to herdr where possible. These are the deliberate product
 differences:
 
-- **Space-first iOS, by choice:** Herden deliberately diverges from its Heeler
-  origins. It targets vibecoders who want to work with coding agents
-  without needing to be fluent in terminals, tabs and workspace management.
+- **Space-first on desktop and iPhone:** Herden brings Spaces and Agents into
+  one consistent view instead of separate navigation lists. A Space is the
+  place you return to; an Agent is what runs inside it. This makes the same work
+  easier to follow on a small screen without managing tabs or split layouts.
   The default is one primary terminal per Space: choose Agent or Terminal and
   Herden creates its backing Space automatically, so there is one thing to
   name, open and return to, rather than two separate setup steps. This
-  simplifies the iPhone app, not the Host's capabilities. Existing Spaces with
+  simplifies both interfaces, not the Host's underlying model. Existing Spaces with
   several Agents stay intact. Explicit Space reuse, linked Worktrees and
   advanced layouts remain compatible. See the
   [Space-first design decision](docs/adr/0022-unified-space-first-console.md).
 - **One Herden product:** the Host runtime and iOS console live in one
   repository and are maintained as one product. Public commands, copy, state
   paths and sockets use the Herden name.
-- **Pairing is built in:** `herden pair` creates a short-lived, single-use
-  Bootstrap Key and renders the Pairing Code in the terminal. Pairing needs no
-  Node installation, plugin action or Herden account.
+- **Inherited pairing, integrated into the Host:** QR scanning and the original
+  secure pairing and Enrollment flow come from Heeler. Its iOS scanner uses
+  Apple's VisionKit. Herden moved Host-side pairing from Heeler's Node plugin
+  into the Rust `herden pair` command, preserving the short-lived, single-use
+  Bootstrap Key design. We added the compact v2 Pairing Code and kept legacy
+  v1 decoding. Pairing now needs no Node installation or plugin action.
+- **Inherited uploads, extended delivery:** Heeler already provided image/file
+  preparation and SFTP staging. Herden reuses that foundation in the shared
+  Agent/Space terminal controls and adds the iOS Share Extension, direct path
+  insertion and durable Shared Files transfer recovery.
 - **Native iOS console:** the iOS 18+ app is SwiftUI, uses libghostty for the
   terminal and connects with the repository-local SSH implementation. It
   includes direct terminal input, dictation, file staging and Host switching.
@@ -131,7 +146,9 @@ differences:
 
 The Host began from pristine herdr 0.8.2, not the separate customised
 `3loc/herdr` fork. The exact source baseline is recorded in
-[runtime/UPSTREAM.md](runtime/UPSTREAM.md).
+[runtime/UPSTREAM.md](runtime/UPSTREAM.md). The
+[feature provenance map](UPSTREAM.md#feature-provenance) separates inherited
+capabilities from Herden's integration and additions.
 
 ## Upstream policy
 

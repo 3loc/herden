@@ -5,7 +5,7 @@ import agentShot from '../assets/screens/agent-iphone.png';
 import Layout from '../layouts/Layout.astro';
 
 const description =
-  'Keep coding agents running on your machines. Share screenshots and documents, dictate on your iPhone, and pair over SSH with a QR code.';
+  'Built on herdr and Heeler: persistent coding agents, one Space-first workflow, and files sent from your iPhone or the iOS Share Extension. All over SSH.';
 ---
 
 <Layout title="Herden | Persistent coding agents on your iPhone" description={description}>
@@ -16,18 +16,20 @@ const description =
       <p class="intro">
         Herden keeps Claude Code, Codex, and other coding agents running on a
         computer you control. The native iPhone app shows their real terminals
-        and lets you answer when they need you. Share a screenshot, attach a
-        document, or dictate your next instruction right on your iPhone.
+        and lets you answer when they need you. One list of Spaces keeps the
+        same work easy to find on desktop and iPhone. Add files in Herden,
+        share them from another iOS app, or dictate your next instruction.
       </p>
       <div class="actions">
         <a class="button primary" href="#install">Install the Host</a>
         <a class="button" href="https://testflight.apple.com/join/nSsEZBvv">Get the iPhone beta</a>
       </div>
       <p class="provenance">
-        Herden combines the persistent <a href="https://github.com/herdrdev/herdr">herdr</a>{' '}
-        runtime with a native iOS console derived from{' '}
+        An opinionated fork of <a href="https://github.com/herdrdev/herdr">herdr</a>{' '}
+        and{' '}
         <a href="https://github.com/ZingerLittleBee/Heeler">Heeler</a>.
-        It is open source under Apache-2.0.
+        One Host and iPhone product, open source under Apache-2.0.{' '}
+        <a href="#why-herden">See what Herden changes.</a>
       </p>
     </div>
 
@@ -45,6 +47,55 @@ const description =
     </div>
   </section>
 
+  <section id="why-herden" class="features" aria-labelledby="why-herden-heading">
+    <div class="section-heading">
+      <p class="kicker">Built on herdr and Heeler</p>
+      <h2 id="why-herden-heading">One Space. From desktop to iPhone.</h2>
+      <p>
+        A Space is the place you return to; an Agent is what runs inside it.
+        Herden brings them into one Space-first view instead of making you
+        navigate separate lists of Spaces and Agents. The Host sidebar and
+        iPhone Console follow the same model, with fewer steps on a small screen.
+      </p>
+    </div>
+    <ul class="feature-list">
+      <li>
+        <h3>herdr provides the persistent Host.</h3>
+        <p>
+          Herden builds on herdr's Rust runtime, terminal sessions, Agent
+          detection and workspace API. Your work keeps running on your
+          computer when the phone disconnects. herdr remains our active Host
+          upstream.
+        </p>
+      </li>
+      <li>
+        <h3>Heeler provides the iOS foundation.</h3>
+        <p>
+          Heeler gave us the native iPhone console, QR scanning and secure
+          pairing flow, plus the file-upload foundation. Its camera scanner
+          uses Apple's VisionKit. We retain that work and its history, and
+          selectively bring across useful upstream fixes.
+        </p>
+      </li>
+      <li>
+        <h3>Herden brings the workflow together.</h3>
+        <p>
+          Start an Agent or a plain terminal and Herden creates its Space.
+          There is one place to name, open and return to, with Agent status
+          shown alongside it. We moved Heeler's Host-side pairing into the
+          Rust runtime, added compact QR codes, and extended file delivery
+          with shared terminal controls and an iOS Share Extension.
+        </p>
+      </li>
+    </ul>
+    <p class="provenance">
+      Simpler navigation, not a stripped-down runtime: existing multi-Agent
+      Spaces, tabs, panes and worktrees stay intact. herdr's underlying workspace
+      APIs remain available for compatibility and automation.{' '}
+      <a href="https://github.com/3loc/herden/blob/main/UPSTREAM.md">Read our upstream policy.</a>
+    </p>
+  </section>
+
   <section id="features" class="features" aria-labelledby="features-heading">
     <div class="section-heading">
       <p class="kicker">Keep the work moving</p>
@@ -57,20 +108,22 @@ const description =
     </div>
     <ul class="feature-list">
       <li>
-        <h3>From another app to your Agent.</h3>
+        <h3>Add files inside Herden.</h3>
         <p>
-          Open the iOS share sheet, choose Herden, and pick your Agent. Send a
-          screenshot, photo, video, or document from apps that support file
-          sharing. Herden uploads it to the Agent's Host, ready for you to add
-          instructions.
+          Use Documents or Media in the terminal keyboard to pick a file,
+          screenshot, photo or video on your iPhone. Herden uploads it to the
+          Agent's Host over SSH and inserts its path into the terminal input.
+          Add your instructions and press Return when you're ready.
         </p>
       </li>
       <li>
-        <h3>Attach what words can't show.</h3>
+        <h3>Share from another iOS app.</h3>
         <p>
-          Add screenshots, media, and documents right in Herden. Show the broken
-          layout, bring in a reference image, or hand over a brief without
-          going back to your desk.
+          In Files, Photos or another app that supports file sharing, open the
+          iOS share sheet, choose Herden, and pick your Agent. The Share
+          Extension uploads the file and inserts its Host path without
+          pressing Return. Open the Agent to add context; transfer progress
+          and history remain available in Shared Files.
         </p>
       </li>
       <li>
@@ -95,6 +148,12 @@ const description =
         <a href="https://headscale.net/">Headscale</a> and allow SSH between them.
         Your desktop, laptop, or remote VM is ready to join you wherever you are,
         without opening SSH to the public internet.
+      </p>
+      <p class="provenance">
+        QR scanning and the original secure pairing flow come from Heeler.
+        Herden integrates Host-side pairing into <code>herden pair</code>, so
+        you no longer need Heeler's Node pairing plugin, and adds a smaller
+        Pairing Code format for easier scanning in a terminal.
       </p>
     </div>
 
@@ -315,7 +374,7 @@ const description =
     letter-spacing: -0.04em;
   }
 
-  .section-heading > p:last-child,
+  .section-heading > p:not(.kicker):not(.provenance),
   .closing > p:not(.kicker) {
     max-width: 680px;
     margin-top: 24px;

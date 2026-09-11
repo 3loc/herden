@@ -859,11 +859,11 @@ impl HeadlessServer {
         if outer_terminal_focus == Some(true) {
             self.app.state.mark_active_tab_seen();
         }
+        self.app.set_host_terminal_theme(host_terminal_theme);
         self.app.set_host_terminal_appearance_state(
             host_terminal_appearance,
             host_terminal_appearance_explicit,
         );
-        self.app.set_host_terminal_theme(host_terminal_theme);
     }
 
     fn sync_visible_server_config_diagnostic(&mut self, uses_local_keybindings: bool) {
@@ -1019,12 +1019,21 @@ impl HeadlessServer {
             self.release_client_shell_inputs(client_id, held_inputs);
             crate::server::clipboard_image::remove_files(removed.staged_clipboard_files);
             if let ClientConnectionMode::TerminalAttach { terminal_id } = removed.mode {
-                self.terminal_attach_owners.remove(&terminal_id);
-                if let Some(terminal_id) = self.terminal_id_by_string(&terminal_id) {
-                    self.app
-                        .state
-                        .direct_attach_resize_locks
-                        .remove(&terminal_id);
+                // A late disconnect must not release a successor's context.
+                if self.terminal_attach_owners.get(&terminal_id) == Some(&client_id) {
+                    self.terminal_attach_owners.remove(&terminal_id);
+                    if let Some(runtime) = self.runtime_for_terminal_id_string(&terminal_id) {
+                        runtime.release_client_terminal_appearance(
+                            self.app.state.host_terminal_theme,
+                            self.app.state.host_terminal_appearance,
+                        );
+                    }
+                    if let Some(terminal_id) = self.terminal_id_by_string(&terminal_id) {
+                        self.app
+                            .state
+                            .direct_attach_resize_locks
+                            .remove(&terminal_id);
+                    }
                 }
             }
         }
@@ -2255,6 +2264,35 @@ impl HeadlessServer {
                 true
             }
             ServerEvent::ClientShellHostTheme { client_id, update } => {
+                // The frozen message carries terminal observations. Reuse its
+                // payload without changing the codec or treating reports as
+                // keyboard input. Older servers ignore it in attach mode.
+                if let Some(ClientConnection {
+                    mode: ClientConnectionMode::TerminalAttach { terminal_id },
+                    ..
+                }) = self.clients.get(&client_id)
+                {
+                    let terminal_id = terminal_id.clone();
+                    if self.terminal_attach_owners.get(&terminal_id) != Some(&client_id) {
+                        return false;
+                    }
+                    let Some(client) = self.clients.get_mut(&client_id) else {
+                        return false;
+                    };
+                    client.update_host_theme(&update);
+                    // Direct clients end a bounded observation batch with the
+                    // appearance marker, after defaults and palette entries.
+                    if !matches!(update, protocol::ClientHostThemeUpdate::Appearance(_)) {
+                        return false;
+                    }
+                    let theme = client.host_terminal_theme;
+                    let appearance = client.host_terminal_appearance;
+                    if let Some(runtime) = self.runtime_for_terminal_id_string(&terminal_id) {
+                        runtime.set_client_terminal_appearance(theme, appearance);
+                        return true;
+                    }
+                    return false;
+                }
                 let Some(client) = self.clients.get_mut(&client_id) else {
                     return false;
                 };
@@ -2267,11 +2305,11 @@ impl HeadlessServer {
                 if !client.shell_surface_active || self.foreground_client_id != Some(client_id) {
                     return false;
                 }
-                let mut changed = self.app.set_host_terminal_appearance_state(
+                let mut changed = self.app.set_host_terminal_theme(client.host_terminal_theme);
+                changed |= self.app.set_host_terminal_appearance_state(
                     client.host_terminal_appearance,
                     client.host_terminal_appearance_explicit,
                 );
-                changed |= self.app.set_host_terminal_theme(client.host_terminal_theme);
                 if changed {
                     self.resize_shared_runtime_to_effective_size_before_input();
                 }

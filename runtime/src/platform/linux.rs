@@ -118,15 +118,6 @@ pub(crate) fn interactive_shell_command(argv: &[String], shell_name: &str) -> Op
     super::interactive_unix_shell_command(argv, shell_name, shell_quote)
 }
 
-pub(crate) fn wrap_interactive_agent_command(
-    command: String,
-    shell_name: &str,
-    foreground: crate::terminal_theme::RgbColor,
-    background: crate::terminal_theme::RgbColor,
-) -> String {
-    super::wrap_interactive_unix_agent_command(command, shell_name, foreground, background)
-}
-
 fn shell_quote(value: &str) -> String {
     if !value.is_empty()
         && value.chars().all(|ch| {

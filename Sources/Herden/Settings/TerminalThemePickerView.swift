@@ -35,7 +35,7 @@ struct TerminalThemePickerView: View {
             }
 
             Section {
-                ForEach(TerminalThemeOption.allCases) { option in
+                ForEach(TerminalThemeSettings.options(for: scheme)) { option in
                     themeRow(option)
                 }
             }

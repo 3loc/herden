@@ -402,15 +402,10 @@ struct AgentLaunchRequest: Sendable, Equatable {
     /// from another agent's screen and should land in the same place. Nil
     /// lets herden fall back to the workspace's own directory.
     let cwd: String?
-    /// The terminal defaults the fresh process should observe through OSC
-    /// 10/11 during startup. Full-screen agents cache that answer before the
-    /// iPhone can attach, so the Host keeps it in the Agent's launch job.
-    let terminalColors: AgentLaunchTerminalColors?
 
     init(
         kind: String, name: String, arguments: [String] = [], workspaceID: String? = nil,
-        cwd: String? = nil, nameIsUserSet: Bool = false,
-        terminalColors: AgentLaunchTerminalColors? = nil
+        cwd: String? = nil, nameIsUserSet: Bool = false
     ) {
         self.kind = kind
         self.name = name
@@ -418,35 +413,6 @@ struct AgentLaunchRequest: Sendable, Equatable {
         self.arguments = arguments
         self.workspaceID = workspaceID
         self.cwd = cwd
-        self.terminalColors = terminalColors
-    }
-}
-
-/// Six-digit RGB defaults carried to the Host's managed launch wrapper. This
-/// stays an app-domain value; older Hosts safely ignore the optional field.
-struct AgentLaunchTerminalColors: Sendable, Equatable {
-    let foreground: String
-    let background: String
-
-    init?(foreground: String, background: String) {
-        let foreground = Self.normalized(foreground)
-        let background = Self.normalized(background)
-        guard Self.isRGBHex(foreground), Self.isRGBHex(background) else { return nil }
-        self.foreground = foreground.uppercased()
-        self.background = background.uppercased()
-    }
-
-    private static func isRGBHex(_ value: String) -> Bool {
-        guard value.count == 6 else { return false }
-        return value.unicodeScalars.allSatisfy { scalar in
-            (48...57).contains(scalar.value)
-                || (65...70).contains(scalar.value)
-                || (97...102).contains(scalar.value)
-        }
-    }
-
-    private static func normalized(_ value: String) -> String {
-        value.hasPrefix("#") ? String(value.dropFirst()) : value
     }
 }
 

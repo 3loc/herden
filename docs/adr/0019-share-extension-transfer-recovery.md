@@ -27,6 +27,9 @@ attachment-recognition acknowledgement from the Agent.
   opens the Agent to check the prompt and can copy the path if it is missing.
 - After acknowledgement: persist `added`. Reopening the app or selecting Open
   Agent performs navigation only. It never repeats the paste.
+- Completed (`added`) receipts appear only in Shared Files, accessible from the
+  Console menu. The top banner selects the newest unfinished transfer so a
+  completed document neither stays pinned nor hides an older recovery action.
 - Cancellation cooperatively unwinds upload compensation before closing SSH.
   Backgrounding the extension cancels active work. SFTP is not a background
   URLSession transfer, so completion while suspended is not promised.

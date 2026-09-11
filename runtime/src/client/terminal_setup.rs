@@ -42,8 +42,7 @@ pub(super) fn setup_terminal_with_capabilities(
 ) -> io::Result<TerminalGuard> {
     ratatui::init();
     crate::terminal_modes::clear_host_mouse_reporting(&mut io::stdout())?;
-    let host_color_scheme_reports =
-        should_enable_host_color_scheme_reports(enable_client_protocols);
+    let host_color_scheme_reports = should_enable_host_color_scheme_reports();
 
     #[cfg(windows)]
     let windows_ssh_session = is_ssh_session();
@@ -58,16 +57,13 @@ pub(super) fn setup_terminal_with_capabilities(
     if enable_client_protocols {
         set_mouse_capture(mouse_capture, false)?;
         execute!(io::stdout(), EnableBracketedPaste, EnableFocusChange)?;
-        if host_color_scheme_reports {
-            write_host_color_scheme_report_mode(&mut io::stdout(), true)?;
-        }
         push_keyboard_enhancement_flags()?;
     } else {
-        if should_query_host_terminal_theme() {
-            write_host_color_scheme_report_mode(&mut io::stdout(), false)?;
-        }
         set_mouse_capture(mouse_capture, false)?;
         execute!(io::stdout(), EnableBracketedPaste)?;
+    }
+    if host_color_scheme_reports {
+        write_host_color_scheme_report_mode(&mut io::stdout(), true)?;
     }
 
     #[cfg(windows)]
@@ -110,8 +106,8 @@ pub(super) fn setup_terminal_with_capabilities(
     })
 }
 
-pub(super) fn should_enable_host_color_scheme_reports(enable_client_protocols: bool) -> bool {
-    enable_client_protocols && should_query_host_terminal_theme()
+pub(super) fn should_enable_host_color_scheme_reports() -> bool {
+    should_query_host_terminal_theme()
 }
 
 /// Guard that restores the terminal when dropped.

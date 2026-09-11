@@ -2,7 +2,7 @@
 set -eu
 
 binary="herden"
-host_version="0.9.3"
+host_version="0.9.4"
 host_tag="host-v${host_version}"
 install_dir="${HERDEN_INSTALL_DIR:-$HOME/.local/bin}"
 doc_dir="${HERDEN_DOC_DIR:-$HOME/.local/share/doc/herden}"
@@ -228,7 +228,7 @@ main() {
     }; then
         warn "this installer is running inside an existing upstream Herdr session"
         warn "installing Herden cannot rename or replace that running Herdr client"
-        warn "detach with Ctrl-B, then d; from the outer shell run:"
+        warn "detach with Ctrl-B, then q; from the outer shell run:"
         warn "\"${install_dir}/${binary}\""
     fi
 

@@ -443,12 +443,8 @@ fn reported_cell_size_is_taken_from_host_cell_size_events() {
 }
 
 #[test]
-fn color_scheme_reports_are_enabled_only_for_full_clients() {
-    assert_eq!(
-        should_enable_host_color_scheme_reports(true),
-        !cfg!(windows)
-    );
-    assert!(!should_enable_host_color_scheme_reports(false));
+fn color_scheme_reports_are_available_to_full_and_direct_clients() {
+    assert_eq!(should_enable_host_color_scheme_reports(), !cfg!(windows));
 }
 
 #[test]

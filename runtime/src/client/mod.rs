@@ -32,6 +32,7 @@ mod shell;
 mod shell_runtime;
 mod startup;
 mod state;
+mod terminal_appearance;
 mod terminal_geometry;
 mod terminal_sessions;
 mod terminal_setup;
@@ -372,6 +373,9 @@ async fn run_client_loop(
     let draw_host_cursor = attach_escape.is_none() && should_draw_host_cursor(config.host_cursor);
     let is_remote_client = is_remote_client_process();
     let local_unavailable = initial.is_none();
+    let mut direct_appearance = terminal_appearance::DirectTerminalAppearance::new(
+        crate::platform::should_query_host_terminal_palette(),
+    );
 
     let mut state = ClientState {
         blit_encoder: render_ansi::BlitEncoder::new(),
@@ -443,8 +447,7 @@ async fn run_client_loop(
     let mut endpoint_commands = endpoint_commands::EndpointCommands::default();
 
     // Spawn the stdin reader thread.
-    let will_query_host_terminal_theme =
-        state.attach_escape.is_none() && should_query_host_terminal_theme();
+    let will_query_host_terminal_theme = should_query_host_terminal_theme();
     // Terminals behind ConPTY report no pixel size through the ioctl, so ask the
     // host terminal directly instead of falling back to an assumed cell size.
     let will_query_host_cell_size = state.attach_escape.is_none()
@@ -477,7 +480,7 @@ async fn run_client_loop(
     if will_query_host_terminal_theme {
         query_host_terminal_theme();
         #[cfg(not(windows))]
-        if state.shell.is_some() {
+        if state.shell.is_some() || state.attach_escape.is_some() {
             query_host_terminal_appearance();
         }
     }
@@ -682,6 +685,9 @@ async fn run_client_loop(
                 shell.timer_delay(std::time::Instant::now())
             });
         let timer_deadline = client_timer.deadline(std::time::Instant::now(), timer_delay);
+        let timer_deadline = direct_appearance
+            .deadline()
+            .map_or(timer_deadline, |deadline| deadline.min(timer_deadline));
         let immediate_event = scheduled_activation.take();
         #[cfg(windows)]
         let event = if let Some(event) = immediate_event {
@@ -712,6 +718,13 @@ async fn run_client_loop(
             }
         };
         let now = std::time::Instant::now();
+        for update in direct_appearance.take_due(now) {
+            write_to_server(
+                &mut write_stream,
+                &ClientMessage::ClientShellHostTheme { update },
+            )
+            .map_err(ClientError::ConnectionLost)?;
+        }
         if let Some(shell) = state.shell.as_mut() {
             shell.tick_popup_pending(now);
         }
@@ -720,6 +733,14 @@ async fn run_client_loop(
             ClientLoopEvent::EndpointCatalog(reload) => pending_catalog = Some(reload),
             #[cfg(unix)]
             ClientLoopEvent::StdinInput(data) => {
+                if state.attach_escape.is_some() {
+                    if let Some(query_palette) = direct_appearance.consume(&data, now) {
+                        if query_palette {
+                            query_host_terminal_theme();
+                        }
+                        continue;
+                    }
+                }
                 let image_bridge_active = endpoint_accepts_local_images(
                     is_remote_client,
                     write_stream.active_id(),

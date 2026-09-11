@@ -1361,7 +1361,7 @@
                   "type": "null"
                 }
               ],
-              "description": "Optional terminal defaults to apply for the lifetime of the launched agent."
+              "description": "Legacy client palette, accepted but ignored. Terminal defaults belong to each client."
             },
             "timeout_ms": {
               "description": "Startup timeout in milliseconds. Values must be greater than 3000 and at most 300000.",

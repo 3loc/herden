@@ -14,7 +14,6 @@ struct StartAgentView: View {
 
     init(
         hosts: [Host], console: ConsoleStore,
-        terminalColors: AgentLaunchTerminalColors? = nil,
         origin: StartAgentStore.LaunchOrigin? = nil,
         initialHostID: Host.ID? = nil,
         onStarted: @escaping (ConsoleAgent.ID) -> Void
@@ -44,8 +43,7 @@ struct StartAgentView: View {
                 },
                 awaitAgentVisible: { await console.waitForAgent($0) },
                 origin: origin,
-                dedicatedWorkspaceByDefault: true,
-                terminalColors: terminalColors)
+                dedicatedWorkspaceByDefault: true)
         if origin == nil, let initialHostID, hosts.contains(where: { $0.id == initialHostID }) {
             store.selectedHostID = initialHostID
         }

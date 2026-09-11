@@ -3,17 +3,17 @@ import SwiftUI
 /// Reads the same durable records as the Share Extension. Opening a record is
 /// navigation only: it never replays an insertion, even after a cold launch.
 struct SharedTransfersView: View {
+    @Binding var showingTransfers: Bool
     let openAgent: (SharedTransfer) -> Void
     @State private var records: [SharedTransfer] = []
-    @State private var showingTransfers = false
     @State private var activeID: UUID?
     @State private var operation: Task<Void, Never>?
     @State private var errorMessage: String?
     @Environment(\.scenePhase) private var scenePhase
 
     var body: some View {
-        Group {
-            if let latest = records.first {
+        VStack(spacing: 0) {
+            if let latest = Self.bannerRecord(in: records) {
                 Button { showingTransfers = true } label: {
                     HStack(spacing: 10) {
                         Image(systemName: "doc.badge.arrow.up")
@@ -44,6 +44,9 @@ struct SharedTransfersView: View {
             NavigationStack {
                 List {
                     if let errorMessage { Text(errorMessage).foregroundStyle(.secondary) }
+                    if records.isEmpty {
+                        Text("No shared files").foregroundStyle(.secondary)
+                    }
                     ForEach(records) { record in
                         Section {
                             Text(record.filename).font(.headline)
@@ -91,6 +94,12 @@ struct SharedTransfersView: View {
                 }
             }
         }
+    }
+
+    /// Completed receipts remain in history to prevent replay after reopening,
+    /// but must not occupy terminal space or hide an older pending transfer.
+    static func bannerRecord(in records: [SharedTransfer]) -> SharedTransfer? {
+        records.first { $0.status != .added }
     }
 
     private func fraction(_ record: SharedTransfer) -> Double {

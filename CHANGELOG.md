@@ -10,6 +10,16 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ### Fixed
 
+- Keep iOS Light Mode theme choices light and Dark Mode choices dark; migrate
+  incompatible saved choices while retaining valid selections.
+- Default Host desktop chrome to the viewing terminal's palette. Preserve
+  explicitly configured Host themes.
+- Scope direct-attach colour reports to the controlled terminal and wait for
+  refreshed defaults and queried palette entries before notifying the Agent.
+  Application-painted RGB colours are not converted into client-relative colours.
+
+- Remove completed shared files from the persistent top banner; retain their
+  history under Shared Files in the menu.
 - Make Space rows open their Agent terminal again on compact iPhone layouts.
 - Render the Fold at a legible home-screen size on a bright brand-green app
   icon instead of as a tiny dot on a black tile.
@@ -21,9 +31,9 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 - Open a newly created Agent on the first attempt instead of occasionally
   showing a blank terminal until the user leaves and re-enters it.
 
-- Fresh Agents now keep the active iPhone terminal palette for the lifetime of
-  their managed launch, so Codex and other colour-aware TUIs cannot cache the
-  Host's restored dark palette before startup.
+- Keep terminal themes local to each client when launching Agents. Opening an
+  Agent from a light iPhone terminal no longer forces a white pane onto a dark
+  desktop terminal. Older clients' launch palettes are accepted and ignored.
 
 - Remove a Herden-launched Agent's dedicated pane and Space when its process
   exits, including exits initiated from the attached iPhone terminal.
@@ -76,6 +86,11 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
   beta at <https://testflight.apple.com/join/nSsEZBvv>.
 
 ### Changed
+
+- Clarify Herden's herdr and Heeler foundations, shared Space-first workflow,
+  in-app file uploads and iOS Share Extension on the website and in the README.
+  Explicitly credit Heeler for QR scanning, the original secure pairing flow
+  and file-upload foundations, distinguishing Herden's integration and additions.
 
 - Replace separate Space and Agent navigation with one Space-first Console on
   iPhone and in the Host terminal UI. Each Space now identifies its current

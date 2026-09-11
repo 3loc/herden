@@ -86,7 +86,7 @@ struct TerminalAppearancePane: View {
     /// and that terminal is rendering the current appearance's slot.
     private var themeGrid: some View {
         LazyVGrid(columns: columns, spacing: 10) {
-            ForEach(TerminalThemeOption.allCases) { option in
+            ForEach(TerminalThemeSettings.options(for: colorScheme)) { option in
                 Button {
                     themes.select(option, for: colorScheme)
                 } label: {
@@ -193,13 +193,6 @@ struct TerminalThemePalette {
 }
 
 extension TerminalThemeOption {
-    func launchColors(for colorScheme: ColorScheme) -> AgentLaunchTerminalColors? {
-        guard let definition = swatchDefinition(for: colorScheme) else { return nil }
-        return AgentLaunchTerminalColors(
-            foreground: definition.foreground,
-            background: definition.background)
-    }
-
     func palette(for colorScheme: ColorScheme) -> TerminalThemePalette {
         guard let definition = swatchDefinition(for: colorScheme) else {
             return .system

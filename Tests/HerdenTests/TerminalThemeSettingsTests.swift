@@ -128,11 +128,38 @@ struct TerminalThemeSettingsTests {
         #expect(TerminalThemeOption.missingCatalogThemeNames.isEmpty)
     }
 
-    @Test func launchColorsMatchTheVisibleTheme() throws {
-        let colors = try #require(TerminalThemeOption.followSystem.launchColors(for: .light))
+    @Test func everyOfferedThemeMatchesItsReportedAppearance() {
+        for scheme in [ColorScheme.light, .dark] {
+            let options = TerminalThemeSettings.options(for: scheme)
+            #expect(!options.isEmpty)
+            for option in options {
+                #expect(option.chromeColorScheme(for: scheme) == scheme)
+            }
+        }
+        #expect(!TerminalThemeSettings.options(for: .light).contains(.dracula))
+        #expect(TerminalThemeSettings.options(for: .dark).contains(.dracula))
+    }
 
-        #expect(colors.foreground == "000000")
-        #expect(colors.background == "F7F7F7")
+    @Test func oldDarkOnlyLightSlotMigratesWithoutChangingTheDarkSlot() throws {
+        let (defaults, cleanup) = try makeDefaults()
+        defer { cleanup() }
+        defaults.set("dracula", forKey: "terminal-theme")
+        let settings = TerminalThemeSettings(defaults: defaults)
+        #expect(settings.lightSelection == .followSystem)
+        #expect(settings.darkSelection == .dracula)
+        #expect(defaults.string(forKey: "terminal-theme-light") == "follow-system")
+        #expect(TerminalThemeSettings(defaults: defaults).lightSelection == .followSystem)
+    }
+
+    @Test func selectionCannotMakeLightModeRenderADarkOnlyPalette() throws {
+        let (defaults, cleanup) = try makeDefaults()
+        defer { cleanup() }
+        let settings = TerminalThemeSettings(defaults: defaults)
+        settings.select(.solarized, for: .light)
+        settings.select(.dracula, for: .light)
+        #expect(settings.lightSelection == .followSystem)
+        #expect(settings.darkSelection == .vesper)
+        #expect(TerminalThemeSettings(defaults: defaults).lightSelection == .followSystem)
     }
 
     @Test func changingThemeKeepsTheExistingTerminalSession() {

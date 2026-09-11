@@ -208,7 +208,6 @@ final class StartAgentStore {
     /// lands; waiting here keeps the opened detail from flashing its
     /// missing-Agent placeholder over a launch that just succeeded.
     private let awaitAgentVisible: (ConsoleAgent.ID) async -> Void
-    private let terminalColors: AgentLaunchTerminalColors?
     @ObservationIgnored private let recents: RecentWorkspaceStore
     /// In-flight guard flipped synchronously before the first await, so a
     /// double-tap cannot dispatch the same command twice through the window
@@ -224,7 +223,6 @@ final class StartAgentStore {
         awaitAgentVisible: @escaping (ConsoleAgent.ID) async -> Void,
         origin: LaunchOrigin? = nil,
         dedicatedWorkspaceByDefault: Bool = false,
-        terminalColors: AgentLaunchTerminalColors? = nil,
         recents: RecentWorkspaceStore = RecentWorkspaceStore()
     ) {
         self.hosts = hosts
@@ -236,7 +234,6 @@ final class StartAgentStore {
         self.discoverAgentKinds = discoverAgentKinds
         self.start = start
         self.awaitAgentVisible = awaitAgentVisible
-        self.terminalColors = terminalColors
         self.recents = recents
         let rememberedHostID = recents.hostID.flatMap { remembered in
             hosts.contains(where: { $0.id == remembered }) ? remembered : nil
@@ -389,8 +386,7 @@ final class StartAgentStore {
             arguments: arguments,
             workspaceID: workspaceID,
             cwd: origin?.cwd,
-            nameIsUserSet: !trimmedName.isEmpty,
-            terminalColors: terminalColors)
+            nameIsUserSet: !trimmedName.isEmpty)
         do {
             let agent = try await start(request, destination, hostID)
             if case .newWorkspace = destination {

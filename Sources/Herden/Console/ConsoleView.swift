@@ -27,6 +27,7 @@ struct ConsoleView: View {
     @State private var createsSpaceAfterHostSheetCloses = false
     @State private var isStartingAgent = false
     @State private var isShowingSettings = false
+    @State private var isShowingSharedFiles = false
     @State private var startedAgentAfterDismissal: ConsoleAgent.ID?
     @State private var selectedSpace: ConsoleSpace?
     @State private var openedSpace: OpenedSpace?
@@ -83,6 +84,9 @@ struct ConsoleView: View {
                     ToolbarItem(placement: .primaryAction) {
                         Menu("Settings", systemImage: "ellipsis.circle") {
                             Button("Hosts", systemImage: "server.rack") { presentHosts() }
+                            Button("Shared Files", systemImage: "doc.badge.arrow.up") {
+                                isShowingSharedFiles = true
+                            }
                             Button("Settings", systemImage: "gearshape") { isShowingSettings = true }
                         }
                     }
@@ -132,8 +136,6 @@ struct ConsoleView: View {
                     StartAgentView(
                         hosts: hosts.hosts,
                         console: console,
-                        terminalColors: terminal.themes.selection(for: colorScheme)
-                            .launchColors(for: colorScheme),
                         initialHostID: newSpaceHostID
                     ) { id in
                         // A fresh launch lands in its own terminal, exactly
@@ -225,7 +227,7 @@ struct ConsoleView: View {
             detail
         }
         .safeAreaInset(edge: .top, spacing: 0) {
-            SharedTransfersView { record in
+            SharedTransfersView(showingTransfers: $isShowingSharedFiles) { record in
                 notificationRouter.open(AgentNotificationTarget(
                     hostID: record.host.id, paneID: record.paneID))
             }

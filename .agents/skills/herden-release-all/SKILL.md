@@ -64,6 +64,13 @@ artifacts whose source manifest is already deployed.
 Sync the working source directly into the locked fixed-path Studio release lane
 with `rsync`, excluding `.git`, `node_modules`, `.build`, `DerivedData`, and other
 generated outputs. Do not make an intermediate `/tmp` or timestamped source copy.
+Anchor generated-output exclusions to their actual paths, such as `/build/`,
+`/landing/dist/`, and `/runtime/target/`. Never exclude bare `build`: Ghostty has
+tracked source under `runtime/vendor/libghostty-vt/src/build/` and
+`src/apprt/gtk/build/`. A bare exclusion silently retains stale compiler inputs.
+Require the complete tracked Host input manifest to match after staging, before
+starting Cargo or Zig. Use checksum-based rsync if quick checks cannot establish
+source equality.
 Use deletion only inside the exact validated lane so files removed from the source
 cannot linger in the next build. Hash only release inputs, and
 reuse successful test/build receipts keyed by that exact manifest. Use existing

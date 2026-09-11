@@ -36,14 +36,14 @@ eliminating several dead ends.
 | `Sources/Herden/Console/StartAgentView.swift` + `ConsoleView.swift` + `AgentTerminalView.swift` | Successful Agent launch handoff: record the destination before dismissing the sheet, then open its terminal after dismissal yields. |
 | `Sources/Herden/Terminal/SharedTerminalKeyboard.swift` | The single Agent/Space control deck, including dictation, language selection, attachments and Paste. |
 | `Sources/Herden/Transport/SSHTransportSettings.swift` | Host command defaults and injectable SSH environment boundaries. |
-| `Sources/Herden/Settings/TerminalAppearancePane.swift` + `TerminalThemeSettings.swift` | Selected daylight/nighttime theme and the exact foreground/background colours supplied to new Agents. |
-| `Sources/Herden/Transport/HerdenSSHTransport.swift` + `Transport.swift` | App-domain launch request and Host `agent.start` wire choreography, including optional terminal defaults. |
+| `Sources/Herden/Settings/TerminalAppearancePane.swift` + `TerminalThemeSettings.swift` | Selected daylight/nighttime theme, applied locally to the iOS terminal renderer. |
+| `Sources/Herden/Transport/HerdenSSHTransport.swift` + `Transport.swift` | App-domain launch request and Host `agent.start` wire choreography. Client themes never enter launch requests. |
 | `Sources/Herden/Sharing/` | Durable Share Extension transfer ingestion and delivery. |
 | `Sources/Herden/Support/HerdenBrand.swift` + `Resources/Brand.xcassets/` | Appearance-aware Fold, Agent and Space marks used by SwiftUI. |
 | `Sources/Herden/AppIcon.icon/` + `landing/src/assets/logo-*.svg` | App-icon and website renderings of the same Fold geometry. |
 | `runtime/src/client/shell/` + `runtime/src/config/sidebar.rs` | Space-first Host sidebar and conservative default chrome; legacy Agent panel and split controls remain configurable compatibility surfaces. |
 | `runtime/` | Rust Herden Host, CLI and built-in `herden pair`. |
-| `runtime/src/app/agents.rs` + `runtime/src/platform/` | Validates terminal defaults and keeps the OSC write in the launched Agent's foreground job. |
+| `runtime/src/app/agents.rs` + `runtime/src/platform/` | Launches Agents without injected colours; accepts and ignores legacy `terminal_colors`. |
 | `runtime/src/pairing/code.rs` + `Sources/Herden/Pairing/PairingCode.swift` | Paired Host/iOS codecs for compact v2 and legacy v1 pairing envelopes. |
 | `plugin/test-vectors/pairing-code-v2.json` | Cross-language source of truth for the v2 pairing wire format. |
 | `plugin/` | Optional Node notification extension. |
@@ -69,10 +69,10 @@ the shared silhouette and appearance colours in lockstep across those owners.
 Pairing facts flow from the Host codec into a Base45 QR envelope and through
 the shared vector into the Swift decoder tests; change all three in lockstep.
 
-Terminal appearance flows from the selected Ghostty theme into
-`AgentLaunchTerminalColors`, through optional `agent.start.terminal_colors`,
-then into a platform launch wrapper that writes OSC 10/11 and `exec`s the Agent
-in the same foreground job.
+Terminal appearance belongs to each client's renderer. Never inject a client's
+palette into the shared PTY at Agent launch: OSC 10/11 turns it into an explicit
+application override that leaks into other clients. The Host accepts and ignores
+legacy `agent.start.terminal_colors`; iOS no longer sends it. See ADR 0023.
 
 New-Agent navigation is a two-stage presentation handoff: `StartAgentView`
 records the started Agent ID before it dismisses, and the presenting view opens
@@ -110,12 +110,12 @@ designed; they are compatibility surfaces, not public branding.
 - Output-change signals, verified live on 0.8.0: `pane.output_matched` is edge-triggered — one push when the visible buffer's match predicate flips no-match→match (plus one at subscribe time if already matching), silence during sustained output — useless as a change feed. `pane.agent_status_changed` is the precise push signal (two ~125-byte events per prompt round trip). `pane.updated` remains a ~4/s noise source. `events.wait` implements only pane agent-status matches despite the schema declaring 19 `EventMatch` variants, and its param is `match_event` (a single object).
 - `agent.prompt`, verified live on 0.8.0: types the text **and Enter** (auto-submits); without `wait` it returns `agent_prompted` immediately — a delivery ack, nothing more. `wait.until` must include `done`: claude finishes on `done`, not `idle`, so idle-only waits reliably time out. Prompting a **working** agent is accepted unconditionally; queueing happens inside the agent TUI (verified for claude), not in herdr. `target` accepts pane ids and agent names, not agent-session UUIDs.
 - `pane.send_input {pane_id, text?, keys?}` (verified live on 0.8.0) inserts without submitting when `keys` is omitted; `{text, keys: ["enter"]}` is an atomic type-and-submit. Key-name parsing is shared with `send_keys` and laxer than 0.7.4: `enter`/`esc`/`ctrl+c`/`C-c` accepted case-insensitively, `ctrl-c` still rejected with `invalid_key`.
-- Host terminal defaults are scoped to foreground-job ownership. A standalone
-  OSC 10/11 write sent through `pane.send_input` is restored as soon as that
-  shell command exits, before a later `agent.start` runs; Codex then caches the
-  dark Host background. Use `agent.start.terminal_colors` so the OSC write and
-  Agent `exec` share one managed foreground job. The API accepts validated
-  `#RRGGBB`/`rgb:RR/GG/BB` values; iOS sends `#RRGGBB`.
+- Host terminal defaults follow attached terminal reports; default-colour cells
+  remain defaults for each renderer. Do not write OSC 10/11 at launch or send
+  iOS theme choices to `agent.start`. The old launch wrapper made light iPhone
+  colours explicit shared PTY state, producing white panes on dark desktops.
+  `terminal_colors` remains decode-compatible but is ignored. Already-running
+  TUIs can retain their old cached colours until the Agent is resumed/restarted.
 - Malformed requests are answered with `id: ""` instead of the request id (verified live on 0.8.0) — id-keyed response matching needs a fallback or such requests pend forever. `ping` on 0.8.0 also reports `capabilities` (`live_handoff`, `detached_server_daemon`).
 - Starting claude in a cwd absent from `~/.claude.json` blocks on an in-TUI trust dialog herdr cannot dismiss (hit live on 0.8.0) — a fresh-directory agent launch can wedge before its first prompt.
 - Rename methods, verified against a live 0.7.5 server: `agent.rename` enforces `^[a-z][a-z0-9_-]{0,31}$` (`invalid_agent_name` otherwise) and clears the custom name when `name` is null or omitted; `workspace.rename` accepts **any** label (empty, whitespace, 500 chars). The `pane_updated` event a rename fires does **not** carry the agent name, and `pane.updated` fires on every terminal-title change (34 events in 6s measured live) — do not use it as a resync trigger; renames surface via post-RPC resync instead.

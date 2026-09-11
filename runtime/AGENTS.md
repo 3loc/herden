@@ -11,8 +11,8 @@ Herden's terminal-based agent runtime, derived from upstream herdr.
 | `src/client/shell/endpoint_sidebar.rs` | Federated Space-first sidebar geometry and occupant metadata below the identity row. |
 | `src/client/shell/config.rs` + `src/config/sidebar.rs` | Conservative default chrome: full-height Space list, hidden duplicate Agent panel, hidden one-tab strip and no default split shortcuts; compatibility opt-ins remain. |
 | `src/client/shell/context_menu.rs` | Context actions exposed by the simplified Host UI; pane splitting remains available through configured actions and the API. |
-| `src/app/agents.rs` | Agent launch validation and assembly, including optional terminal defaults. |
-| `src/platform/` | Platform-specific shell encoding; Unix keeps terminal-default OSC writes in the Agent's foreground job. |
+| `src/app/agents.rs` | Agent launch validation and assembly; ignores legacy `terminal_colors` to keep client themes out of shared PTY state. |
+| `src/platform/` | Platform-specific shell encoding; never inject terminal colours into Agent launch commands. |
 | `src/terminal_theme.rs` | RGB parsing plus Host terminal colour query, set, reset and restore primitives. |
 | `../scripts/build-host-release-asset.sh` | Cross-platform release build and mandatory identity verification before checksumming. |
 | `../scripts/verify-host-release-asset.sh` | Exact native version check plus embedded `[herden]` marker check for every asset. |

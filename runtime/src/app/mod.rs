@@ -250,7 +250,7 @@ fn theme_runtime_config(
         .theme
         .name
         .clone()
-        .unwrap_or_else(|| "catppuccin".to_string());
+        .unwrap_or_else(|| "terminal".to_string());
     let (default_dark, default_light) = sibling_theme_names(&manual_name);
     state::ThemeRuntimeConfig {
         manual_name,
@@ -1340,6 +1340,22 @@ mod tests {
         );
 
         assert_eq!(app.state.agent_panel_sort, state::AgentPanelSort::Priority);
+    }
+
+    #[test]
+    fn default_host_chrome_follows_the_viewing_terminal() {
+        let runtime = theme_runtime_config(&Config::default(), true);
+        assert_eq!(runtime.manual_name, "terminal");
+        assert!(!runtime.auto_switch);
+        for appearance in [
+            None,
+            Some(crate::terminal_theme::HostAppearance::Light),
+            Some(crate::terminal_theme::HostAppearance::Dark),
+        ] {
+            let (palette, name) = resolve_effective_theme(&runtime, appearance);
+            assert_eq!(name, "terminal");
+            assert_eq!(palette, state::Palette::terminal());
+        }
     }
 
     #[test]
@@ -2804,6 +2820,68 @@ mod tests {
         assert_eq!(response["error"]["code"], "agent_pane_unavailable");
         assert_eq!(app.state.workspaces[0].tabs[0].layout.pane_count(), 1);
         assert_eq!(app.state.workspaces[0].focused_pane_id(), Some(root));
+    }
+
+    #[tokio::test]
+    async fn agent_start_ignores_legacy_client_palette() {
+        let mut baseline = None;
+        for colors in [
+            None,
+            Some(crate::api::schema::AgentStartTerminalColors {
+                foreground: "#111111".into(),
+                background: "#FAFAFA".into(),
+            }),
+            Some(crate::api::schema::AgentStartTerminalColors {
+                foreground: "#FAFAFA".into(),
+                background: "#111111".into(),
+            }),
+            Some(crate::api::schema::AgentStartTerminalColors {
+                foreground: "obsolete client value".into(),
+                background: "ignored".into(),
+            }),
+        ] {
+            let mut app = test_app();
+            let workspace = Workspace::test_new("client-local-colours");
+            let root = workspace.tabs[0].root_pane;
+            app.state.workspaces = vec![workspace];
+            app.state.ensure_test_terminals();
+            app.state.active = Some(0);
+            let pane_id = app.pane_info(0, root).unwrap().pane_id;
+            let terminal_id = app.state.workspaces[0].tabs[0].panes[&root]
+                .attached_terminal_id
+                .clone();
+            let (runtime, mut receiver) =
+                crate::terminal::TerminalRuntime::test_with_channel_capacity(80, 24, 1);
+            app.terminal_runtimes.insert(terminal_id, runtime);
+            let response = app.handle_api_request(crate::api::schema::Request {
+                id: "palette-compat".into(),
+                method: crate::api::schema::Method::AgentStart(
+                    crate::api::schema::AgentStartParams {
+                        name: "worker".into(),
+                        name_is_user_set: false,
+                        kind: "codex".into(),
+                        pane_id,
+                        args: vec!["resume".into(), "codex-session".into()],
+                        timeout_ms: Some(4_000),
+                        terminal_colors: colors,
+                    },
+                ),
+            });
+            let response: serde_json::Value = serde_json::from_str(&response).unwrap();
+            assert_eq!(response["result"]["type"], "agent_started", "{response}");
+            let input = receiver.try_recv().unwrap();
+            let command = std::str::from_utf8(&input).unwrap();
+            assert!(!command.contains("printf"), "{command:?}");
+            assert!(
+                !command.contains("]10;") && !command.contains("]11;"),
+                "{command:?}"
+            );
+            if let Some(expected) = &baseline {
+                assert_eq!(&input, expected);
+            } else {
+                baseline = Some(input);
+            }
+        }
     }
 
     #[tokio::test]

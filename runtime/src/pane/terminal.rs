@@ -555,8 +555,8 @@ impl PaneTerminal {
             .kitty_image_placements_with_data_filter(needs_data)
     }
 
-    pub fn apply_host_terminal_theme(&self, theme: crate::terminal_theme::TerminalTheme) {
-        self.ghostty.apply_host_terminal_theme(theme);
+    pub fn apply_host_terminal_theme(&self, theme: crate::terminal_theme::TerminalTheme) -> bool {
+        self.ghostty.apply_host_terminal_theme(theme)
     }
 
     pub fn apply_host_terminal_appearance(
@@ -564,6 +564,15 @@ impl PaneTerminal {
         appearance: Option<crate::terminal_theme::HostAppearance>,
     ) -> Option<Bytes> {
         self.ghostty.apply_host_terminal_appearance(appearance)
+    }
+
+    pub(crate) fn notify_client_terminal_appearance(
+        &self,
+        appearance: Option<crate::terminal_theme::HostAppearance>,
+        palette_changed: bool,
+    ) -> Option<Bytes> {
+        self.ghostty
+            .update_terminal_appearance(appearance, palette_changed)
     }
 
     pub fn has_transient_default_color_override(&self) -> bool {
@@ -1176,8 +1185,9 @@ impl GhosttyPaneTerminal {
         }
     }
 
-    pub fn apply_host_terminal_theme(&self, theme: crate::terminal_theme::TerminalTheme) {
+    pub fn apply_host_terminal_theme(&self, theme: crate::terminal_theme::TerminalTheme) -> bool {
         if let Ok(mut core) = self.core.lock() {
+            let changed = core.host_terminal_theme != theme;
             let foreground_unowned = !core.child_default_foreground_changed;
             let background_unowned = !core.child_default_background_changed;
             core.host_terminal_theme = theme;
@@ -1205,12 +1215,22 @@ impl GhosttyPaneTerminal {
                 foreground_unowned,
                 background_unowned,
             );
+            return changed;
         }
+        false
     }
 
     pub fn apply_host_terminal_appearance(
         &self,
         appearance: Option<crate::terminal_theme::HostAppearance>,
+    ) -> Option<Bytes> {
+        self.update_terminal_appearance(appearance, false)
+    }
+
+    fn update_terminal_appearance(
+        &self,
+        appearance: Option<crate::terminal_theme::HostAppearance>,
+        palette_changed: bool,
     ) -> Option<Bytes> {
         let mut core = self.core.lock().ok()?;
         let color_scheme = appearance.map(|appearance| match appearance {
@@ -1219,10 +1239,7 @@ impl GhosttyPaneTerminal {
         });
         let previous = core.terminal.set_color_scheme(color_scheme);
 
-        let transitioned = matches!(
-            (previous, color_scheme),
-            (Some(previous), Some(current)) if previous != current
-        );
+        let transitioned = color_scheme.is_some() && (previous != color_scheme || palette_changed);
         if !transitioned
             || !core
                 .terminal
@@ -5868,6 +5885,46 @@ mod tests {
     }
 
     #[test]
+    fn color_scheme_subscribers_are_notified_of_same_mode_palette_changes() {
+        let (tx, _rx) = mpsc::channel(4);
+        let terminal = crate::ghostty::Terminal::new(20, 5, 0).unwrap();
+        let pane = GhosttyPaneTerminal::new(terminal, tx.clone()).unwrap();
+        let pane_id = PaneId::from_raw(1);
+        let appearance = Some(crate::terminal_theme::HostAppearance::Light);
+        pane.apply_host_terminal_appearance(appearance);
+        pane.process_pty_bytes(pane_id, 0, b"\x1b[?2031h", &tx);
+        let theme = crate::terminal_theme::TerminalTheme {
+            foreground: Some(crate::terminal_theme::RgbColor {
+                r: 20,
+                g: 20,
+                b: 20,
+            }),
+            background: Some(crate::terminal_theme::RgbColor {
+                r: 240,
+                g: 240,
+                b: 240,
+            }),
+            ..Default::default()
+        };
+        let changed = pane.apply_host_terminal_theme(theme);
+        assert!(changed);
+        assert_eq!(
+            pane.update_terminal_appearance(appearance, changed),
+            Some(Bytes::from_static(b"\x1b[?997;2n"))
+        );
+        let query = pane.process_pty_bytes(pane_id, 0, b"\x1b]11;?\x07", &tx);
+        let reply = std::str::from_utf8(&query.terminal_responses[0]).unwrap();
+        assert_eq!(
+            crate::terminal_theme::parse_default_color_response(reply)
+                .unwrap()
+                .1,
+            theme.background.unwrap()
+        );
+        assert!(!pane.apply_host_terminal_theme(theme));
+        assert!(pane.update_terminal_appearance(appearance, false).is_none());
+    }
+
+    #[test]
     fn color_scheme_queries_and_live_updates_follow_terminal_mode() {
         let (tx, mut rx) = mpsc::channel(4);
         let terminal = crate::ghostty::Terminal::new(20, 5, 0).unwrap();
@@ -5895,9 +5952,10 @@ mod tests {
         assert!(pane.apply_host_terminal_appearance(None).is_none());
         let unknown_query = pane.process_pty_bytes(pane_id, 0, b"\x1b[?996n", &tx);
         assert!(unknown_query.terminal_responses.is_empty());
-        assert!(pane
-            .apply_host_terminal_appearance(Some(crate::terminal_theme::HostAppearance::Dark))
-            .is_none());
+        assert_eq!(
+            pane.apply_host_terminal_appearance(Some(crate::terminal_theme::HostAppearance::Dark)),
+            Some(Bytes::from_static(b"\x1b[?997;1n"))
+        );
 
         pane.process_pty_bytes(pane_id, 0, b"\x1bc", &tx);
         assert!(pane
