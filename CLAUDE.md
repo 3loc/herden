@@ -129,6 +129,7 @@ designed; they are compatibility surfaces, not public branding.
 
 - All builds, Swift tests, device installs, archives, and TestFlight uploads run on macOS; never attempt them from a Linux checkout. They all go through `make` (see `make help`). An interim TestFlight build is `make bump && make testflight` — App Store Connect rejects reused build numbers.
 - Protect long Mac release builds with `caffeinate` and a reconnectable session, but run the Host test suite detached with non-interactive stdin (`nohup caffeinate … </dev/null`), not inside tmux. Tmux makes updater tests see a TTY; an isolated test `PATH` must still include `/usr/sbin:/sbin` for `lsof`. Copy assembled release artifacts to `/vm-share` before performance or publication gates.
+- Nested Studio release shells can lose an outer `ZIG` export when `HOST_BUILD_ENV` rebuilds `PATH`; set the pinned executable as `ZIG=...` in the innermost `env`/`sh scripts/build-host-release.sh` command, or the asset script may report the required Zig version as missing.
 - Keep validation scoped to the changed product surface. Runtime-only work uses
   `make host-build`, `make host-test-one FILTER=…`, or `make host-test` and must
   not build iOS. App-only work uses `make ios-build-sim`,

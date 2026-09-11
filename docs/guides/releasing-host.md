@@ -30,6 +30,13 @@ Keep the performance baseline binary from the previous public release. Run the L
 pairing/upgrade PTY checks with both the candidate and previous public binary,
 then compare the candidate's exported API schema with the committed snapshot.
 
+When running the resumable build through nested SSH/tmux/caffeinate shells, set
+`ZIG` in the innermost command environment (for example,
+`env ZIG=/Users/ted/.cache/herden-release-tools/zig-aarch64-macos-0.16.0/zig
+sh scripts/build-host-release.sh ...`). An outer export can be lost while the
+Make recipe rebuilds `PATH`, causing the asset script to fall back to a
+different `zig` or report the pinned version as missing.
+
 Do not overlap cross builds or native tests sharing one source directory:
 `runtime/vendor/libghostty-vt/zig-out/lib` is shared even when Cargo target
 directories differ. After a cross build, invalidate the vendor build (touch its
