@@ -7,6 +7,11 @@
 
 ## Release
 
+- [2026-09-11 — Master deployment: iOS build 29 and Host 0.9.6 audit](2026-09-11/master-build29-host096-release.md)
+- [2026-09-11 — TestFlight build 29: outdoor contrast and permanent terminal controls](2026-09-11/testflight-build-29-outdoor-controls.md)
+- [2026-09-11 — TestFlight build 28: terminal contrast, keyboard and audio](2026-09-11/testflight-build-28-terminal-contrast.md)
+- [2026-09-11: Keyboard/audio build installed and running on Tedda; independently verified](2026-09-11/tedda-keyboard-deployment.md)
+
 - [2026-09-11: Host 0.9.5 per-tab desktop colour isolation published and rolled out; iOS 27 unchanged; deployment reverified 12:35 UTC](2026-09-11/host-095-desktop-colour-release.md)
 - [2026-09-11: Host 0.9.4 published and rolled to eleven reachable Hosts; iOS 27 reverified](2026-09-11/host-094-public-fleet-release.md)
 - [2026-09-11: Build 27 on both phones and TestFlight; Host 0.9.4 pending](2026-09-11/master-build27-host094-checkpoint.md)

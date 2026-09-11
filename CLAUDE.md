@@ -35,6 +35,7 @@ eliminating several dead ends.
 | `Sources/Herden/Console/ConsoleAgent.swift` + `AgentCardView.swift` + `ConsoleView.swift` | Projects each workspace as one Space row, with its terminal or Agent occupant and attention/pin ordering. |
 | `Sources/Herden/Console/StartAgentView.swift` + `ConsoleView.swift` + `AgentTerminalView.swift` | Successful Agent launch handoff: record the destination before dismissing the sheet, then open its terminal after dismissal yields. |
 | `Sources/Herden/Terminal/SharedTerminalKeyboard.swift` | The single Agent/Space control deck, including dictation, language selection, attachments and Paste. |
+| `Sources/Herden/Dictation/HerdenAudioRecorder.swift` + `AudioRecordingSheet.swift` | Protected M4A capture, review and explicit handoff into the attachment staging path. |
 | `Sources/Herden/Transport/SSHTransportSettings.swift` | Host command defaults and injectable SSH environment boundaries. |
 | `Sources/Herden/Settings/TerminalAppearancePane.swift` + `TerminalThemeSettings.swift` | Selected daylight/nighttime theme, applied locally to the iOS terminal renderer. |
 | `Sources/Herden/Transport/HerdenSSHTransport.swift` + `Transport.swift` | App-domain launch request and Host `agent.start` wire choreography. Client themes never enter launch requests. |

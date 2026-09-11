@@ -7,6 +7,11 @@ Inject these through the maintainer's secret manager. No credentials belong in
 request JSON. The helper sends one request, redacts password fields in output,
 and exits nonzero on errors; it never retries mutations automatically.
 
+When calling it remotely through Studio's `zsh -lic`, shell startup can prepend
+terminal-palette OSC sequences to stdout. Keep shell initialization separate
+from the JSON stream or strip those OSC records before passing the result to
+`jq`; contaminated stdout is not evidence that the Apple request failed.
+
 ```sh
 python3 .agents/skills/herden-testflight/scripts/asc.py \
   '/v1/apps?filter[bundleId]=ltd.3loc.herden&fields[apps]=name,bundleId'
