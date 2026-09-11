@@ -63,7 +63,9 @@ enum AgentQuickKey: CaseIterable, Hashable {
         case .up: "arrow.up"
         case .down: "arrow.down"
         case .right: "arrow.right"
-        case .escape, .tab, .controlC, .shiftTab, .shiftEnter, .enter, .backspace: nil
+        case .enter: "return"
+        case .backspace: "delete.left"
+        case .escape, .tab, .controlC, .shiftTab, .shiftEnter: nil
         }
     }
 
@@ -303,8 +305,8 @@ final class TerminalControlPadView: UIView {
 /// the pane pager, and a swipe that starts on a key must switch panes without
 /// also sending an Esc down the wire. Holding still repeats, so the arrows go
 /// on behaving like arrows.
-private final class TerminalKeyButton: UIButton {
-    private let keyAction: () -> Void
+final class TerminalKeyButton: UIButton {
+    var keyAction: () -> Void
     private let repeats: Bool
     private var repeatDelayTimer: Timer?
     private var repeatTimer: Timer?
@@ -337,7 +339,12 @@ private final class TerminalKeyButton: UIButton {
         }
     }
 
+    override var isEnabled: Bool {
+        didSet { if !isEnabled { cancelTimers() } }
+    }
+
     @objc private func pressed() {
+        guard isEnabled else { return }
         didRepeat = false
         guard repeats else { return }
 
@@ -374,7 +381,7 @@ private final class TerminalKeyButton: UIButton {
         cancelTimers()
     }
 
-    private func cancelTimers() {
+    func cancelTimers() {
         repeatDelayTimer?.invalidate()
         repeatDelayTimer = nil
         repeatTimer?.invalidate()

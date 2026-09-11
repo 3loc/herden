@@ -81,8 +81,8 @@ would run `herdr`, and run `herden pair` when you want to add the iPhone app.
 - **One Space to return to:** The Host sidebar and native iPhone Console show
   one list of Spaces. An Agent is what runs inside a Space, not a second place
   to navigate to. Open the Space to reach its real terminal and keep working.
-- **Add files inside Herden:** Pick Documents or Media from the iOS terminal
-  keyboard. Herden uploads the selected file to the Agent's Host over SSH and
+- **Add files inside Herden:** Choose Attach → Documents or Photos from the iOS terminal
+  keyboard, or Record audio to attach a voice recording. Herden uploads the selected file to the Agent's Host over SSH and
   inserts its path into the terminal input. Add instructions and press Return
   when you're ready.
 - **Share from another iOS app:** In Files, Photos or another app supporting

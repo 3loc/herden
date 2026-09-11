@@ -2153,8 +2153,8 @@ struct TerminalAttachTests {
         #expect(AgentQuickKey.shiftEnter.title == "⇧Enter")
         #expect(AgentQuickKey.enter.title == "Enter")
         #expect(AgentQuickKey.backspace.title == "Backspace")
-        #expect(AgentQuickKey.enter.systemImageName == nil)
-        #expect(AgentQuickKey.backspace.systemImageName == nil)
+        #expect(AgentQuickKey.enter.systemImageName == "return")
+        #expect(AgentQuickKey.backspace.systemImageName == "delete.left")
     }
 
     @MainActor
@@ -2556,6 +2556,18 @@ private final class TextInputDelegateRecorder: NSObject, UITextInputDelegate {
 }
 @Suite("Agent terminal theme authority")
 struct AgentTerminalThemeAuthorityFilterTests {
+    @Test("neutral true-colour foregrounds inherit the phone theme")
+    func neutralForegroundsBecomeDefault() {
+        var filter = AgentTerminalThemeAuthorityFilter()
+        let input = Data("before\u{1B}[0;38;2;238;238;238;48;2;30;30;30mafter".utf8)
+
+        let output = filter.consume(input)
+
+        #expect(
+            String(decoding: output, as: UTF8.self)
+                == "before\u{1B}[0;39;49mafter")
+    }
+
     @Test("neutral true-colour backgrounds inherit the phone theme")
     func neutralBackgroundsBecomeDefault() {
         var filter = AgentTerminalThemeAuthorityFilter()
@@ -2571,7 +2583,7 @@ struct AgentTerminalThemeAuthorityFilterTests {
     @Test("coloured semantic backgrounds stay explicit")
     func colouredBackgroundsStayExplicit() {
         var filter = AgentTerminalThemeAuthorityFilter()
-        let input = Data("\u{1B}[48;2;20;90;40mgreen diff".utf8)
+        let input = Data("\u{1B}[38;2;220;80;40;48;2;20;90;40mgreen diff".utf8)
 
         #expect(filter.consume(input) == input)
     }

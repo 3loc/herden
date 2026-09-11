@@ -137,9 +137,8 @@ struct TerminalKeysKeyboardTests {
 
     @Test func agentAndSpaceTerminalsShareTheFullControlDeck() {
         #expect(Set(TerminalDirectInputDeck.controlNames) == Set([
-            "Esc", "Ctrl-B", "Control C", "Backspace",
-            "h", "j", "k", "l", "/", "$",
-            "i", "a", "v", "Keyboard", "Dictate", "Dictation Language", "Return",
+            "Left Arrow", "Right Arrow", "Backspace", "Control C", "Return", "More",
+            "Attach", "Paste", "Dictate text", "Record audio", "Keyboard",
         ]))
     }
 

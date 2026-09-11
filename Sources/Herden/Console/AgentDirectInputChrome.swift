@@ -21,6 +21,7 @@ struct AgentDirectInputChromeContext {
         let sendQuickKey: (AgentQuickKey) -> Void
         let sendInput: (Data) -> Void
         var keyboardControl: TerminalKeyboardControl? = nil
+        var recordAudio: (PreparedFile) -> Bool = { _ in false }
     }
 
     let presentation: Presentation
@@ -77,6 +78,7 @@ struct AgentDirectInputChrome: View {
             canUpload: interactions.actions.canBegin,
             documents: interactions.actions.addFile,
             media: interactions.actions.addImage,
+            recordAudio: interactions.recordAudio,
             toggleSystemKeyboard: interactions.toggleKeyboard,
             dismissSystemKeyboard: interactions.dismissKeyboard,
             sendQuickKey: interactions.sendQuickKey,

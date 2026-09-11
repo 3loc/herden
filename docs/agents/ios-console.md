@@ -18,7 +18,9 @@ Paths below are relative to `Sources/Herden/`.
 | `Console/ConsoleAgent.swift`, `Console/AgentCardView.swift` | Name-first presentation; Host + pane identity stays independent of display labels. |
 | `Console/AgentTerminalView.swift` | New Agent navigation from an attached Agent, after the launch sheet dismisses. |
 | `Transport/Transport.swift`, `Transport/HerdenSSHTransport.swift` | New Space specification, remote home resolution and launch in the returned root pane. |
-| `Terminal/SharedTerminalKeyboard.swift` | One keyboard for Agent and shell terminals, including language and attachments. |
+| `Terminal/SharedTerminalKeyboard.swift` | Shared arrow/attachment toolbar, Apple dictation and recording sheet for Agent and shell terminals. |
+| `Dictation/HerdenAudioRecorder.swift` + `AudioRecordingSheet.swift` | Protected M4A capture, review, interruption handling and explicit file ownership transfer. |
+| `Attachments/ComposerStagingStore.swift` | File upload and retries; accepted recordings enter the existing SFTP path. |
 
 New Agent flows through StartAgentStore to the transport, which creates a
 Space and starts the Agent in its existing root pane; the refreshed snapshot
@@ -45,3 +47,8 @@ Regression coverage: `StartAgentStoreTests`, `TerminalAgentSwitcherTests`,
 `ConsoleListPresentationStoreTests`, `ConsoleStoreTests` and the new-Space launch
 cases in `HerdenSSHTransportBehaviorE2ETests`. Run Swift validation on a Mac
 through `make`; real-SSH cases need their fixtures and may skip locally.
+
+Recording ownership passes synchronously only when staging accepts it. Sheet
+teardown deletes unaccepted recordings; staging owns accepted files through
+retry and cleanup. A terminal replacement dismisses the recorder, and upload
+completion checks the original input generation before inserting the path.

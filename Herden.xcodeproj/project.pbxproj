@@ -25,6 +25,7 @@
 		07644497F33F8D3094454FB7 /* AppIcon.icon in Resources */ = {isa = PBXBuildFile; fileRef = AA140F7A9390F17A367C27EE /* AppIcon.icon */; };
 		080874B343D6B2856D0C186D /* WorktreeDetailView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7225A05E9495148F47928C78 /* WorktreeDetailView.swift */; };
 		089DD7B9DE59C98497EF3C7F /* GhosttyContentLayers.swift in Sources */ = {isa = PBXBuildFile; fileRef = BB7C13F1F8B124EBB0A3E187 /* GhosttyContentLayers.swift */; };
+		089F0BA05E231CAD06ED7139 /* AudioRecordingSheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0AF7D84323801E1287F5C6DA /* AudioRecordingSheet.swift */; };
 		095863392EF5AC0876691F3C /* LiveActivityControlling.swift in Sources */ = {isa = PBXBuildFile; fileRef = A5EEAC3807AAAA72691B06C2 /* LiveActivityControlling.swift */; };
 		0975D8CC20760122C60779C3 /* AgentDetailView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 62A88BE174C06BEF8848D4F9 /* AgentDetailView.swift */; };
 		0A0C3B68C9EAEA49F4907450 /* AgentNotificationRouting.swift in Sources */ = {isa = PBXBuildFile; fileRef = E82F16D9CFE944F335671C7F /* AgentNotificationRouting.swift */; };
@@ -32,6 +33,7 @@
 		0E5EC11B624CC299E29BC66A /* NotificationRegistrationError.swift in Sources */ = {isa = PBXBuildFile; fileRef = 169A8F1F9A14649E0D2C97A8 /* NotificationRegistrationError.swift */; };
 		0ED8B74B366CA89C2B2FE0A2 /* GridReportSettling.swift in Sources */ = {isa = PBXBuildFile; fileRef = 78FDF5C5941AF90AB1F8DCAE /* GridReportSettling.swift */; };
 		0FFEE27CA6A595966861288C /* HerdenSSH in Frameworks */ = {isa = PBXBuildFile; productRef = DEC4069660C6B9FBF77367F7 /* HerdenSSH */; };
+		100CD343F389D1FE3328FD97 /* HerdenAudioRecorderTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 566B8D6DCC51A317D19EA69F /* HerdenAudioRecorderTests.swift */; };
 		11AB082223E3604E16D5B4BE /* PairingCode.swift in Sources */ = {isa = PBXBuildFile; fileRef = 232C76F07EC3EAA2C90846D3 /* PairingCode.swift */; };
 		159E20A5B513C4EFD4E91629 /* LicenseNoticeTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1EA715A391219AEDA446D858 /* LicenseNoticeTests.swift */; };
 		15AE00A7F9D8A30CC4187807 /* AgentInputModeSettingsTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0075C4B1BE495876B6A9929C /* AgentInputModeSettingsTests.swift */; };
@@ -299,6 +301,7 @@
 		BFF7715691BA8C40802C745D /* AgentName.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1635355FB4027C8A35D74FE1 /* AgentName.swift */; };
 		C026524847AAF514FD28B0B9 /* FilePreparer.swift in Sources */ = {isa = PBXBuildFile; fileRef = 770010A5B8E3B49143C8C662 /* FilePreparer.swift */; };
 		C076D482955DD2D20287083D /* HerdenSSHHostKeyPolicyTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 87372A0732B9087D01E2BF38 /* HerdenSSHHostKeyPolicyTests.swift */; };
+		C0BFCE630D931D3F08846744 /* HerdenAudioRecorder.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0F96210B17CE23A3955CD9CD /* HerdenAudioRecorder.swift */; };
 		C0C40FCD95564190B5508F76 /* NotificationRelayEndpoint.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3E81B953CBBF4FC7956C9ADE /* NotificationRelayEndpoint.swift */; };
 		C0C6B3AE8356D899922A67C5 /* HostLiveActivityCoordinator.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1C1BF3CDBA914DD56E1646BF /* HostLiveActivityCoordinator.swift */; };
 		C118A89E6AF972E6F5915726 /* TerminalByteFeed.swift in Sources */ = {isa = PBXBuildFile; fileRef = E5BFEB01DCA9D062F4F43654 /* TerminalByteFeed.swift */; };
@@ -437,6 +440,7 @@
 		094928ED785859C9043C4CA4 /* ShareDestination.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ShareDestination.swift; sourceTree = "<group>"; };
 		09F55AA492CE42BA85C9D634 /* TerminalThemePreview.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TerminalThemePreview.swift; sourceTree = "<group>"; };
 		09F950F12B81D2C324427BB6 /* LicenseNotices.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LicenseNotices.swift; sourceTree = "<group>"; };
+		0AF7D84323801E1287F5C6DA /* AudioRecordingSheet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AudioRecordingSheet.swift; sourceTree = "<group>"; };
 		0C23A46C6B8D4384F7DB2C7D /* Herden.app */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.application; path = Herden.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		0C67C2FC68E3C937D984228E /* HerdenTests.xctest */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.cfbundle; path = HerdenTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		0D6A85E03756160F348D69A2 /* TerminalThemeSettings.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TerminalThemeSettings.swift; sourceTree = "<group>"; };
@@ -448,6 +452,7 @@
 		0F3BF397F583E206D30130C0 /* HerdenHostPath.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HerdenHostPath.swift; sourceTree = "<group>"; };
 		0F48859372956E0F5EF209D2 /* StartAgentStoreTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StartAgentStoreTests.swift; sourceTree = "<group>"; };
 		0F5F74203D9C0580C5885F8D /* HostTelemetryPresentation.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HostTelemetryPresentation.swift; sourceTree = "<group>"; };
+		0F96210B17CE23A3955CD9CD /* HerdenAudioRecorder.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HerdenAudioRecorder.swift; sourceTree = "<group>"; };
 		112A505FF1705B4F0230DC31 /* TerminalFontSettings.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TerminalFontSettings.swift; sourceTree = "<group>"; };
 		12BC2D971262AFF0AD36CD8F /* RenameSheetView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RenameSheetView.swift; sourceTree = "<group>"; };
 		12EAD0372CB824750435BDEB /* TerminalGridReportPhaseRecorder.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TerminalGridReportPhaseRecorder.swift; sourceTree = "<group>"; };
@@ -545,6 +550,7 @@
 		54FA1C9286422F612E826777 /* ClosePaneStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ClosePaneStore.swift; sourceTree = "<group>"; };
 		55C7C947A63D9BD1092EFC72 /* NotificationEnvelope.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NotificationEnvelope.swift; sourceTree = "<group>"; };
 		564FF2104654650FD42216A2 /* TerminalAppearancePane.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TerminalAppearancePane.swift; sourceTree = "<group>"; };
+		566B8D6DCC51A317D19EA69F /* HerdenAudioRecorderTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HerdenAudioRecorderTests.swift; sourceTree = "<group>"; };
 		56C02A3B77E3DE9A689ACD2D /* TerminalTextSelectionPresenter.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TerminalTextSelectionPresenter.swift; sourceTree = "<group>"; };
 		58FE62215D292F07A968F8FF /* TerminalMessageJumpControllerTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TerminalMessageJumpControllerTests.swift; sourceTree = "<group>"; };
 		5A9E6484546FD13B3D0CA9FD /* JSONValueTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = JSONValueTests.swift; sourceTree = "<group>"; };
@@ -1128,6 +1134,7 @@
 				032C96CFD48B77FB1F285F19 /* FilePreparerTests.swift */,
 				A311B2D510DA19FDA3689D93 /* GeneratedWireTypesTests.swift */,
 				B6C6B2039B239B275409350B /* GitBranchNameTests.swift */,
+				566B8D6DCC51A317D19EA69F /* HerdenAudioRecorderTests.swift */,
 				CC5F08AD4748E168DD53BC86 /* HerdenDictationInputTests.swift */,
 				ABB5BEF0B55C142F4382D50B /* HerdenHostPathTests.swift */,
 				48D54C91718E490EE719D8DA /* HerdenSocketLocationTests.swift */,
@@ -1216,6 +1223,8 @@
 		8F238F83FCB30956A3EC77BB /* Dictation */ = {
 			isa = PBXGroup;
 			children = (
+				0AF7D84323801E1287F5C6DA /* AudioRecordingSheet.swift */,
+				0F96210B17CE23A3955CD9CD /* HerdenAudioRecorder.swift */,
 				87AB5E76EC8D8043671EE2F3 /* HerdenSpeechRecorder.swift */,
 			);
 			path = Dictation;
@@ -1590,6 +1599,7 @@
 				D881B34EC6A82ECD67B61BB7 /* AttachTerminalStore.swift in Sources */,
 				A52ABC82D5079FCA19FCDDC5 /* AttachUserMessageIndex.swift in Sources */,
 				E5016AF127172A05F78B8A5F /* AttachmentStaging.swift in Sources */,
+				089F0BA05E231CAD06ED7139 /* AudioRecordingSheet.swift in Sources */,
 				196371E545426B55CBE96023 /* Base64URL.swift in Sources */,
 				50D5BE815E21336AB2EA2442 /* ClosePaneStore.swift in Sources */,
 				F91BB6DDADE4BC22360ED059 /* ComposerStagingStore.swift in Sources */,
@@ -1608,6 +1618,7 @@
 				6EE1930AA094550000E1D9CA /* FilePreparer.swift in Sources */,
 				365377891B653B7D74C52C23 /* GitBranchName.swift in Sources */,
 				932CCB9B6946ECCA67FFAC5F /* HerdenApp.swift in Sources */,
+				C0BFCE630D931D3F08846744 /* HerdenAudioRecorder.swift in Sources */,
 				2D93BC9C097AEBFCA14B472A /* HerdenBrand.swift in Sources */,
 				722DDB940926A75DAEFBBF4E /* HerdenHostPath.swift in Sources */,
 				B2FAF20C3AF6DD57E1E1073E /* HerdenSSHHostKeyVerifier.swift in Sources */,
@@ -1781,6 +1792,7 @@
 				089DD7B9DE59C98497EF3C7F /* GhosttyContentLayers.swift in Sources */,
 				92A20D5F539FD7977B58D9A2 /* GitBranchNameTests.swift in Sources */,
 				0ED8B74B366CA89C2B2FE0A2 /* GridReportSettling.swift in Sources */,
+				100CD343F389D1FE3328FD97 /* HerdenAudioRecorderTests.swift in Sources */,
 				933EEFCE05990313E3ABD13A /* HerdenDictationInputTests.swift in Sources */,
 				C47DEECB1DE8EDD1CBB54404 /* HerdenHostPathTests.swift in Sources */,
 				40FDDC559FA368743ED0294C /* HerdenSSHDirectStreamLocalE2ETests.swift in Sources */,
@@ -1949,12 +1961,12 @@
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				CODE_SIGN_ENTITLEMENTS = Sources/Herden/Herden.entitlements;
 				CODE_SIGN_IDENTITY = "iPhone Developer";
-				CURRENT_PROJECT_VERSION = 27;
+				CURRENT_PROJECT_VERSION = 29;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_KEY_CFBundleDisplayName = Herden;
 				INFOPLIST_KEY_ITSAppUsesNonExemptEncryption = NO;
 				INFOPLIST_KEY_NSCameraUsageDescription = "Herden uses the camera to scan the Pairing Code shown on your computer, so you can add that machine without typing anything.";
-				INFOPLIST_KEY_NSMicrophoneUsageDescription = "Herden uses the microphone for on-device terminal dictation.";
+				INFOPLIST_KEY_NSMicrophoneUsageDescription = "Herden uses the microphone for on-device dictation and audio recordings you choose to attach.";
 				INFOPLIST_KEY_NSSpeechRecognitionUsageDescription = "Herden converts speech to terminal text on this iPhone.";
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
 				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
@@ -1993,7 +2005,7 @@
 			buildSettings = {
 				APPLICATION_EXTENSION_API_ONLY = YES;
 				CODE_SIGN_ENTITLEMENTS = Sources/HerdenShareExtension/HerdenShareExtension.entitlements;
-				CURRENT_PROJECT_VERSION = 27;
+				CURRENT_PROJECT_VERSION = 29;
 				INFOPLIST_FILE = Sources/HerdenShareExtension/Info.plist;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
@@ -2016,12 +2028,12 @@
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				CODE_SIGN_ENTITLEMENTS = Sources/Herden/Herden.entitlements;
 				CODE_SIGN_IDENTITY = "iPhone Developer";
-				CURRENT_PROJECT_VERSION = 27;
+				CURRENT_PROJECT_VERSION = 29;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_KEY_CFBundleDisplayName = Herden;
 				INFOPLIST_KEY_ITSAppUsesNonExemptEncryption = NO;
 				INFOPLIST_KEY_NSCameraUsageDescription = "Herden uses the camera to scan the Pairing Code shown on your computer, so you can add that machine without typing anything.";
-				INFOPLIST_KEY_NSMicrophoneUsageDescription = "Herden uses the microphone for on-device terminal dictation.";
+				INFOPLIST_KEY_NSMicrophoneUsageDescription = "Herden uses the microphone for on-device dictation and audio recordings you choose to attach.";
 				INFOPLIST_KEY_NSSpeechRecognitionUsageDescription = "Herden converts speech to terminal text on this iPhone.";
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
 				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
@@ -2125,7 +2137,7 @@
 			buildSettings = {
 				APPLICATION_EXTENSION_API_ONLY = YES;
 				CODE_SIGN_ENTITLEMENTS = Sources/HerdenShareExtension/HerdenShareExtension.entitlements;
-				CURRENT_PROJECT_VERSION = 27;
+				CURRENT_PROJECT_VERSION = 29;
 				INFOPLIST_FILE = Sources/HerdenShareExtension/Info.plist;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",

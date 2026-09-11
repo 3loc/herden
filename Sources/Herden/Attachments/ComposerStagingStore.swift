@@ -9,11 +9,13 @@ final class ComposerStagingStore {
     enum Source: Sendable {
         case photo(any ImageSelection)
         case file(URL)
+        /// App-owned recording. Ownership passes to this store only when begin returns true.
+        case recording(PreparedFile)
 
         fileprivate var medium: Medium {
             switch self {
             case .photo: .image
-            case .file: .file
+            case .file, .recording: .file
             }
         }
     }
@@ -197,18 +199,19 @@ final class ComposerStagingStore {
         self.composer = composer
     }
 
-    func begin(_ source: Source, insertPath: ((String) -> Bool)? = nil) {
-        guard !state.isBusy, operationTask == nil else { return }
+    @discardableResult
+    func begin(_ source: Source, insertPath: ((String) -> Bool)? = nil) -> Bool {
+        guard !state.isBusy, operationTask == nil else { return false }
         self.insertPath = insertPath
         discardRetainedPreparedSource()
         cancellationDisposition = nil
         operationID &+= 1
         let currentID = operationID
         state = .preparing(source.medium)
-        operationTask = Task { [weak self] in
-            guard let self else { return }
+        operationTask = Task {
             await self.runSelection(source, operationID: currentID)
         }
+        return true
     }
 
     func perform(_ command: Command) {
@@ -321,6 +324,8 @@ final class ComposerStagingStore {
             try await imageAdapter.prepare(selection)
         case .file(let sourceURL):
             try await fileAdapter.prepare(sourceURL)
+        case .recording(let file):
+            .file(file)
         }
     }
 
@@ -510,15 +515,17 @@ final class ComposerStagingStore {
                 return Presentation(icon: "info.circle", title: title, accessibilityLabel: title,
                     commands: [.copyPath, .dismiss])
             }
+            // A complete copy-and-insert needs no acknowledgement: the path
+            // appearing at the cursor is the feedback. Keep partial success
+            // visible because the recovery action still matters.
+            if outcome.copied { return nil }
             let title =
-                outcome.copied
-                ? "\(outcome.medium.displayName) path inserted and copied."
-                : "\(outcome.medium.displayName) path inserted, but couldn't be copied."
+                "\(outcome.medium.displayName) path inserted, but couldn't be copied."
             return Presentation(
-                icon: outcome.copied ? "checkmark.circle" : "info.circle",
+                icon: "info.circle",
                 title: title,
                 accessibilityLabel: title,
-                commands: outcome.copied ? [.dismiss] : [.copyPath, .dismiss])
+                commands: [.copyPath, .dismiss])
         }
     }
 }

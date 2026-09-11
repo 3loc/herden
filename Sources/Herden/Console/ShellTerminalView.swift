@@ -119,6 +119,7 @@ struct ShellTerminalView: View {
                         canUpload: staging?.canBegin == true,
                         documents: { isSelectingFile = true },
                         media: { isSelectingPhoto = true },
+                        recordAudio: { beginAttachment(.recording($0)) },
                         toggleSystemKeyboard: { keyboardControl.toggleKeyboard() },
                         dismissSystemKeyboard: { keyboardControl.dismissKeyboard() },
                         sendQuickKey: { keyboardControl.sendQuickKey($0) },
@@ -230,16 +231,17 @@ struct ShellTerminalView: View {
             }
     }
 
-    private func beginAttachment(_ source: ComposerStagingStore.Source) {
+    @discardableResult
+    private func beginAttachment(_ source: ComposerStagingStore.Source) -> Bool {
         let generation = store.input.liveGeneration
-        staging?.begin(source, insertPath: { [weak store, weak keyboardControl] path in
+        return staging?.begin(source, insertPath: { [weak store, weak keyboardControl] path in
             guard isOnStage, let store, let generation,
                 store.input.liveGeneration == generation,
                 let keyboardControl, keyboardControl.terminal != nil
             else { return false }
             keyboardControl.paste(path)
             return true
-        })
+        }) ?? false
     }
 
     private func commandTitle(_ command: ComposerStagingStore.Command) -> String {

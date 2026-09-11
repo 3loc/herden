@@ -7,10 +7,10 @@ import Observation
 /// Codex and Claude can paint neutral, true-colour panels after probing the
 /// Host's persistent virtual terminal. Those RGB cells survive a later attach
 /// from a differently themed phone, even though ordinary default-colour cells
-/// correctly use Ghostty's active iPhone theme. Turning only achromatic RGB
-/// backgrounds back into SGR default-background keeps semantic coloured
-/// backgrounds (diffs, warnings, selections) intact while preventing a stale
-/// Host light/dark choice from becoming a black or white slab on the phone.
+/// correctly use Ghostty's active iPhone theme. Turning achromatic RGB
+/// foregrounds and backgrounds back into their SGR defaults keeps semantic
+/// colours (syntax, diffs, warnings, selections) intact while preventing a
+/// stale Host light/dark choice from producing pale text or a neutral slab.
 ///
 /// Attach output is arbitrarily chunked, so an incomplete CSI sequence is held
 /// until the next call rather than leaking half of a colour command to Ghostty.
@@ -85,13 +85,14 @@ struct AgentTerminalThemeAuthorityFilter {
         var changed = false
         while index < fields.count {
             if index + 4 < fields.count,
-                fields[index] == "48", fields[index + 1] == "2",
+                let colorDefault = defaultColorCode(for: fields[index]),
+                fields[index + 1] == "2",
                 let red = UInt8(fields[index + 2]),
                 let green = UInt8(fields[index + 3]),
                 let blue = UInt8(fields[index + 4]),
                 isAchromatic(red, green, blue)
             {
-                rewritten.append("49")
+                rewritten.append(colorDefault)
                 index += 5
                 changed = true
             } else {
@@ -101,6 +102,14 @@ struct AgentTerminalThemeAuthorityFilter {
         }
         guard changed else { return sequence }
         return Array("\u{1B}[\(rewritten.joined(separator: ";"))m".utf8)
+    }
+
+    private static func defaultColorCode(for field: Substring) -> String? {
+        switch field {
+        case "38": "39"
+        case "48": "49"
+        default: nil
+        }
     }
 
     private static func isAchromatic(_ red: UInt8, _ green: UInt8, _ blue: UInt8) -> Bool {

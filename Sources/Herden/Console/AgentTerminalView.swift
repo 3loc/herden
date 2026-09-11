@@ -742,15 +742,15 @@ struct AgentTerminalView: View {
             presentation: composerKeyboardPresentation)
     }
 
-    private func beginAttachment(_ source: ComposerStagingStore.Source) {
+    @discardableResult
+    private func beginAttachment(_ source: ComposerStagingStore.Source) -> Bool {
         guard isDirectInput else {
-            attach.staging.begin(source)
-            return
+            return attach.staging.begin(source)
         }
         let generation = attach.input.liveGeneration
         let control = keyboardControl
         let onStage = isOnStage
-        attach.staging.begin(source, insertPath: { [weak attach, weak control] path in
+        return attach.staging.begin(source, insertPath: { [weak attach, weak control] path in
             guard let attach, let generation, attach.input.liveGeneration == generation,
                   let control, control.terminal != nil, onStage() else { return false }
             control.paste(path)
@@ -924,7 +924,8 @@ struct AgentTerminalView: View {
                     switchKeyboard: directKeyboardSwitchAction,
                     sendQuickKey: sendAgentQuickKey,
                     sendInput: { data in keyboardControl.sendInput(data) },
-                    keyboardControl: keyboardControl)))
+                    keyboardControl: keyboardControl,
+                    recordAudio: { beginAttachment(.recording($0)) })))
             .onAppear {
                 interactionProbe?.value?.directInputChromeDidAppear(
                     sendQuickKey: { key in sendAgentQuickKey(key) },

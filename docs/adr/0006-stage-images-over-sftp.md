@@ -1,7 +1,10 @@
 # Stage attachments over SFTP and insert their paths without submitting
 
-Direct Input exposes Files and Photos through separate Documents and Media
-buttons in the bottom keyboard row, alongside immediate Paste.
+Direct Input exposes Documents and Photos through Attach, alongside immediate
+Paste. Record audio prepares a compressed M4A file in protected local storage,
+then offers playback, discard and explicit attachment. Accepted recordings pass
+ownership directly to the file staging path; rejected attempts retain the
+recording for review. Audio does not use speech recognition or auto-submit.
 It reuses the staging module below, but supplies a per-operation insertion
 callback to the live terminal paste path. The callback checks that the Agent
 screen and terminal generation are still current. If either changed during

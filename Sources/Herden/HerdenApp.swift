@@ -14,6 +14,7 @@ struct HerdenApp: App {
         Brand.registerFonts()
         try? ImagePreparer.cleanupRemnants()
         try? FilePreparer.cleanupRemnants()
+        try? HerdenAudioRecorder.cleanupRemnants()
     }
 
     var body: some Scene {

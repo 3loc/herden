@@ -7,7 +7,7 @@ you need within thumb reach.
 ## Write, correct, then send
 
 Tap the prompt to show the iPhone keyboard. Type your message, or choose a
-language from the terminal menu and tap the microphone. Dictation transcribes
+**Dictation Language** from **More** and tap **Dictate text**. Dictation transcribes
 on the phone and never presses Return. Tap Stop when finished.
 
 To correct a character or word, tap within the prompt and drag left or right
@@ -17,48 +17,43 @@ the character before the cursor, then type the replacement. Holding the iOS
 space bar also provides its familiar keyboard trackpad.
 
 For example, to change “open the blue file” to “open the green file”, move the
-cursor just after “blue”, press Backspace four times, and type “green”. The rest
+cursor just after “blue” with the left/right arrows, press Backspace four times,
+and type “green”. The rest
 of the sentence stays in place. Press Return only when you are ready to submit.
 
 Autocorrection, smart punctuation and automatic capitalisation are disabled
 because terminal input must preserve what you intend. Dictation currently
 normalises its transcript to lowercase. The language menu is deliberately
 limited to Traditional Chinese (Taiwan), Simplified Chinese, Swedish,
-Portuguese (Portugal), and English (US), using available on-device models.
+Portuguese (Portugal), English (US), German and French, using available
+on-device models.
 
-## Vi controls
+## Everyday controls
 
-Herden supplies native vi settings when starting or restoring Claude and Codex.
-This is a setting in each Agent's prompt editor. It does not install Vim or
-change your shell's keyboard mode.
+The toolbar stays above Apple's keyboard. **Left** and **Right** move the
+cursor; hold either arrow to repeat. **Attach** opens Documents or Photos,
+and **Paste** inserts clipboard text. The keyboard button shows or hides the
+system keyboard. **More** holds Escape, Tab, interrupt (Ctrl-C), Ctrl-B, Up,
+Down, Return and dictation language.
 
-- **i:** enter insert mode to type or dictate.
-- **Esc:** return to normal mode for vi commands.
-- **h / l:** move left / right in normal mode.
-- **j / k:** movement defined by the Agent's editor, often between prompt lines.
-- **a:** enter insert mode after the cursor.
-- **Ctrl-C:** interrupt; the Agent may ask you to press again before exiting.
-- **Return:** submit or confirm the current prompt.
+Existing Agents may use Vim editing. If an Agent is in normal mode, choose
+**More → Insert text (Vim)** before typing. Herden passes that explicit action
+to the Agent; scrolling and cursor movement do not change editing modes.
 
-Native cursor keys sent by touch editing work in both normal and insert modes;
-touch movement does not silently change modes. Press **i** before entering text
-if the Agent is showing normal mode. The other vi keys are passed through to
-the Agent, whose supported commands may differ from a full Vim editor.
+## Record an audio attachment
 
-Existing Agents retain their current mode until restarted or changed with
-their own settings. When launching manually in a shell, use:
+**Dictate text** uses Apple's on-device speech recognition and inserts text.
+**Record audio** keeps your voice as a compressed M4A recording instead.
 
-```sh
-claude --settings '{"editorMode":"vim"}'
-codex -c tui.vim_mode_default=true
-```
+Tap **Stop recording**, listen with **Play**, then choose **Attach audio** or
+**Discard**. Recordings stop after ten minutes or when interrupted/backgrounded;
+they never resume recording automatically. Cancelling the sheet discards the
+local recording. An upload that fails can be retried through the attachment
+status bar.
 
-To make the preference permanent outside Herden, merge `"editorMode": "vim"`
-into your existing `~/.claude/settings.json`, and `vim_mode_default = true` into
-the `[tui]` table of `~/.codex/config.toml`. Preserve the other settings; do not
-replace the files. See [Claude's editor configuration](https://code.claude.com/docs/en/terminal-config)
-and [Codex's configuration reference](https://developers.openai.com/codex/config-reference/).
-These settings require Agent versions that support them.
+Audio uses the same SSH file upload as Documents. Herden inserts its Host path
+without pressing Return. The Agent needs audio support to consume the file.
+Completed Host files remain there; Herden removes its temporary local copy.
 
 ## Move between work
 

@@ -77,7 +77,7 @@ enum TerminalThemeOption: String, CaseIterable, Identifiable, Sendable {
 
     var detail: String {
         switch self {
-        case .followSystem: "Alabaster in Light Mode, Afterglow in Dark Mode"
+        case .followSystem: "High-contrast Alabaster by day, Afterglow at night"
         case .vesper: "A warm, low-contrast dark theme"
         case .appleSystemColors: "Apple's terminal palette for each appearance"
         case .dracula: "The classic high-contrast dark palette"
@@ -158,11 +158,17 @@ enum TerminalThemeOption: String, CaseIterable, Identifiable, Sendable {
     /// bright-palette accents, and the built-ins are the pair every existing
     /// install has been rendering.
     func configuration(isDark: Bool) -> TerminalConfiguration {
+        let base: TerminalConfiguration
         if self == .followSystem {
-            return isDark ? .afterglow : .alabaster
+            base = isDark ? .afterglow : .alabaster
+        } else {
+            base = Self.definitions[catalogName(isDark: isDark)]?
+                .toTerminalConfiguration() ?? .default
         }
-        return Self.definitions[catalogName(isDark: isDark)]?
-            .toTerminalConfiguration() ?? .default
+        // Preserve each palette's hue relationships, but make Ghostty lift any
+        // foreground that would wash out against its background to AAA-level
+        // contrast. This applies after SGR styling too, including dim output.
+        return base.minimumContrast(7)
     }
 
     var terminalTheme: TerminalTheme {

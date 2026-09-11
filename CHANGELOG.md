@@ -8,6 +8,13 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+### Changed
+
+- Simplify the iOS terminal keyboard with repeating left/right arrows, Attach,
+  Paste and clearly labelled Apple text dictation. Keep advanced keys under More.
+- Record, review and attach compressed audio through the existing file upload
+  flow, with cancellation and retry support and no automatic prompt submission.
+
 ### Fixed
 
 - Resume Agents using their own terminal's client colour context, not the global

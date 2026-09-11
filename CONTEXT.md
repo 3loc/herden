@@ -176,8 +176,8 @@ terminal pane view
 
 **Direct Input**:
 Herden's default Agent-detail mode that hides the Composer card and routes the
-system keyboard plus a compact app-owned shortcut row (Esc, Tab, Shift-Tab,
-Enter) into the live Attach PTY. The draft stays in `AgentComposerStore`
+system keyboard plus the shared toolbar (arrows, Attach, Paste, text dictation
+and audio recording) into the live Attach PTY. The draft stays in `AgentComposerStore`
 untouched. Mode preference is app-wide; the legacy injectable model retains its
 Composer fallback for compatibility tests, while the production app defaults
 to Direct Input. Distinct from Shell

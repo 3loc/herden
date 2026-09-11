@@ -1,5 +1,6 @@
 import Foundation
 import GhosttyTerminal
+import GhosttyTheme
 import SwiftUI
 import Testing
 
@@ -26,6 +27,19 @@ struct TerminalThemeSettingsTests {
                 == TerminalTheme(
                     light: TerminalThemeOption.followSystem.configuration(isDark: false),
                     dark: TerminalThemeOption.vesper.configuration(isDark: true)))
+    }
+
+    @Test func everyThemeEnforcesOutdoorLegibility() {
+        #expect(
+            TerminalThemeOption.followSystem.configuration(isDark: false)
+                == TerminalConfiguration.alabaster.minimumContrast(7))
+        #expect(
+            TerminalThemeOption.followSystem.configuration(isDark: true)
+                == TerminalConfiguration.afterglow.minimumContrast(7))
+        #expect(
+            TerminalThemeOption.modus.configuration(isDark: false)
+                == TerminalThemeOption.definitions["Modus Operandi"]?
+                    .toTerminalConfiguration().minimumContrast(7))
     }
 
     /// Pre-slot releases persisted one selection; it must seed both slots so

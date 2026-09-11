@@ -6,6 +6,37 @@ import Testing
 @MainActor
 @Suite("Composer staging store")
 struct ComposerStagingStoreTests {
+    @Test func recordedAudioUsesFileStagingAndRetainsTheFileAcrossRetry() async throws {
+        let fixture = try await makeFixture(.file, usesComposer: false, stagePlans: [
+            .failure(.transferFailed), .success("/tmp/herden/audio/file.m4a"),
+        ])
+        defer { fixture.cleanup() }
+        let url = fixture.directory.appendingPathComponent("recording.m4a")
+        try Data([1, 2, 3]).write(to: url)
+        let file = PreparedFile(fileURL: url, fileExtension: "m4a", byteCount: 3)
+        var pasted: [String] = []
+        #expect(fixture.store.begin(.recording(file), insertPath: { pasted.append($0); return true }))
+        try await waitUntil("audio upload should fail") {
+            if case .failed = fixture.store.state { return true }; return false
+        }
+        #expect(FileManager.default.fileExists(atPath: url.path))
+        #expect(pasted.isEmpty)
+        fixture.store.perform(.retry)
+        try await waitUntil("audio retry should complete") { fixture.store.state.isCompleted }
+        #expect(await fixture.transport.fileStageRequests == [file, file])
+        #expect(pasted == ["/tmp/herden/audio/file.m4a "])
+        #expect(!FileManager.default.fileExists(atPath: url.path))
+    }
+
+    @Test func leavingBeforeRecordingUploadStartsStillCleansUpOwnedFile() async throws {
+        let fixture = try await makeFixture(.file, usesComposer: false)
+        defer { fixture.cleanup() }
+        #expect(fixture.store.begin(.recording(fixture.preparedFile)))
+        await fixture.store.leave()
+        #expect(!fixture.preparedFileExists(for: .file))
+        #expect(fixture.store.state == .idle)
+    }
+
     @Test func shellAttachmentWorksWithoutComposer() async throws {
         let fixture = try await makeFixture(.file, usesComposer: false)
         defer { fixture.cleanup() }
@@ -75,13 +106,7 @@ struct ComposerStagingStoreTests {
         #expect(fixture.composer.draft == "\(path) ")
         #expect(!fixture.preparedFileExists(for: medium))
         #expect(await fixture.stageRequestCount(for: medium) == 1)
-        #expect(
-            fixture.store.presentation
-                == ComposerStagingStore.Presentation(
-                    icon: "checkmark.circle",
-                    title: "\(medium.displayName) path inserted and copied.",
-                    accessibilityLabel: "\(medium.displayName) path inserted and copied.",
-                    commands: [.dismiss]))
+        #expect(fixture.store.presentation == nil)
     }
 
     @Test(arguments: StagingTestMedium.allCases)
@@ -260,7 +285,7 @@ struct ComposerStagingStoreTests {
         #expect(fixture.clipboard.copiedPaths == [path])
         #expect(fixture.composer.draft == "\(path) ")
         #expect(await fixture.stageRequestCount(for: medium) == 1)
-        #expect(fixture.store.presentation?.commands == [.dismiss])
+        #expect(fixture.store.presentation == nil)
     }
 
     @Test(arguments: StagingTestMedium.allCases)
@@ -368,7 +393,7 @@ struct ComposerStagingStoreTests {
             completedFixture.store.state.isCompleted
         }
         #expect(completedFixture.store.state.outcome?.medium == .image)
-        #expect(completedFixture.store.presentation?.commands == [.dismiss])
+        #expect(completedFixture.store.presentation == nil)
 
         completedFixture.begin(.file)
 
