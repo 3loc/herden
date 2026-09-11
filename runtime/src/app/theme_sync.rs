@@ -1,6 +1,9 @@
 use super::App;
 
 impl App {
+    // These fields select foreground presentation and the legacy creation
+    // fallback. Runtime query contexts are applied by per-terminal ownership,
+    // never by switching the foreground client.
     pub(crate) fn set_host_terminal_appearance_state(
         &mut self,
         appearance: Option<crate::terminal_theme::HostAppearance>,
@@ -13,7 +16,6 @@ impl App {
         }
         self.state.host_terminal_appearance = appearance;
         self.state.host_terminal_appearance_explicit = explicit;
-        self.apply_host_terminal_appearance_to_panes();
         self.refresh_effective_app_theme()
     }
 
@@ -25,7 +27,8 @@ impl App {
             return false;
         }
         self.state.host_terminal_theme = theme;
-        self.apply_host_terminal_theme_to_panes();
+        self.render_dirty.request_generic();
+        self.render_notify.notify_one();
         true
     }
 
@@ -42,20 +45,5 @@ impl App {
         self.render_dirty.request_generic();
         self.render_notify.notify_one();
         true
-    }
-
-    fn apply_host_terminal_appearance_to_panes(&self) {
-        for runtime in self.terminal_runtimes.values() {
-            runtime.apply_host_terminal_appearance(self.state.host_terminal_appearance);
-        }
-    }
-
-    fn apply_host_terminal_theme_to_panes(&self) {
-        for runtime in self.terminal_runtimes.values() {
-            runtime.apply_host_terminal_theme(self.state.host_terminal_theme);
-        }
-
-        self.render_dirty.request_generic();
-        self.render_notify.notify_one();
     }
 }

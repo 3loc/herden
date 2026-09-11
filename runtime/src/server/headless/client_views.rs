@@ -650,6 +650,7 @@ impl HeadlessServer {
                 .is_some_and(|controller| viewers.contains(controller));
             if !controller_is_viewing {
                 self.tab_geometry_controllers.insert(tab_id, viewers[0]);
+                self.apply_shell_client_terminal_appearance(viewers[0]);
             }
         }
 
@@ -704,6 +705,7 @@ impl HeadlessServer {
         if self.tab_geometry_controllers.insert(tab_id, client_id) == Some(client_id) {
             return false;
         }
+        self.apply_shell_client_terminal_appearance(client_id);
         self.apply_shell_tab_geometry(client_id, start_pending_agent_resumes)
     }
 
@@ -722,10 +724,15 @@ impl HeadlessServer {
         let Some(tab_id) = self.shell_tab_id_for_client(client_id) else {
             return false;
         };
-        if self.tab_geometry_controllers.contains_key(&tab_id) {
+        if self
+            .tab_geometry_controllers
+            .get(&tab_id)
+            .is_some_and(|&owner| self.is_current_shell_appearance_controller(owner, &tab_id))
+        {
             return false;
         }
         self.tab_geometry_controllers.insert(tab_id, client_id);
+        self.apply_shell_client_terminal_appearance(client_id);
         self.apply_shell_tab_geometry(client_id, start_pending_agent_resumes)
     }
 

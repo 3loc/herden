@@ -2,7 +2,7 @@
 set -eu
 
 binary="herden"
-host_version="0.9.4"
+host_version="0.9.5"
 host_tag="host-v${host_version}"
 install_dir="${HERDEN_INSTALL_DIR:-$HOME/.local/bin}"
 doc_dir="${HERDEN_DOC_DIR:-$HOME/.local/share/doc/herden}"

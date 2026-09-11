@@ -10,6 +10,10 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ### Fixed
 
+- Keep desktop colour observations within the currently controlled tab. Restore
+  a same-tab desktop context after direct attachment, and select a remaining
+  same-tab viewer when the desktop controller disconnects or deactivates.
+
 - Keep iOS Light Mode theme choices light and Dark Mode choices dark; migrate
   incompatible saved choices while retaining valid selections.
 - Default Host desktop chrome to the viewing terminal's palette. Preserve

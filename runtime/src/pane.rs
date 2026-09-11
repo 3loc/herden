@@ -2,18 +2,18 @@ use std::cell::Cell;
 use std::io;
 use std::path::Path;
 use std::sync::{
-    atomic::{AtomicBool, AtomicU16, AtomicU32, AtomicU64, Ordering},
     Arc, Mutex, OnceLock,
+    atomic::{AtomicBool, AtomicU16, AtomicU32, AtomicU64, Ordering},
 };
 
 use bytes::Bytes;
 use portable_pty::CommandBuilder;
 #[cfg(all(test, unix))]
-use portable_pty::{native_pty_system, PtySize};
-use ratatui::{layout::Rect, Frame};
+use portable_pty::{PtySize, native_pty_system};
+use ratatui::{Frame, layout::Rect};
 #[cfg(test)]
 use tokio::sync::watch;
-use tokio::sync::{mpsc, Notify};
+use tokio::sync::{Notify, mpsc};
 #[cfg(not(windows))]
 use tracing::debug;
 use tracing::{error, info, warn};
@@ -34,11 +34,11 @@ mod terminal;
 mod xtgettcap;
 
 use self::agent_detection::{
-    decide_detection_screen_read, decide_screen_detection_publish,
+    AGENT_PENDING_IDLE_RECHECK, AGENT_STARTUP_GRACE_WINDOW, DetectionPublishDecision,
+    DetectionScreenReadDecision, DetectionScreenReadInput, PendingIdleConfirmation,
+    ScreenDetectionPublishInput, decide_detection_screen_read, decide_screen_detection_publish,
     detection_update_for_publish_with_osc, mark_detection_content_changed,
-    observe_detection_content_change, DetectionPublishDecision, DetectionScreenReadDecision,
-    DetectionScreenReadInput, PendingIdleConfirmation, ScreenDetectionPublishInput,
-    AGENT_PENDING_IDLE_RECHECK, AGENT_STARTUP_GRACE_WINDOW,
+    observe_detection_content_change,
 };
 #[cfg(any(unix, test))]
 pub use self::terminal::InputState;
@@ -1898,12 +1898,7 @@ impl PaneRuntime {
         })
     }
 
-    pub fn apply_host_terminal_theme(&self, theme: crate::terminal_theme::TerminalTheme) {
-        if !self.client_appearance_owned.get() {
-            self.terminal.apply_host_terminal_theme(theme);
-        }
-    }
-
+    #[cfg(test)]
     pub fn apply_host_terminal_appearance(
         &self,
         appearance: Option<crate::terminal_theme::HostAppearance>,
@@ -1919,6 +1914,24 @@ impl PaneRuntime {
         appearance: Option<crate::terminal_theme::HostAppearance>,
     ) {
         self.client_appearance_owned.set(true);
+        self.write_client_terminal_appearance(theme, appearance);
+    }
+
+    pub(crate) fn apply_desktop_terminal_appearance(
+        &self,
+        theme: crate::terminal_theme::TerminalTheme,
+        appearance: Option<crate::terminal_theme::HostAppearance>,
+    ) {
+        if !self.client_appearance_owned.get() {
+            self.write_client_terminal_appearance(theme, appearance);
+        }
+    }
+
+    fn write_client_terminal_appearance(
+        &self,
+        theme: crate::terminal_theme::TerminalTheme,
+        appearance: Option<crate::terminal_theme::HostAppearance>,
+    ) {
         // Update query answers before notifying the child. A subscriber can
         // immediately query OSC 10/11 in response to the mode notification.
         let palette_changed = self.terminal.apply_host_terminal_theme(theme);
@@ -1928,20 +1941,12 @@ impl PaneRuntime {
         });
     }
 
-    pub(crate) fn release_client_terminal_appearance(
-        &self,
-        theme: crate::terminal_theme::TerminalTheme,
-        appearance: Option<crate::terminal_theme::HostAppearance>,
-    ) {
-        if self.client_appearance_owned.replace(false) {
-            let palette_changed = self.terminal.apply_host_terminal_theme(theme);
-            self.io.write_terminal_response(|| {
-                self.terminal
-                    .notify_client_terminal_appearance(appearance, palette_changed)
-            });
-        }
+    pub(crate) fn release_client_terminal_appearance(&self) {
+        // No current viewer means retain the terminal's last observation.
+        self.client_appearance_owned.set(false);
     }
 
+    #[cfg(test)]
     fn write_terminal_appearance(&self, appearance: Option<crate::terminal_theme::HostAppearance>) {
         self.io
             .write_terminal_response(|| self.terminal.apply_host_terminal_appearance(appearance));

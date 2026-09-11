@@ -38,7 +38,12 @@ nearly neutral RGB backgrounds without changing the shared PTY. It cannot
 identify semantic colours or guarantee contrast with explicit foregrounds.
 This is not a complete solution for simultaneous light and dark viewers.
 
-Remaining work includes per-terminal desktop ownership, colour context before
+Desktop observations now apply only to the active controller's currently viewed
+tab (including its popup), never every terminal when global foreground changes.
+Direct attachment retains priority; its disconnect restores a valid same-tab
+desktop controller or retains the last observation when none exists.
+
+Remaining work includes context for newly created terminals, colour context before
 new/resumed Agent startup, and client-relative output or an explicitly selected
 lossy presentation mode for applications that paint fixed RGB. The direct-attach
 changes do not establish that those cases work.

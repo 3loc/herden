@@ -3,8 +3,8 @@ use std::sync::Arc;
 use crate::render_signal::RenderSignal;
 
 use bytes::Bytes;
-use ratatui::{layout::Rect, Frame};
-use tokio::sync::{mpsc, Notify};
+use ratatui::{Frame, layout::Rect};
+use tokio::sync::{Notify, mpsc};
 
 use crate::events::AppEvent;
 use crate::layout::PaneId;
@@ -219,17 +219,6 @@ impl TerminalRuntime {
         .map(Self)
     }
 
-    pub fn apply_host_terminal_theme(&self, theme: crate::terminal_theme::TerminalTheme) {
-        self.0.apply_host_terminal_theme(theme);
-    }
-
-    pub fn apply_host_terminal_appearance(
-        &self,
-        appearance: Option<crate::terminal_theme::HostAppearance>,
-    ) {
-        self.0.apply_host_terminal_appearance(appearance);
-    }
-
     pub(crate) fn set_client_terminal_appearance(
         &self,
         theme: crate::terminal_theme::TerminalTheme,
@@ -238,12 +227,16 @@ impl TerminalRuntime {
         self.0.set_client_terminal_appearance(theme, appearance);
     }
 
-    pub(crate) fn release_client_terminal_appearance(
+    pub(crate) fn apply_desktop_terminal_appearance(
         &self,
         theme: crate::terminal_theme::TerminalTheme,
         appearance: Option<crate::terminal_theme::HostAppearance>,
     ) {
-        self.0.release_client_terminal_appearance(theme, appearance);
+        self.0.apply_desktop_terminal_appearance(theme, appearance);
+    }
+
+    pub(crate) fn release_client_terminal_appearance(&self) {
+        self.0.release_client_terminal_appearance();
     }
 
     pub fn begin_graceful_release(&self, agent: crate::detect::Agent) {

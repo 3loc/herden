@@ -17,15 +17,15 @@
 use std::collections::{HashMap, HashSet};
 use std::io;
 use std::path::{Path, PathBuf};
-use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::Arc;
+use std::sync::atomic::{AtomicBool, Ordering};
 use std::time::{Duration, Instant, SystemTime, UNIX_EPOCH};
 
+#[cfg(unix)]
+use interprocess::local_socket::ListenerNonblockingMode;
 use interprocess::local_socket::traits::Listener as _;
 #[cfg(windows)]
 use interprocess::local_socket::traits::Stream as _;
-#[cfg(unix)]
-use interprocess::local_socket::ListenerNonblockingMode;
 use ratatui::layout::Rect;
 use tokio::sync::mpsc;
 #[cfg(windows)]
@@ -40,11 +40,11 @@ use crate::app;
 use crate::config;
 use crate::events::AppEvent;
 use crate::ipc::{
-    bind_local_listener, remove_socket_file_if_owned, socket_file_identity, LocalListener,
-    SocketFileIdentity,
+    LocalListener, SocketFileIdentity, bind_local_listener, remove_socket_file_if_owned,
+    socket_file_identity,
 };
 use crate::protocol::{
-    self, AttachScrollDirection, AttachScrollSource, FrameData, ServerMessage, MAX_FRAME_SIZE,
+    self, AttachScrollDirection, AttachScrollSource, FrameData, MAX_FRAME_SIZE, ServerMessage,
 };
 #[cfg(unix)]
 use crate::server::client_accept::{
@@ -55,8 +55,8 @@ use crate::server::client_shell::{
 };
 use crate::server::client_transport::ServerEvent;
 use crate::server::clients::{
-    latest_shell_client, render_targets, terminal_stream_client_ids, ClientConnection,
-    ClientConnectionMode, ClientShellInputTarget, DeferredRender,
+    ClientConnection, ClientConnectionMode, ClientShellInputTarget, DeferredRender,
+    latest_shell_client, render_targets, terminal_stream_client_ids,
 };
 use crate::server::keybindings::{app_keybindings, apply_keybindings};
 use crate::server::notifications::{
@@ -80,6 +80,7 @@ mod pane_graphics;
 mod render;
 mod retained_surface;
 mod surface_interest;
+mod terminal_appearance;
 
 pub use bootstrap::run_server;
 use lifecycle::wait_for_live_handoff_response_write;
@@ -1023,10 +1024,12 @@ impl HeadlessServer {
                 if self.terminal_attach_owners.get(&terminal_id) == Some(&client_id) {
                     self.terminal_attach_owners.remove(&terminal_id);
                     if let Some(runtime) = self.runtime_for_terminal_id_string(&terminal_id) {
-                        runtime.release_client_terminal_appearance(
-                            self.app.state.host_terminal_theme,
-                            self.app.state.host_terminal_appearance,
-                        );
+                        runtime.release_client_terminal_appearance();
+                        if let Some((theme, appearance)) =
+                            self.desktop_appearance_for_terminal(&terminal_id)
+                        {
+                            runtime.apply_desktop_terminal_appearance(theme, appearance);
+                        }
                     }
                     if let Some(terminal_id) = self.terminal_id_by_string(&terminal_id) {
                         self.app
@@ -1085,6 +1088,10 @@ impl HeadlessServer {
     }
 
     fn remove_client_and_resize_if_needed(&mut self, client_id: u64) {
+        let was_shell = self
+            .clients
+            .get(&client_id)
+            .is_some_and(|client| client.is_shell_client());
         let restore_shell_controller = self.clients.get(&client_id).and_then(|client| {
             let ClientConnectionMode::TerminalAttach { terminal_id } = &client.mode else {
                 return None;
@@ -1092,7 +1099,9 @@ impl HeadlessServer {
             self.shell_geometry_controller_for_terminal(terminal_id)
         });
         self.remove_client(client_id);
-        if let Some((controller_id, target)) = restore_shell_controller {
+        if was_shell {
+            self.reapply_controlled_shell_tab_geometry(true);
+        } else if let Some((controller_id, target)) = restore_shell_controller {
             self.restore_shell_tab_geometry(controller_id, target);
         } else {
             self.resize_tabs_for_only_shell_client(true);
@@ -2302,18 +2311,28 @@ impl HeadlessServer {
                 if !client.update_host_theme(&update) {
                     return false;
                 }
-                if !client.shell_surface_active || self.foreground_client_id != Some(client_id) {
+                if !client.shell_surface_active {
                     return false;
                 }
-                let mut changed = self.app.set_host_terminal_theme(client.host_terminal_theme);
-                changed |= self.app.set_host_terminal_appearance_state(
-                    client.host_terminal_appearance,
-                    client.host_terminal_appearance_explicit,
-                );
+                let theme = client.host_terminal_theme;
+                let appearance = client.host_terminal_appearance;
+                let explicit = client.host_terminal_appearance_explicit;
+                // Navigation may leave a historical owner on the old tab.
+                // A remaining viewer's report can reclaim only such an unowned
+                // tab, never displace another current controller.
+                self.claim_unowned_shell_tab_geometry(client_id, false);
+                let applied = self.apply_shell_client_terminal_appearance(client_id);
+                if self.foreground_client_id != Some(client_id) {
+                    return applied;
+                }
+                let mut changed = self.app.set_host_terminal_theme(theme);
+                changed |= self
+                    .app
+                    .set_host_terminal_appearance_state(appearance, explicit);
                 if changed {
                     self.resize_shared_runtime_to_effective_size_before_input();
                 }
-                changed
+                changed | applied
             }
             ServerEvent::ClientShellFocus { client_id, focused } => {
                 let Some(client) = self.clients.get(&client_id) else {
