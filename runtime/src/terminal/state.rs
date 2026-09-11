@@ -149,6 +149,10 @@ pub struct TerminalState {
     recent_agent_process_exit: Option<RecentAgentProcessExit>,
     agent_process_acquisition_pending: bool,
     pub pending_agent_resume_plan: Option<crate::agent_resume::AgentResumePlan>,
+    // Ephemeral observations survive Agent identity changes, not session restore.
+    pub(crate) query_context: Option<crate::terminal_theme::TerminalQueryContext>,
+    pub(crate) pending_resume_wait_deadline: Option<Instant>,
+    pub(crate) pending_resume_wait_for_owner: bool,
 }
 
 impl TerminalState {
@@ -185,6 +189,9 @@ impl TerminalState {
             recent_agent_process_exit: None,
             agent_process_acquisition_pending: false,
             pending_agent_resume_plan: None,
+            query_context: None,
+            pending_resume_wait_deadline: None,
+            pending_resume_wait_for_owner: false,
         }
     }
 
@@ -263,6 +270,8 @@ impl TerminalState {
         plan: crate::agent_resume::AgentResumePlan,
     ) -> Self {
         self.pending_agent_resume_plan = Some(plan);
+        self.pending_resume_wait_deadline = None;
+        self.pending_resume_wait_for_owner = false;
         self
     }
 
@@ -2095,6 +2104,8 @@ impl TerminalState {
         self.recent_agent_process_exit = None;
         self.agent_process_acquisition_pending = false;
         self.pending_agent_resume_plan = None;
+        self.pending_resume_wait_deadline = None;
+        self.pending_resume_wait_for_owner = false;
         self.clear_agent_name();
     }
 
@@ -5776,6 +5787,13 @@ mod tests {
     #[test]
     fn respawn_cleanup_resets_restored_agent_status() {
         let mut terminal = test_terminal();
+        let context = crate::terminal_theme::TerminalQueryContext {
+            appearance: Some(crate::terminal_theme::HostAppearance::Light),
+            ..Default::default()
+        };
+        terminal.query_context = Some(context);
+        terminal.pending_resume_wait_for_owner = true;
+        terminal.pending_resume_wait_deadline = Some(Instant::now());
         terminal.respawn_shell_on_exit = true;
         terminal.set_agent_name("codex".into());
         terminal.set_persisted_agent_session(crate::agent_resume::PersistedAgentSession {
@@ -5794,6 +5812,9 @@ mod tests {
         assert!(terminal.persisted_agent_session.is_none());
         assert!(!terminal.respawn_shell_on_exit);
         assert!(!terminal.finish_agent_process_acquisition());
+        assert_eq!(terminal.query_context, Some(context));
+        assert!(!terminal.pending_resume_wait_for_owner);
+        assert!(terminal.pending_resume_wait_deadline.is_none());
     }
 
     #[test]

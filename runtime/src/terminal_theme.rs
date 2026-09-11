@@ -38,6 +38,20 @@ pub struct TerminalTheme {
     pub palette: [Option<RgbColor>; 256],
 }
 
+/// The latest client observation for one terminal's colour queries. This is
+/// neither an application palette override nor persisted session state.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
+pub(crate) struct TerminalQueryContext {
+    pub theme: TerminalTheme,
+    pub appearance: Option<HostAppearance>,
+}
+
+impl TerminalQueryContext {
+    pub fn has_default_colors(self) -> bool {
+        self.theme.foreground.is_some() && self.theme.background.is_some()
+    }
+}
+
 impl Default for TerminalTheme {
     fn default() -> Self {
         Self {

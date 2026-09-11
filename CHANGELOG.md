@@ -10,6 +10,13 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ### Fixed
 
+- Resume Agents using their own terminal's client colour context, not the global
+  foreground palette. Keep direct-attach input and resize working during the
+  bounded observation wait, including client takeover.
+- Start new terminals and Agent panes with neutral Host defaults. A client can
+  establish its own palette after attaching without inheriting whichever desktop
+  happened to be foreground when the terminal was created.
+
 - Keep desktop colour observations within the currently controlled tab. Restore
   a same-tab desktop context after direct attachment, and select a remaining
   same-tab viewer when the desktop controller disconnects or deactivates.

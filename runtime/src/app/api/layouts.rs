@@ -92,8 +92,8 @@ impl App {
         let (rows, cols) = self.state.estimate_pane_size();
         let default_shell = self.state.default_shell.clone();
         let scrollback_limit_bytes = self.state.pane_scrollback_limit_bytes;
-        let host_terminal_theme = self.state.host_terminal_theme;
-        let host_terminal_appearance = self.state.host_terminal_appearance;
+        let host_terminal_theme = crate::terminal_theme::TerminalTheme::default();
+        let host_terminal_appearance = None;
         let extra_env = match super::env::normalize_launch_env(root_leaf.env.clone()) {
             Ok(env) => env,
             Err((code, message)) => return encode_error(id, &code, message),
@@ -399,8 +399,8 @@ impl App {
         let (rows, cols) = self.state.estimate_pane_size();
         let default_shell = self.state.default_shell.clone();
         let scrollback_limit_bytes = self.state.pane_scrollback_limit_bytes;
-        let host_terminal_theme = self.state.host_terminal_theme;
-        let host_terminal_appearance = self.state.host_terminal_appearance;
+        let host_terminal_theme = crate::terminal_theme::TerminalTheme::default();
+        let host_terminal_appearance = None;
         let cwd = pane
             .cwd
             .as_ref()

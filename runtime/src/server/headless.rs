@@ -81,6 +81,7 @@ mod render;
 mod retained_surface;
 mod surface_interest;
 mod terminal_appearance;
+mod terminal_resume;
 
 pub use bootstrap::run_server;
 use lifecycle::wait_for_live_handoff_response_write;
@@ -617,6 +618,7 @@ impl HeadlessServer {
                 .pending_alt_screen_reads
                 .iter()
                 .map(|pending| pending.next_deadline())
+                .chain(self.next_direct_resume_deadline())
                 .fold(next_deadline, |deadline, pending| {
                     Some(deadline.map_or(pending, |current| current.min(pending)))
                 });
@@ -790,7 +792,7 @@ impl HeadlessServer {
         self.app.sync_pending_agent_resume_deadline(now);
         if self
             .app
-            .start_pending_agent_resumes(self.app.pending_agent_resume_due(now))
+            .start_pending_agent_resumes_at(now, self.app.pending_agent_resume_due(now))
         {
             for client in self.clients.values_mut() {
                 client.request_repaint();
@@ -1023,15 +1025,25 @@ impl HeadlessServer {
                 // A late disconnect must not release a successor's context.
                 if self.terminal_attach_owners.get(&terminal_id) == Some(&client_id) {
                     self.terminal_attach_owners.remove(&terminal_id);
+                    let desktop_context = self.desktop_appearance_for_terminal(&terminal_id);
                     if let Some(runtime) = self.runtime_for_terminal_id_string(&terminal_id) {
                         runtime.release_client_terminal_appearance();
-                        if let Some((theme, appearance)) =
-                            self.desktop_appearance_for_terminal(&terminal_id)
-                        {
+                        if let Some((theme, appearance)) = desktop_context {
                             runtime.apply_desktop_terminal_appearance(theme, appearance);
                         }
                     }
                     if let Some(terminal_id) = self.terminal_id_by_string(&terminal_id) {
+                        if let Some(terminal) = self.app.state.terminals.get_mut(&terminal_id) {
+                            terminal.pending_resume_wait_for_owner = false;
+                            terminal.pending_resume_wait_deadline = None;
+                            if let Some((theme, appearance)) = desktop_context {
+                                terminal.query_context =
+                                    Some(crate::terminal_theme::TerminalQueryContext {
+                                        theme,
+                                        appearance,
+                                    });
+                            }
+                        }
                         self.app
                             .state
                             .direct_attach_resize_locks
@@ -1252,6 +1264,9 @@ impl HeadlessServer {
     ) -> bool {
         match target {
             protocol::ClientClipboardImageTarget::DirectTerminal => {
+                if !path.is_empty() {
+                    self.start_direct_resume(client_id, true);
+                }
                 let Some(ClientConnection {
                     mode: ClientConnectionMode::TerminalAttach { terminal_id },
                     ..
@@ -1424,6 +1439,7 @@ impl HeadlessServer {
         row: Option<u16>,
         modifiers: u8,
     ) -> bool {
+        let resume_changed = lines > 0 && self.start_direct_resume(client_id, true);
         let Some(ClientConnection {
             mode: ClientConnectionMode::TerminalAttach { terminal_id },
             ..
@@ -1432,7 +1448,7 @@ impl HeadlessServer {
             return false;
         };
         let Some(runtime) = self.runtime_for_terminal_id_string(terminal_id) else {
-            return false;
+            return resume_changed;
         };
 
         if let Err(err) =
@@ -1466,8 +1482,10 @@ impl HeadlessServer {
         let cell_size = client.cell_size;
         let pixel_mouse = client.pixel_mouse;
         let host_sgr_pixels_active = client.host_sgr_pixels_active == Some(true);
+        let resume_changed = !matches!(kind, protocol::ClientMouseKind::Moved)
+            && self.start_direct_resume(client_id, true);
         let Some(runtime) = self.runtime_for_terminal_id_string(&terminal_id) else {
-            return false;
+            return resume_changed;
         };
         let Some(position) = terminal_attach_mouse_position(
             runtime,
@@ -1861,7 +1879,12 @@ impl HeadlessServer {
                         reason: Some("terminal attach taken over".to_owned()),
                     },
                 );
-                self.remove_client_and_resize_if_needed(existing_owner);
+                // Transfer ownership before teardown. A temporary desktop
+                // restore here could launch a pending Agent before the new
+                // owner has supplied its observation.
+                self.terminal_attach_owners
+                    .insert(terminal_id.clone(), client_id);
+                self.remove_client(existing_owner);
             }
         }
 
@@ -1888,8 +1911,13 @@ impl HeadlessServer {
             .state
             .direct_attach_resize_locks
             .insert(real_terminal_id.clone());
-        self.app
-            .start_pending_agent_resume_for_terminal(&real_terminal_id, rows, cols, true);
+        if let Some(terminal) = self.app.state.terminals.get_mut(&real_terminal_id) {
+            if terminal.pending_agent_resume_plan.is_some() {
+                terminal.pending_resume_wait_for_owner = true;
+                terminal.pending_resume_wait_deadline =
+                    Some(Instant::now() + crate::app::PENDING_AGENT_RESUME_THEME_WAIT);
+            }
+        }
         if let Some(runtime) = self.app.terminal_runtimes.get(&real_terminal_id) {
             runtime.resize(rows, cols, cell_size.width_px, cell_size.height_px);
         }
@@ -2104,6 +2132,9 @@ impl HeadlessServer {
                     );
                     return false;
                 }
+                if !data.is_empty() {
+                    self.start_direct_resume(client_id, true);
+                }
                 let Some(ClientConnection {
                     mode: ClientConnectionMode::TerminalAttach { terminal_id },
                     ..
@@ -2296,11 +2327,22 @@ impl HeadlessServer {
                     }
                     let theme = client.host_terminal_theme;
                     let appearance = client.host_terminal_appearance;
+                    if let Some(id) = self.terminal_id_by_string(&terminal_id) {
+                        if let Some(terminal) = self.app.state.terminals.get_mut(&id) {
+                            terminal.query_context =
+                                Some(crate::terminal_theme::TerminalQueryContext {
+                                    theme,
+                                    appearance,
+                                });
+                            terminal.pending_resume_wait_for_owner = false;
+                        }
+                    }
+                    let resume_changed = self.start_direct_resume(client_id, false);
                     if let Some(runtime) = self.runtime_for_terminal_id_string(&terminal_id) {
                         runtime.set_client_terminal_appearance(theme, appearance);
                         return true;
                     }
-                    return false;
+                    return resume_changed;
                 }
                 let Some(client) = self.clients.get_mut(&client_id) else {
                     return false;
@@ -3433,8 +3475,9 @@ impl HeadlessServer {
             self.app.sync_pending_agent_resume_deadline(now);
             changed |= self
                 .app
-                .start_pending_agent_resumes(self.app.pending_agent_resume_due(now));
+                .start_pending_agent_resumes_at(now, self.app.pending_agent_resume_due(now));
         }
+        changed |= self.start_due_direct_resumes(now);
         changed
     }
 }

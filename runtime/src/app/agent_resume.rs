@@ -23,16 +23,20 @@ impl App {
     }
 
     pub(crate) fn sync_pending_agent_resume_deadline(&mut self, now: Instant) {
-        if !self.has_pending_agent_resumes() {
-            self.pending_agent_resume_deadline = None;
-            return;
-        }
-        if self.pending_agent_resume_candidates().is_empty() {
-            self.pending_agent_resume_deadline = None;
-            return;
-        }
-        self.pending_agent_resume_deadline
-            .get_or_insert(now + super::PENDING_AGENT_RESUME_THEME_WAIT);
+        // The aggregate deadline is only a wakeup hint. Expiry for one terminal
+        // must never waive a newly restored terminal's own observation wait.
+        self.pending_agent_resume_deadline = self
+            .pending_agent_resume_candidates()
+            .into_iter()
+            .filter_map(|candidate| {
+                let terminal = self.state.terminals.get_mut(&candidate.terminal_id)?;
+                Some(
+                    *terminal
+                        .pending_resume_wait_deadline
+                        .get_or_insert(now + super::PENDING_AGENT_RESUME_THEME_WAIT),
+                )
+            })
+            .min();
     }
 
     pub(crate) fn pending_agent_resume_due(&self, now: Instant) -> bool {
@@ -40,7 +44,16 @@ impl App {
             .is_some_and(|deadline| now >= deadline)
     }
 
+    #[cfg(test)]
     pub(crate) fn start_pending_agent_resumes(&mut self, allow_empty_theme: bool) -> bool {
+        self.start_pending_agent_resumes_at(Instant::now(), allow_empty_theme)
+    }
+
+    pub(crate) fn start_pending_agent_resumes_at(
+        &mut self,
+        now: Instant,
+        allow_empty_theme: bool,
+    ) -> bool {
         let pending = self.pending_agent_resume_candidates();
         let mut changed = false;
         for PendingAgentResumeCandidate {
@@ -55,15 +68,27 @@ impl App {
             if self.terminal_runtimes.get(&terminal_id).is_some() {
                 continue;
             }
+            let allow_empty_theme = allow_empty_theme
+                && self
+                    .state
+                    .terminals
+                    .get(&terminal_id)
+                    .and_then(|terminal| terminal.pending_resume_wait_deadline)
+                    .is_none_or(|deadline| now >= deadline);
             changed |= self.start_pending_agent_resume(
                 pane_id,
-                terminal_id,
+                terminal_id.clone(),
                 cwd,
                 plan,
                 rows,
                 cols,
                 allow_empty_theme,
             );
+            changed |= self
+                .state
+                .terminals
+                .get(&terminal_id)
+                .is_some_and(|terminal| terminal.pending_agent_resume_plan.is_none());
         }
 
         if changed {
@@ -76,6 +101,15 @@ impl App {
     }
 
     fn pending_agent_resume_candidates(&self) -> Vec<PendingAgentResumeCandidate> {
+        // Normal event-loop ticks must not derive every tab's geometry when no
+        // desktop-owned resume needs it. Direct owners use their own dimensions.
+        if !self.state.terminals.iter().any(|(id, terminal)| {
+            terminal.pending_agent_resume_plan.is_some()
+                && !self.state.direct_attach_resize_locks.contains(id)
+                && self.terminal_runtimes.get(id).is_none()
+        }) {
+            return Vec::new();
+        }
         let terminal_area = self.state.view.terminal_area;
         if terminal_area.width == 0 || terminal_area.height == 0 {
             return Vec::new();
@@ -94,6 +128,10 @@ impl App {
                         .terminal_runtimes
                         .get(&pane.attached_terminal_id)
                         .is_some()
+                        || self
+                            .state
+                            .direct_attach_resize_locks
+                            .contains(&pane.attached_terminal_id)
                     {
                         continue;
                     }
@@ -184,7 +222,7 @@ impl App {
             return false;
         };
 
-        let changed = self.start_pending_agent_resume(
+        let started = self.start_pending_agent_resume(
             pane_id,
             terminal_id.clone(),
             cwd,
@@ -193,6 +231,14 @@ impl App {
             cols,
             allow_empty_theme,
         );
+        // A failed launch that retired its plan must also repaint: direct
+        // clients waiting without a runtime need the failure/ended response.
+        let changed = started
+            || self
+                .state
+                .terminals
+                .get(terminal_id)
+                .is_some_and(|terminal| terminal.pending_agent_resume_plan.is_none());
         if changed {
             self.schedule_session_save();
         }
@@ -212,8 +258,13 @@ impl App {
         cols: u16,
         allow_empty_theme: bool,
     ) -> bool {
-        let host_terminal_theme = self.state.host_terminal_theme;
-        if host_terminal_theme.is_empty() && !allow_empty_theme {
+        let Some(terminal) = self.state.terminals.get(&terminal_id) else {
+            return false;
+        };
+        let context = terminal.query_context.unwrap_or_default();
+        if (!context.has_default_colors() || terminal.pending_resume_wait_for_owner)
+            && !allow_empty_theme
+        {
             return false;
         }
 
@@ -226,6 +277,9 @@ impl App {
                 agent = %plan.agent,
                 "failed to start deferred agent resume with empty argv"
             );
+            if let Some(terminal) = self.state.terminals.get_mut(&terminal_id) {
+                terminal.clear_agent_runtime_identity_after_respawn();
+            }
             return false;
         };
         let Some(launch_env) = self
@@ -241,8 +295,8 @@ impl App {
             cols,
             cwd,
             self.state.pane_scrollback_limit_bytes,
-            host_terminal_theme,
-            self.state.host_terminal_appearance,
+            context.theme,
+            context.appearance,
             crate::pane::PaneShellConfig::new(&self.state.default_shell, self.state.shell_mode),
             &launch_env,
             self.event_tx.clone(),
@@ -265,6 +319,10 @@ impl App {
             }
         };
 
+        if self.state.direct_attach_resize_locks.contains(&terminal_id) {
+            runtime.set_client_terminal_appearance(context.theme, context.appearance);
+        }
+
         let mut input = resume_command;
         input.push('\r');
         if let Err(err) = runtime.try_send_bytes(Bytes::from(input)) {
@@ -276,12 +334,17 @@ impl App {
                 "failed to send deferred agent resume command to shell"
             );
             runtime.shutdown();
+            if let Some(terminal) = self.state.terminals.get_mut(&terminal_id) {
+                terminal.clear_agent_runtime_identity_after_respawn();
+            }
             return false;
         }
 
         self.terminal_runtimes.insert(terminal_id.clone(), runtime);
         if let Some(terminal) = self.state.terminals.get_mut(&terminal_id) {
             terminal.pending_agent_resume_plan = None;
+            terminal.pending_resume_wait_deadline = None;
+            terminal.pending_resume_wait_for_owner = false;
             terminal.respawn_shell_on_exit = false;
         }
         true
@@ -354,6 +417,46 @@ fn shell_quote(value: &str) -> String {
 mod tests {
     use super::*;
 
+    fn observe_test_terminal_contexts(app: &mut App) {
+        let context = crate::terminal_theme::TerminalQueryContext {
+            theme: app.state.host_terminal_theme,
+            appearance: app.state.host_terminal_appearance,
+        };
+        for terminal in app.state.terminals.values_mut() {
+            terminal.query_context = Some(context);
+        }
+    }
+
+    #[cfg(unix)]
+    #[tokio::test]
+    async fn newly_created_workspace_does_not_inherit_global_terminal_palette() {
+        let mut app = test_app();
+        app.state.host_terminal_theme = crate::terminal_theme::TerminalTheme {
+            foreground: Some(crate::terminal_theme::RgbColor { r: 1, g: 2, b: 3 }),
+            background: Some(crate::terminal_theme::RgbColor {
+                r: 240,
+                g: 241,
+                b: 242,
+            }),
+            ..Default::default()
+        };
+        let workspace_index = app
+            .create_workspace_with_options(std::env::temp_dir(), true)
+            .expect("workspace should spawn");
+        let terminal_id = app.state.workspaces[workspace_index]
+            .terminal_id(app.state.workspaces[workspace_index].tabs[0].root_pane)
+            .expect("new workspace terminal")
+            .clone();
+        let runtime = app
+            .terminal_runtimes
+            .get(&terminal_id)
+            .expect("new workspace runtime");
+        assert!(runtime.test_terminal_query(b"\x1b]11;?\x07").is_empty());
+        for (_, runtime) in app.terminal_runtimes.drain() {
+            runtime.shutdown();
+        }
+    }
+
     #[cfg(unix)]
     fn test_app() -> App {
         let (_api_tx, api_rx) = tokio::sync::mpsc::unbounded_channel();
@@ -382,7 +485,128 @@ mod tests {
 
     #[cfg(unix)]
     #[tokio::test]
-    async fn pending_agent_resume_waits_for_host_theme_before_launch() {
+    async fn pending_resume_ignores_an_unrelated_foreground_palette() {
+        let mut app = test_app();
+        let workspace = crate::workspace::Workspace::test_new("restored");
+        let terminal_id = workspace
+            .terminal_id(workspace.tabs[0].root_pane)
+            .cloned()
+            .unwrap();
+        app.state.workspaces = vec![workspace];
+        app.state.active = Some(0);
+        app.state.ensure_test_terminals();
+        app.state.view.terminal_area = Rect::new(0, 0, 100, 30);
+        app.state
+            .terminals
+            .get_mut(&terminal_id)
+            .unwrap()
+            .pending_agent_resume_plan = Some(crate::agent_resume::AgentResumePlan {
+            agent: "codex".into(),
+            argv: long_running_test_argv(),
+            dedupe_key: "test".into(),
+        });
+        app.state.host_terminal_theme = crate::terminal_theme::TerminalTheme {
+            background: Some(crate::terminal_theme::RgbColor {
+                r: 240,
+                g: 240,
+                b: 240,
+            }),
+            ..Default::default()
+        };
+        let started = app.start_pending_agent_resumes(false);
+        for (_, runtime) in app.terminal_runtimes.drain() {
+            runtime.shutdown();
+        }
+        assert!(
+            !started,
+            "an unrelated foreground palette must not release the resume wait"
+        );
+    }
+
+    #[cfg(unix)]
+    #[tokio::test]
+    async fn pending_resumes_keep_independent_contexts_and_deadlines() {
+        let mut app = test_app();
+        let workspace = crate::workspace::Workspace::test_new("first");
+        let first = workspace
+            .terminal_id(workspace.tabs[0].root_pane)
+            .cloned()
+            .unwrap();
+        let workspace2 = crate::workspace::Workspace::test_new("second");
+        let second = workspace2
+            .terminal_id(workspace2.tabs[0].root_pane)
+            .cloned()
+            .unwrap();
+        app.state.workspaces = vec![workspace, workspace2];
+        app.state.active = Some(0);
+        app.state.ensure_test_terminals();
+        app.state.view.terminal_area = Rect::new(0, 0, 100, 30);
+        let now = Instant::now();
+        for (id, background, deadline) in [
+            (&first, 12, now),
+            (
+                &second,
+                240,
+                now + super::super::PENDING_AGENT_RESUME_THEME_WAIT,
+            ),
+        ] {
+            let terminal = app.state.terminals.get_mut(id).unwrap();
+            terminal.pending_agent_resume_plan = Some(crate::agent_resume::AgentResumePlan {
+                agent: "codex".into(),
+                argv: long_running_test_argv(),
+                dedupe_key: id.to_string(),
+            });
+            // A background alone must not count as a completed observation.
+            terminal.query_context = Some(crate::terminal_theme::TerminalQueryContext {
+                theme: crate::terminal_theme::TerminalTheme {
+                    background: Some(crate::terminal_theme::RgbColor {
+                        r: background,
+                        g: background,
+                        b: background,
+                    }),
+                    ..Default::default()
+                },
+                appearance: None,
+            });
+            terminal.pending_resume_wait_deadline = Some(deadline);
+        }
+        // Global presentation must not affect either timeout fallback.
+        app.state.host_terminal_theme.background = Some(crate::terminal_theme::RgbColor {
+            r: 99,
+            g: 99,
+            b: 99,
+        });
+        app.sync_pending_agent_resume_deadline(now);
+        assert_eq!(app.pending_agent_resume_deadline, Some(now));
+        assert!(!app.start_pending_agent_resumes_at(now, false));
+        assert!(app.start_pending_agent_resumes_at(now, true));
+        assert!(app.terminal_runtimes.get(&first).is_some());
+        assert!(app.terminal_runtimes.get(&second).is_none());
+        // Repeated scheduling/geometry work cannot extend the second wait.
+        app.sync_pending_agent_resume_deadline(now + std::time::Duration::from_millis(1));
+        let second_deadline = now + super::super::PENDING_AGENT_RESUME_THEME_WAIT;
+        assert_eq!(app.pending_agent_resume_deadline, Some(second_deadline));
+        assert!(app.start_pending_agent_resumes_at(second_deadline, true));
+        for (id, expected) in [(&first, 12), (&second, 240)] {
+            let response = app
+                .terminal_runtimes
+                .get(id)
+                .unwrap()
+                .test_terminal_query(b"\x1b]11;?\x07");
+            let (_, color) = crate::terminal_theme::parse_default_color_response(
+                std::str::from_utf8(&response[0]).unwrap(),
+            )
+            .unwrap();
+            assert_eq!(color.r, expected);
+        }
+        for (_, runtime) in app.terminal_runtimes.drain() {
+            runtime.shutdown();
+        }
+    }
+
+    #[cfg(unix)]
+    #[tokio::test]
+    async fn pending_agent_resume_waits_for_terminal_context_before_launch() {
         let mut app = test_app();
         let workspace = crate::workspace::Workspace::test_new("restored");
         let pane_id = workspace.tabs[0].root_pane;
@@ -423,6 +647,7 @@ mod tests {
             ..Default::default()
         };
 
+        observe_test_terminal_contexts(&mut app);
         assert!(app.start_pending_agent_resumes(false));
         assert!(app.terminal_runtimes.get(&terminal_id).is_some());
         let terminal = app
@@ -486,7 +711,10 @@ mod tests {
 
         app.sync_pending_agent_resume_deadline(std::time::Instant::now());
         assert!(!app.start_pending_agent_resumes(false));
-        assert!(app.start_pending_agent_resumes(true));
+        let deadline = app.pending_agent_resume_deadline.unwrap();
+        assert!(!app
+            .start_pending_agent_resumes_at(deadline - std::time::Duration::from_millis(1), true));
+        assert!(app.start_pending_agent_resumes_at(deadline, true));
         assert!(app.terminal_runtimes.get(&terminal_id).is_some());
 
         for (_, runtime) in app.terminal_runtimes.drain() {
@@ -538,6 +766,7 @@ mod tests {
         app.pending_agent_resume_deadline =
             Some(std::time::Instant::now() - std::time::Duration::from_millis(1));
 
+        observe_test_terminal_contexts(&mut app);
         assert!(app.start_pending_agent_resumes(false));
         assert!(app.terminal_runtimes.get(&active_terminal).is_some());
         assert!(app.terminal_runtimes.get(&hidden_terminal).is_some());
@@ -599,6 +828,7 @@ mod tests {
             dedupe_key: "herdr:codex\0codex\0Id\0inactive-tab-session".into(),
         });
 
+        observe_test_terminal_contexts(&mut app);
         assert!(app.start_pending_agent_resumes(false));
         assert!(app.terminal_runtimes.get(&inactive_terminal).is_some());
         assert!(
@@ -660,6 +890,7 @@ mod tests {
             dedupe_key: "herdr:codex\0codex\0Id\0zoom-hidden-session".into(),
         });
 
+        observe_test_terminal_contexts(&mut app);
         assert!(app.start_pending_agent_resumes(false));
         assert!(app.terminal_runtimes.get(&hidden_terminal).is_some());
         assert!(
@@ -720,6 +951,7 @@ mod tests {
 
         app.sync_pending_agent_resume_deadline(std::time::Instant::now());
         assert!(app.pending_agent_resume_deadline.is_some());
+        observe_test_terminal_contexts(&mut app);
         assert!(app.start_pending_agent_resumes(false));
         assert!(app.terminal_runtimes.get(&previous_terminal).is_some());
         assert!(
@@ -779,6 +1011,7 @@ mod tests {
             dedupe_key: "herdr:codex\0codex\0Id\0codex-session".into(),
         });
 
+        observe_test_terminal_contexts(&mut app);
         assert!(app.start_pending_agent_resumes(false));
         assert_eq!(
             app.terminal_runtimes

@@ -511,6 +511,9 @@ impl HeadlessServer {
                 ClientConnectionMode::TerminalAttach { terminal_id }
                 | ClientConnectionMode::TerminalObserve { terminal_id } => {
                     let Some(runtime) = self.runtime_for_terminal_id_string(&terminal_id) else {
+                        if self.terminal_resume_is_pending(&terminal_id) {
+                            continue;
+                        }
                         self.send_to_client(
                             client_id,
                             ServerMessage::ServerShutdown {

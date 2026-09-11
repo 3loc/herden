@@ -1,5 +1,5 @@
 use super::*;
-use crate::terminal_theme::{HostAppearance, TerminalTheme};
+use crate::terminal_theme::{HostAppearance, TerminalQueryContext, TerminalTheme};
 
 impl HeadlessServer {
     pub(super) fn is_current_shell_appearance_controller(
@@ -17,7 +17,7 @@ impl HeadlessServer {
 
     // Reports and ownership transitions are infrequent events. Do not call this
     // from render, input, or the single-client all-tabs geometry fast path.
-    pub(super) fn apply_shell_client_terminal_appearance(&self, client_id: u64) -> bool {
+    pub(super) fn apply_shell_client_terminal_appearance(&mut self, client_id: u64) -> bool {
         let Some(tab_id) = self.shell_tab_id_for_client(client_id) else {
             return false;
         };
@@ -32,14 +32,27 @@ impl HeadlessServer {
         };
         let theme = client.host_terminal_theme;
         let appearance = client.host_terminal_appearance;
-        for pane_id in self.app.state.workspaces[workspace_index].tabs[tab_index]
+        let panes: Vec<_> = self.app.state.workspaces[workspace_index].tabs[tab_index]
             .panes
-            .keys()
-        {
+            .iter()
+            .map(|(pane_id, pane)| (*pane_id, pane.attached_terminal_id.clone()))
+            .collect();
+        for (pane_id, terminal_id) in panes {
+            if self
+                .app
+                .state
+                .direct_attach_resize_locks
+                .contains(&terminal_id)
+            {
+                continue;
+            }
+            if let Some(terminal) = self.app.state.terminals.get_mut(&terminal_id) {
+                terminal.query_context = Some(TerminalQueryContext { theme, appearance });
+            }
             if let Some(runtime) = self.app.state.runtime_for_pane_in_workspace(
                 &self.app.terminal_runtimes,
                 workspace_index,
-                *pane_id,
+                pane_id,
             ) {
                 runtime.apply_desktop_terminal_appearance(theme, appearance);
             }

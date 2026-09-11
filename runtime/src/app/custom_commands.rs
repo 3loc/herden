@@ -440,8 +440,8 @@ impl App {
             command,
             env,
             self.state.pane_scrollback_limit_bytes,
-            self.state.host_terminal_theme,
-            self.state.host_terminal_appearance,
+            crate::terminal_theme::TerminalTheme::default(),
+            None,
         )?;
         let new_pane_id = new_pane.pane_id;
         self.terminal_runtimes
@@ -527,8 +527,8 @@ impl App {
                 argv,
                 extra_env,
                 self.state.pane_scrollback_limit_bytes,
-                self.state.host_terminal_theme,
-                self.state.host_terminal_appearance,
+                crate::terminal_theme::TerminalTheme::default(),
+                None,
                 true,
             );
             let (tab_idx, new_pane) = match result {

@@ -43,8 +43,23 @@ tab (including its popup), never every terminal when global foreground changes.
 Direct attachment retains priority; its disconnect restores a valid same-tab
 desktop controller or retains the last observation when none exists.
 
+Pending Agent resumes now keep an ephemeral query context on their terminal,
+separate from global desktop presentation. Each resume has its own bounded wait.
+Direct attachment waits for the current owner's completed report, seeds query
+answers before the child starts, and uses that owner's latest dimensions.
+Explicit input can end only its target's wait; the fallback uses that terminal's
+last observation or leaves unknown colours unanswered. Takeover transfers
+ownership before old-client teardown, without an intermediate desktop resume.
+No client palette is serialised into the session or written as an OSC override.
+
+New workspaces, tabs, panes, layouts, popups, plugin panes and custom-command
+terminals likewise start with neutral defaults. This matters because the iOS
+transport starts `agent.start` before it can open the direct terminal stream;
+there is no client palette to apply at that API boundary. The first attached
+client then publishes its own defaults to the runtime.
+
 Remaining work includes context for newly created terminals, colour context before
-new/resumed Agent startup, and client-relative output or an explicitly selected
+new Agent startup, and client-relative output or an explicitly selected
 lossy presentation mode for applications that paint fixed RGB. The direct-attach
 changes do not establish that those cases work.
 
