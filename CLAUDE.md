@@ -58,6 +58,7 @@ eliminating several dead ends.
 | `scripts/run-ci-ios-tests.sh` | Exhaustive local iOS and real-SSH validation runner. |
 | `UPSTREAM.md` | Heeler/herdr provenance and update policy. |
 | `.agents/skills/herden-testflight/` | TestFlight source verification, build/upload, beta review and invitations. |
+| `.claude/hooks/` + `.claude/settings.json` | Committed Claude Code hooks enforcing the conventions below that vigilance alone kept failing. |
 
 Both Agent and Space terminal views feed the shared keyboard into the same
 terminal input controller; attachment paths and pasted text therefore reach
@@ -151,6 +152,19 @@ designed; they are compatibility surfaces, not public branding.
 - Tracker is GitHub issues in this repo (`gh issue ...`). Reference issues from commits with `refs #<n>`.
 - User-visible changes get a `CHANGELOG.md` entry under Unreleased, referencing the PR; internal refactors and test work stay out of it.
 - Update `CONTEXT.md` when domain terms change; add an ADR only for hard-to-reverse, surprising trade-offs.
+- `.claude/settings.json` installs two committed hooks. `PreToolUse` on Bash
+  hard-blocks exactly three things, each of which has already cost a rebuild:
+  an iOS `make` target run from a Linux checkout, `make bump`/`generate`/
+  `xcodegen` piped into `head`/`tail` (SIGPIPE truncates the generated project
+  and the stale `project.pbxproj` then ships), and an `rm -r` inside
+  `Intermediates.noindex` (partial deletion leaves dangling module references
+  and breaks the next build worse than the stale cache did). It matches only
+  after stripping quoted spans and heredoc bodies, so remote `ssh` payloads,
+  greps and generated files never read as local invocations —
+  `python3 .claude/hooks/test-guard-bash.py` pins that. `PostToolUse` on
+  Edit/Write is advisory and fires at most once per session: regenerate the
+  Xcode project after `project.yml`, and consider a CHANGELOG entry after app
+  source. Keep blocks rare; a hook that cries wolf gets switched off.
 
 ## Agent skills
 
