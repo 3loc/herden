@@ -1,0 +1,20 @@
+{
+  "hooks": {
+    "PreToolUse": [
+      {
+        "type": "command",
+        "matcher": "Bash",
+        "command": "python3 \"$(git rev-parse --show-toplevel)/.agents/hooks/guard-bash.py\"",
+        "timeout": 10
+      }
+    ],
+    "PostToolUse": [
+      {
+        "type": "command",
+        "matcher": "Edit|Write",
+        "command": "sh \"$(git rev-parse --show-toplevel)/.agents/hooks/after-edit.sh\"",
+        "timeout": 10
+      }
+    ]
+  }
+}

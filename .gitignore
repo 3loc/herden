@@ -52,7 +52,14 @@ __pycache__/
 .testloop/
 
 # Agent workspace (research reports, scratch)
-.claude/
+# Agent scratch stays out, but the committed hook wiring stays in:
+# .claude/settings.json and .codex/hooks.json both point at the shared
+# guards in .agents/hooks/, so either agent enforces the same rules.
+# Personal overrides (settings.local.json) remain ignored by the glob.
+.claude/*
+!.claude/settings.json
+.codex/*
+!.codex/hooks.json
 .archive/
 .skill-archive/
 HANDOFF.md

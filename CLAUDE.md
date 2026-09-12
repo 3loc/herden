@@ -58,7 +58,7 @@ eliminating several dead ends.
 | `scripts/run-ci-ios-tests.sh` | Exhaustive local iOS and real-SSH validation runner. |
 | `UPSTREAM.md` | Heeler/herdr provenance and update policy. |
 | `.agents/skills/herden-testflight/` | TestFlight source verification, build/upload, beta review and invitations. |
-| `.claude/hooks/` + `.claude/settings.json` | Committed Claude Code hooks enforcing the conventions below that vigilance alone kept failing. |
+| `.agents/hooks/` + `.claude/settings.json` + `.codex/hooks.json` | Shared build guards, wired into both Claude Code and Codex. |
 
 Both Agent and Space terminal views feed the shared keyboard into the same
 terminal input controller; attachment paths and pasted text therefore reach
@@ -152,19 +152,27 @@ designed; they are compatibility surfaces, not public branding.
 - Tracker is GitHub issues in this repo (`gh issue ...`). Reference issues from commits with `refs #<n>`.
 - User-visible changes get a `CHANGELOG.md` entry under Unreleased, referencing the PR; internal refactors and test work stay out of it.
 - Update `CONTEXT.md` when domain terms change; add an ADR only for hard-to-reverse, surprising trade-offs.
-- `.claude/settings.json` installs two committed hooks. `PreToolUse` on Bash
-  hard-blocks exactly three things, each of which has already cost a rebuild:
-  an iOS `make` target run from a Linux checkout, `make bump`/`generate`/
-  `xcodegen` piped into `head`/`tail` (SIGPIPE truncates the generated project
-  and the stale `project.pbxproj` then ships), and an `rm -r` inside
-  `Intermediates.noindex` (partial deletion leaves dangling module references
-  and breaks the next build worse than the stale cache did). It matches only
-  after stripping quoted spans and heredoc bodies, so remote `ssh` payloads,
-  greps and generated files never read as local invocations —
-  `python3 .claude/hooks/test-guard-bash.py` pins that. `PostToolUse` on
-  Edit/Write is advisory and fires at most once per session: regenerate the
-  Xcode project after `project.yml`, and consider a CHANGELOG entry after app
-  source. Keep blocks rare; a hook that cries wolf gets switched off.
+- The guards in `.agents/hooks/` are wired into **both** agents —
+  `.claude/settings.json` and `.codex/hooks.json`, both committed and both
+  repo-local. Claude Code and Codex share the `PreToolUse` contract (the shell
+  command arrives as `tool_input.command`; exit 2 blocks and stderr is the
+  reason), so one script serves both and only the wiring differs. **pi has no
+  hook system by design** and is deliberately uncovered; its Herden
+  integration is a TypeScript extension, not a hook.
+- `guard-bash.py` hard-blocks exactly three things, each of which has already
+  cost a rebuild: an iOS `make` target run from a Linux checkout, `make
+  bump`/`generate`/`xcodegen` piped into `head`/`tail` (SIGPIPE truncates the
+  generated project and the stale `project.pbxproj` then ships), and an `rm -r`
+  inside `Intermediates.noindex` (partial deletion leaves dangling module
+  references and breaks the next build worse than the stale cache did). It
+  matches only after stripping quoted spans and heredoc bodies, so remote `ssh`
+  payloads, greps and heredoc-written files never read as local invocations —
+  `python3 .agents/hooks/test-guard-bash.py` pins that with 17 cases. Keep
+  blocks rare and keep that suite green; a hook that cries wolf gets switched
+  off, and then it guards nothing.
+- `after-edit.sh` is advisory only and speaks at most once per session:
+  regenerate the Xcode project after `project.yml`, and consider a CHANGELOG
+  entry after app source.
 
 ## Agent skills
 
