@@ -31,7 +31,7 @@ struct AudioRecordingSheet: View {
                     }
                 }
                 controls
-                Text("Attach the recording to your prompt, then press Return when you’re ready. Your Agent needs audio support to listen to it.")
+                Text("Attach the recording as your spoken message, review the prompt, then press Return when you’re ready. Your Agent needs audio support to listen to it.")
                     .font(.footnote)
                     .foregroundStyle(.secondary)
                     .multilineTextAlignment(.center)

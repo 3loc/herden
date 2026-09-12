@@ -390,7 +390,12 @@ struct AgentTerminalView: View {
                 cancelKeyboardHandoff(id)
             }
         }
-        screen.theme = terminal.themes.theme
+        // Resolve the palette here rather than handing libghostty both slots
+        // and trusting it to follow the UIKit trait: it does not re-resolve
+        // when the app's appearance override changes, which left the terminal
+        // black inside light chrome. A resolved theme also changes identity on
+        // a colorScheme change, so `applyTheme` actually reapplies it.
+        screen.theme = terminal.themes.resolvedTheme(for: colorScheme)
         screen.fontSize = terminal.zoom.fontSize
         screen.fontFamily = terminal.fonts.familyName
         screen.onFontSizeChanged = { fontSize in terminal.zoom.setFontSize(fontSize) }
@@ -745,17 +750,20 @@ struct AgentTerminalView: View {
     @discardableResult
     private func beginAttachment(_ source: ComposerStagingStore.Source) -> Bool {
         guard isDirectInput else {
-            return attach.staging.begin(source)
+            return attach.staging.begin(source, insertionContext: .agentPrompt)
         }
         let generation = attach.input.liveGeneration
         let control = keyboardControl
         let onStage = isOnStage
-        return attach.staging.begin(source, insertPath: { [weak attach, weak control] path in
-            guard let attach, let generation, attach.input.liveGeneration == generation,
-                  let control, control.terminal != nil, onStage() else { return false }
-            control.paste(path)
-            return true
-        })
+        return attach.staging.begin(
+            source,
+            insertionContext: .agentPrompt,
+            insertText: { [weak attach, weak control] text in
+                guard let attach, let generation, attach.input.liveGeneration == generation,
+                      let control, control.terminal != nil, onStage() else { return false }
+                control.paste(text)
+                return true
+            })
     }
 
     private var composerActions: AgentComposerActions {
@@ -811,12 +819,10 @@ struct AgentTerminalView: View {
     private var terminalSurface: some View {
         terminalScreen
             .id(attach.terminalID)
-        // Above alternateScreenBottomRegion; only the buttons take hits —
-        // see MessageJumpChromeContainer.
-        .overlay {
-            messageJumpChrome
-        }
         .overlay { statusOverlay }
+        .safeAreaInset(edge: .top, spacing: 0) {
+            topControls
+        }
         .safeAreaInset(edge: .bottom, spacing: 0) {
             attachmentStatus
         }
@@ -1324,17 +1330,23 @@ struct AgentTerminalView: View {
     }
 
     @ViewBuilder
-    private var messageJumpChrome: some View {
-        MessageJumpChromeOverlay(
-            availability: messageJumpAvailability,
-            runningDirection: messageJump.runningDirection,
-            palette: themePalette,
-            onOlder: { jumpToOlderMessage() },
-            onNewer: { jumpToNewerMessageOrLive() })
-        // Hit-test only while enabled. The in-flight spinner must not eat
-        // terminal drags. Placement and pass-through live in
-        // MessageJumpChromeContainer.
-        .allowsHitTesting(messageJumpAvailability.isEnabled)
+    /// Back, font size, and message jump — the same strip a Space terminal
+    /// shows, in the same place. The jump buttons appear only while a walk has
+    /// somewhere to go, so an ordinary shell shows just back and font size.
+    private var topControls: some View {
+        TerminalTopControls(
+            zoom: terminal.zoom,
+            backLabel: "Back to Agents",
+            onBack: onClosed
+        ) {
+            MessageJumpControlView(
+                availability: messageJumpAvailability,
+                runningDirection: messageJump.runningDirection,
+                palette: themePalette,
+                onOlder: { jumpToOlderMessage() },
+                onNewer: { jumpToNewerMessageOrLive() })
+                .allowsHitTesting(messageJumpAvailability.isEnabled)
+        }
     }
 
     private func jumpToOlderMessage() {
@@ -1364,13 +1376,11 @@ struct AgentTerminalView: View {
         if let presentation = TerminalStatusPresentation(status: attach.terminalStatus) {
             switch presentation.kind {
             case .connecting:
-                // No dim: a reattach would otherwise flash the whole screen dark.
-                TerminalStatusDialog(
-                    glyph: .progress,
-                    title: presentation.title,
-                    message: presentation.message,
-                    palette: themePalette,
-                    dimsBackground: presentation.dimsBackground)
+                // Nothing. Connecting is the ordinary way into a terminal, not
+                // a condition worth a modal over the screen you just opened —
+                // and an Agent reattaches fast enough that the dialog only ever
+                // read as a flash. A failure still gets its dialog below.
+                EmptyView()
             case .ended:
                 TerminalStatusDialog(
                     glyph: .symbol("cable.connector.slash"),

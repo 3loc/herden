@@ -241,6 +241,17 @@ final class TerminalThemeSettings {
         colorScheme == .dark ? darkSelection : lightSelection
     }
 
+    /// The selected slot for `colorScheme`, collapsed into both halves of a
+    /// `TerminalTheme`. `theme` hands the renderer a light and a dark
+    /// configuration and leaves the choice to it; that choice does not track
+    /// the app's own light/dark override, so a client that has already decided
+    /// which appearance it is in should pass this instead.
+    func resolvedTheme(for colorScheme: ColorScheme) -> TerminalTheme {
+        let configuration = selection(for: colorScheme)
+            .configuration(isDark: colorScheme == .dark)
+        return TerminalTheme(light: configuration, dark: configuration)
+    }
+
     static func options(for colorScheme: ColorScheme) -> [TerminalThemeOption] {
         TerminalThemeOption.allCases.filter {
             $0.chromeColorScheme(for: colorScheme) == colorScheme

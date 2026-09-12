@@ -5,20 +5,6 @@ import UIKit
 
 @testable import Herden
 
-/// Host that reports a stable intrinsic size so
-/// `MessageJumpChromeContainer.layoutSubviews` does not collapse to zero.
-private final class MessageJumpSizedHost: UIView {
-    var fixedSize: CGSize = CGSize(width: 44, height: 72)
-
-    override var intrinsicContentSize: CGSize { fixedSize }
-
-    override func sizeThatFits(_ size: CGSize) -> CGSize {
-        CGSize(
-            width: min(fixedSize.width, size.width > 0 ? size.width : fixedSize.width),
-            height: fixedSize.height)
-    }
-}
-
 struct MessageJumpControlTests {
     @Test func availabilityRequiresAlternateScreen() {
         #expect(
@@ -161,69 +147,6 @@ struct MessageJumpControlTests {
                 runningDirection: .older)
                 == MessageJumpControlAvailability(
                     showsOlder: true, showsNewer: false, isEnabled: false))
-    }
-
-    @Test func placementFrameHidesChromeThatCannotFitAboveTheBand() {
-        // 80-pt terminal, 72-pt chrome: available above the band is 60.
-        let short = CGSize(width: 390, height: 80)
-        #expect(
-            MessageJumpPlacement.frame(
-                terminalSize: short,
-                chromeSize: CGSize(width: 44, height: 72)) == nil)
-        #expect(
-            !MessageJumpPlacement.sitsAboveBottomBand(
-                terminalHeight: 80,
-                controlHeight: 72,
-                bottomInset: MessageJumpPlacement.bottomInset(terminalHeight: 80)))
-
-        let tallEnough = CGSize(width: 390, height: 160)
-        let fitted = MessageJumpPlacement.frame(
-            terminalSize: tallEnough,
-            chromeSize: CGSize(width: 44, height: 72))
-        #expect(fitted != nil)
-        if let fitted {
-            #expect(
-                MessageJumpPlacement.sitsAboveBottomBand(
-                    terminalHeight: tallEnough.height,
-                    controlHeight: fitted.height,
-                    bottomInset: MessageJumpPlacement.bottomInset(
-                        terminalHeight: tallEnough.height)))
-        }
-
-        // Narrow surface: notice wider than the terminal cannot produce a
-        // negative x origin — the frame is rejected instead.
-        #expect(
-            MessageJumpPlacement.frame(
-                terminalSize: CGSize(width: 40, height: 400),
-                chromeSize: CGSize(width: 120, height: 36))
-                != nil)
-        let narrowFrame = MessageJumpPlacement.frame(
-            terminalSize: CGSize(width: 40, height: 400),
-            chromeSize: CGSize(width: 120, height: 36))
-        #expect(narrowFrame?.origin.x == 0)
-        #expect(narrowFrame?.width == 30)
-    }
-
-    @MainActor
-    @Test func shortTerminalContainerHidesChromeThatCannotFit() throws {
-        let container = MessageJumpChromeContainer(
-            frame: CGRect(x: 0, y: 0, width: 390, height: 80))
-        let host = MessageJumpSizedHost()
-        host.fixedSize = CGSize(width: 44, height: 72)
-        container.embed(host)
-        container.layoutIfNeeded()
-        #expect(host.isHidden)
-        #expect(container.hostedFrame == nil)
-
-        container.frame = CGRect(x: 0, y: 0, width: 390, height: 160)
-        container.layoutIfNeeded()
-        #expect(!host.isHidden)
-        let frame = try #require(container.hostedFrame)
-        #expect(
-            MessageJumpPlacement.sitsAboveBottomBand(
-                terminalHeight: 160,
-                controlHeight: frame.height,
-                bottomInset: MessageJumpPlacement.bottomInset(terminalHeight: 160)))
     }
 
     @MainActor
@@ -400,69 +323,15 @@ struct MessageJumpControlTests {
         #expect(wiring.isLive(wiring.liveGeneration))
     }
 
-    @MainActor
-    @Test func chromeContainerPassesThroughNonInteractiveAndDisabledHits() {
-        let container = MessageJumpChromeContainer(
-            frame: CGRect(x: 0, y: 0, width: 390, height: 720))
-        let host = MessageJumpSizedHost()
-        host.fixedSize = CGSize(width: 44, height: 80)
-        let chrome = UIView(frame: CGRect(x: 0, y: 0, width: 44, height: 80))
-        chrome.isUserInteractionEnabled = true
-        let button = UIButton(type: .system)
-        button.frame = CGRect(x: 0, y: 0, width: 44, height: 36)
-        chrome.addSubview(button)
-        host.addSubview(chrome)
-        // Size the host so layoutSubviews does not collapse it.
-        host.frame = CGRect(x: 0, y: 0, width: 44, height: 80)
-        container.embed(host)
-        container.layoutIfNeeded()
-
-        #expect(!host.isHidden)
-        #expect(container.hostedFrame != nil)
-
-        let buttonPoint = container.convert(
-            CGPoint(x: button.bounds.midX, y: button.bounds.midY),
-            from: button)
-        #expect(container.hitTest(buttonPoint, with: nil) === button)
-
-        let paddingPoint = container.convert(CGPoint(x: 22, y: 60), from: chrome)
-        #expect(container.hitTest(paddingPoint, with: nil) == nil)
-        #expect(container.hitTest(CGPoint(x: 12, y: 12), with: nil) == nil)
-
-        #expect(
-            MessageJumpChromeContainer.isInteractive(button, stoppingAt: host))
-        #expect(
-            !MessageJumpChromeContainer.isInteractive(chrome, stoppingAt: host))
-
-        // Disabled controls must not eat terminal drags.
-        button.isEnabled = false
-        #expect(container.hitTest(buttonPoint, with: nil) == nil)
-        #expect(
-            !MessageJumpChromeContainer.isInteractive(button, stoppingAt: host))
-    }
-
-    /// SwiftUI does not back a `Button` with its own `UIView`; a hosting view
-    /// answers for its whole interactive area and its gesture recognizers run
-    /// the action. Rejecting a hit that is the hosted root left the buttons
-    /// reachable by VoiceOver but by no actual touch. `refs #268`.
-    @Test func aGestureBackedHostedRootIsInteractive() {
-        let host = UIView(frame: CGRect(x: 0, y: 0, width: 44, height: 80))
-
-        // An inert container still passes terminal drags through.
-        #expect(!MessageJumpChromeContainer.isInteractive(host, stoppingAt: host))
-
-        host.addGestureRecognizer(UITapGestureRecognizer())
-        #expect(MessageJumpChromeContainer.isInteractive(host, stoppingAt: host))
-    }
-
-    @Test func availabilityDisabledMeansOverlayShouldNotHitTest() {
+    /// The control now lives in the screen's top strip rather than floating
+    /// over the terminal, but the enablement policy is unchanged: a walk in
+    /// flight leaves its own button visible as progress and takes no hit.
+    @Test func aWalkInFlightLeavesItsButtonVisibleButNotTappable() {
         let walking = MessageJumpControlAvailability.evaluate(
             isAlternateScreen: true,
             canScrollRemoteContent: true,
             runningDirection: .older)
         #expect(walking.isVisible)
-        // AgentTerminalView gates `.allowsHitTesting` on isEnabled, not
-        // isVisible — this pins the policy the overlay relies on.
         #expect(walking.isEnabled == false)
     }
 }

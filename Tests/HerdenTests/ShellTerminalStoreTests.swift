@@ -128,11 +128,11 @@ struct ShellTerminalStoreTests {
         }
         // A plain Space terminal exposes the same compact direct-input deck as
         // an Agent terminal, rather than its old Text/Keys-specific chrome.
-        #expect(TerminalDirectInputDeck.moreControlNames.contains("Ctrl-B"))
         #expect(TerminalDirectInputDeck.controlNames.contains("Control C"))
         #expect(TerminalDirectInputDeck.controlNames.contains("Return"))
-        #expect(!TerminalDirectInputDeck.moreControlNames.contains("Control C"))
-        #expect(!TerminalDirectInputDeck.moreControlNames.contains("Return"))
+        #expect(TerminalDirectInputDeck.controlNames.contains("Tab"))
+        #expect(TerminalDirectInputDeck.controlNames.contains("Up Arrow"))
+        #expect(TerminalDirectInputDeck.controlNames.contains("Down Arrow"))
         terminal.requestPaste("first line\nsecond line")
         #expect(store.pendingPaste == nil)
         try #require(await eventually {

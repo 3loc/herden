@@ -137,9 +137,48 @@ struct TerminalKeysKeyboardTests {
 
     @Test func agentAndSpaceTerminalsShareTheFullControlDeck() {
         #expect(Set(TerminalDirectInputDeck.controlNames) == Set([
-            "Left Arrow", "Right Arrow", "Backspace", "Control C", "Return", "More",
-            "Attach", "Paste", "Dictate text", "Record audio", "Keyboard",
+            "Escape", "Left Arrow", "Right Arrow", "Up Arrow", "Down Arrow",
+            "Control C", "Backspace",
+            "Attach", "Paste", "Dictate text", "Record audio", "Return",
+            "Tab", "Slash", "Dollar sign", "Dictation Language", "Keyboard",
         ]))
+    }
+
+    /// Every key reachable without opening a menu. The deck has no overflow:
+    /// the keys it does not show are not hidden behind an ellipsis, they are
+    /// gone. Ctrl-B and the Vim insert shortcut went with it.
+    @Test func theDeckHasNoOverflowMenu() {
+        #expect(!TerminalDirectInputDeck.controlNames.contains("More"))
+        #expect(!TerminalDirectInputDeck.controlNames.contains("Ctrl-B"))
+        #expect(!TerminalDirectInputDeck.controlNames.contains("Insert text"))
+    }
+
+    /// The three rows share one grid and each spans the deck exactly. Fixed
+    /// widths that summed to less than the deck were what made the previous
+    /// keyboard read as misaligned.
+    @Test func everyDeckRowSpansTheFullWidth() {
+        for width in [320.0, 375.0, 414.0, 430.0] as [CGFloat] {
+            let layout = TerminalDeckLayout(width: width)
+            let spacing = TerminalDeckLayout.spacing
+
+            let terminalKeyRow = layout.column * 7 + spacing * 6
+            #expect(abs(terminalKeyRow - width) < 0.001, "row 1 at \(width)")
+
+            let actionRow = layout.actionKey * 4 + layout.returnKey + spacing * 4
+            #expect(abs(actionRow - width) < 0.001, "row 2 at \(width)")
+
+            // Return spans two of row 1's columns, so it lines up with them.
+            #expect(layout.returnKey == layout.column * 2 + spacing)
+            #expect(layout.actionKey > layout.column)
+        }
+    }
+
+    /// A deck asked to lay out before it has a width must not produce negative
+    /// key widths, which SwiftUI reports as a constraint failure.
+    @Test func aZeroWidthDeckProducesNoNegativeKeys() {
+        let layout = TerminalDeckLayout(width: 0)
+        #expect(layout.column == 0)
+        #expect(layout.actionKey == 0)
     }
 
     @Test func everyTabHasItsOwnIconAndLabel() {

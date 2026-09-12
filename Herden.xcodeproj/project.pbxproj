@@ -266,6 +266,7 @@
 		AD220922962AFB5BD31AAB6E /* HostStoreTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = E1F18CEBF580AF9570A39DFF /* HostStoreTests.swift */; };
 		AEA8D73C1ECE9289A53F2FBD /* GhosttyTerminal in Frameworks */ = {isa = PBXBuildFile; productRef = 06E54596073FB1BFEA859E19 /* GhosttyTerminal */; };
 		AF0C52E898A55B62713CE712 /* AgentComposerStoreTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9223F3148302CBFCB45B31B9 /* AgentComposerStoreTests.swift */; };
+		AF1DC352273EED47B47FDA6C /* TerminalTopControls.swift in Sources */ = {isa = PBXBuildFile; fileRef = 28830E0BC641FC9A2B4CB04E /* TerminalTopControls.swift */; };
 		AF5820C0DBAB0D8D4E8B7B41 /* ShellTerminalStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7242BE0CF2094E44AACDFB68 /* ShellTerminalStore.swift */; };
 		AF7BD65B8F5224BC26A6BC98 /* EventsSessionBufferingTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4F8DB4DBA687F2F02CAC4293 /* EventsSessionBufferingTests.swift */; };
 		B052768E05D50767A1042196 /* JSONValue.swift in Sources */ = {isa = PBXBuildFile; fileRef = 635708D7464865F902876121 /* JSONValue.swift */; };
@@ -483,6 +484,7 @@
 		250ACAE1D16ADB59C3E86F4E /* ConsoleHostSectionHeaderPresentationTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ConsoleHostSectionHeaderPresentationTests.swift; sourceTree = "<group>"; };
 		252174BA19A50168BEF6D2F4 /* ConsoleDetailPresentationTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ConsoleDetailPresentationTests.swift; sourceTree = "<group>"; };
 		25A4CC895B0BDA4F485E3425 /* ConsoleHostSectionHeaderPresentation.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ConsoleHostSectionHeaderPresentation.swift; sourceTree = "<group>"; };
+		28830E0BC641FC9A2B4CB04E /* TerminalTopControls.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TerminalTopControls.swift; sourceTree = "<group>"; };
 		29FDA1BE853D8C6492BB7E36 /* HostListView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HostListView.swift; sourceTree = "<group>"; };
 		2A48786CB32A79E96E7B35C4 /* HostLatencyFormatting.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HostLatencyFormatting.swift; sourceTree = "<group>"; };
 		2B701711B65D927EAF026AEF /* Snippet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Snippet.swift; sourceTree = "<group>"; };
@@ -846,6 +848,7 @@
 				F26938A48C19DA51174DC0D9 /* TerminalScrollControl.swift */,
 				9B9041B75BAE302EE1D54702 /* TerminalTextSafety.swift */,
 				56C02A3B77E3DE9A689ACD2D /* TerminalTextSelectionPresenter.swift */,
+				28830E0BC641FC9A2B4CB04E /* TerminalTopControls.swift */,
 				A1AD833C834224DB89E80D22 /* TerminalTouchScroll.swift */,
 			);
 			path = Terminal;
@@ -1728,6 +1731,7 @@
 				5897FFA09105AE6D2237294B /* TerminalThemePreview.swift in Sources */,
 				FCDCE7E8AB111EB1ED9E0733 /* TerminalThemeSettings.swift in Sources */,
 				41807C640FFD70082149E60E /* TerminalTitleGlyphs.swift in Sources */,
+				AF1DC352273EED47B47FDA6C /* TerminalTopControls.swift in Sources */,
 				9F79104B9747FBB475A0105F /* TerminalTouchScroll.swift in Sources */,
 				29D8B7A75A697366C5F29559 /* TerminalZoomSettings.swift in Sources */,
 				78A34C56F949CC43C9B4E4B4 /* Transport.swift in Sources */,
@@ -1961,7 +1965,7 @@
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				CODE_SIGN_ENTITLEMENTS = Sources/Herden/Herden.entitlements;
 				CODE_SIGN_IDENTITY = "iPhone Developer";
-				CURRENT_PROJECT_VERSION = 29;
+				CURRENT_PROJECT_VERSION = 46;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_KEY_CFBundleDisplayName = Herden;
 				INFOPLIST_KEY_ITSAppUsesNonExemptEncryption = NO;
@@ -2005,7 +2009,7 @@
 			buildSettings = {
 				APPLICATION_EXTENSION_API_ONLY = YES;
 				CODE_SIGN_ENTITLEMENTS = Sources/HerdenShareExtension/HerdenShareExtension.entitlements;
-				CURRENT_PROJECT_VERSION = 29;
+				CURRENT_PROJECT_VERSION = 46;
 				INFOPLIST_FILE = Sources/HerdenShareExtension/Info.plist;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
@@ -2028,7 +2032,7 @@
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				CODE_SIGN_ENTITLEMENTS = Sources/Herden/Herden.entitlements;
 				CODE_SIGN_IDENTITY = "iPhone Developer";
-				CURRENT_PROJECT_VERSION = 29;
+				CURRENT_PROJECT_VERSION = 46;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_KEY_CFBundleDisplayName = Herden;
 				INFOPLIST_KEY_ITSAppUsesNonExemptEncryption = NO;
@@ -2137,7 +2141,7 @@
 			buildSettings = {
 				APPLICATION_EXTENSION_API_ONLY = YES;
 				CODE_SIGN_ENTITLEMENTS = Sources/HerdenShareExtension/HerdenShareExtension.entitlements;
-				CURRENT_PROJECT_VERSION = 29;
+				CURRENT_PROJECT_VERSION = 46;
 				INFOPLIST_FILE = Sources/HerdenShareExtension/Info.plist;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",

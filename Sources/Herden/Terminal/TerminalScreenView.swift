@@ -162,6 +162,7 @@ struct TerminalScreenView: UIViewRepresentable {
     /// screen forwards the new value so it lands in the global setting.
     var onFontSizeChanged: ((Float) -> Void)?
     @Environment(\.openURL) private var openURL
+    @Environment(\.colorScheme) private var colorScheme
 
     func makeUIView(context: Context) -> HerdenTerminalView {
         let view = Self.makeConfiguredTerminal(
@@ -261,6 +262,12 @@ struct TerminalScreenView: UIViewRepresentable {
                     view.requestKeyboardHandoff(id: keyboardHandoffID))
             }
         }
+        // libghostty resolves a theme against the surface's own colour scheme,
+        // which it takes from the UIKit trait. A Space terminal is presented in
+        // a full-screen cover, so it inherits the system trait rather than the
+        // appearance the app chose, and a light app kept a black terminal.
+        // Pin the trait to the scheme this view is actually rendering in.
+        view.overrideUserInterfaceStyle = colorScheme == .dark ? .dark : .light
         view.applyTheme(theme)
         view.applyFontSize(fontSize)
         view.applyFontFamily(fontFamily)

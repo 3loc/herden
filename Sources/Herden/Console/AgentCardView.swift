@@ -108,7 +108,6 @@ struct AgentCardPresentation: Equatable {
 /// shell is state carried by the row rather than a second navigation object.
 struct SpaceCardView: View {
     let space: ConsoleSpace
-    var isOpening = false
 
     private var occupantLabel: String {
         switch space.occupant {
@@ -157,11 +156,6 @@ struct SpaceCardView: View {
                         .foregroundStyle(Brand.subtle)
                         .lineLimit(1)
                 }
-            }
-            if isOpening {
-                ProgressView()
-                    .controlSize(.small)
-                    .tint(Brand.vine)
             }
         }
         .padding(.vertical, 4)

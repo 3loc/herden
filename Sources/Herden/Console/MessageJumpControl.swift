@@ -121,70 +121,6 @@ struct MessageJumpControlAvailability: Equatable, Sendable {
     }
 }
 
-/// Bottom inset and frames that keep the jump chrome clear of the
-/// alternate-screen keyboard activation band. Pure so short-terminal
-/// placement is testable without a device. When the chrome cannot sit
-/// entirely above the band, production hides it rather than overlapping.
-/// `refs #268`.
-enum MessageJumpPlacement {
-    static let trailingPadding: CGFloat = 10
-
-    /// Distance from the terminal's bottom edge to the control's bottom edge.
-    static func bottomInset(terminalHeight: CGFloat) -> CGFloat {
-        guard terminalHeight > 0 else { return 0 }
-        return terminalHeight * TerminalKeyboardTapTarget.alternateScreenBottomFraction
-    }
-
-    /// Height left above the protected bottom band.
-    static func availableHeight(terminalHeight: CGFloat) -> CGFloat {
-        max(0, terminalHeight - bottomInset(terminalHeight: terminalHeight))
-    }
-
-    /// Whether a control of `controlHeight` whose bottom sits `bottomInset`
-    /// above the terminal bottom stays entirely above the keyboard band.
-    static func sitsAboveBottomBand(
-        terminalHeight: CGFloat,
-        controlHeight: CGFloat,
-        bottomInset: CGFloat
-    ) -> Bool {
-        guard terminalHeight > 0, controlHeight >= 0 else { return false }
-        let bandTop = terminalHeight - Self.bottomInset(terminalHeight: terminalHeight)
-        let controlBottom = terminalHeight - bottomInset
-        let controlTop = controlBottom - controlHeight
-        return controlBottom <= bandTop + .ulpOfOne && controlTop >= 0
-    }
-
-    /// Frame for the chrome inside `terminalSize`, or `nil` when it cannot
-    /// fit entirely above the keyboard band or within the trailing edge.
-    /// Callers hide the chrome on `nil` rather than letting it overlap.
-    static func frame(
-        terminalSize: CGSize,
-        chromeSize: CGSize,
-        trailingPadding: CGFloat = Self.trailingPadding
-    ) -> CGRect? {
-        guard terminalSize.width > 0, terminalSize.height > 0 else { return nil }
-        guard chromeSize.width > 0, chromeSize.height > 0 else { return nil }
-
-        let inset = bottomInset(terminalHeight: terminalSize.height)
-        guard sitsAboveBottomBand(
-            terminalHeight: terminalSize.height,
-            controlHeight: chromeSize.height,
-            bottomInset: inset)
-        else {
-            return nil
-        }
-
-        let maxWidth = max(0, terminalSize.width - trailingPadding)
-        let width = min(chromeSize.width, maxWidth)
-        guard width > 0 else { return nil }
-        let x = terminalSize.width - width - trailingPadding
-        guard x >= 0 else { return nil }
-        let y = terminalSize.height - inset - chromeSize.height
-        guard y >= 0 else { return nil }
-        return CGRect(x: x, y: y, width: width, height: chromeSize.height)
-    }
-}
-
 /// Agent-specific recognition and walking rules for user-message navigation.
 /// Most TUIs draw user prompts flush-left. Grok's pinned prompt is indented
 /// five columns, so it needs a wider recognition window without weakening the
@@ -438,11 +374,11 @@ struct MessageJumpControlView: View {
     let onOlder: () -> Void
     let onNewer: () -> Void
 
-    static let buttonSize: CGFloat = 44
+    static let buttonSize: CGFloat = 38
 
     var body: some View {
         if availability.isVisible {
-            VStack(spacing: 0) {
+            HStack(spacing: 0) {
                 if availability.showsOlder {
                     jumpButton(
                         .older,
@@ -454,7 +390,7 @@ struct MessageJumpControlView: View {
                 if availability.showsOlder, availability.showsNewer {
                     Rectangle()
                         .fill(palette.foreground.opacity(0.14))
-                        .frame(width: 18, height: 1)
+                        .frame(width: 1, height: 16)
                         .allowsHitTesting(false)
                 }
                 if availability.showsNewer {
@@ -543,150 +479,5 @@ private struct MessageJumpButtonStyle: ButtonStyle {
             .scaleEffect(configuration.isPressed ? 0.9 : 1)
             .animation(.easeOut(duration: 0.12), value: configuration.isPressed)
             .contentShape(.rect)
-    }
-}
-
-/// Positions the jump chrome above the alternate-screen bottom band and
-/// passes every non-button hit through to the terminal. `refs #268`.
-struct MessageJumpChromeOverlay: UIViewRepresentable {
-    var availability: MessageJumpControlAvailability
-    var runningDirection: TerminalMessageJumpController.Direction?
-    var palette: TerminalThemePalette = .system
-    var onOlder: () -> Void
-    var onNewer: () -> Void
-
-    func makeCoordinator() -> Coordinator {
-        Coordinator()
-    }
-
-    func makeUIView(context: Context) -> MessageJumpChromeContainer {
-        let container = MessageJumpChromeContainer()
-        let host = UIHostingController(rootView: makeRoot())
-        host.view.backgroundColor = .clear
-        host.view.isOpaque = false
-        context.coordinator.host = host
-        container.embed(host.view)
-        return container
-    }
-
-    func updateUIView(_ container: MessageJumpChromeContainer, context: Context) {
-        context.coordinator.host?.rootView = makeRoot()
-        container.setNeedsLayout()
-    }
-
-    private func makeRoot() -> MessageJumpControlView {
-        MessageJumpControlView(
-            availability: availability,
-            runningDirection: runningDirection,
-            palette: palette,
-            onOlder: onOlder,
-            onNewer: onNewer)
-    }
-
-    final class Coordinator {
-        var host: UIHostingController<MessageJumpControlView>?
-    }
-}
-
-/// Full-bleed overlay host whose own bounds never claim a touch. Hits land on
-/// enabled interactive descendants only (the jump buttons); everything else
-/// returns `nil` so the terminal's pan recognizer sees the drag.
-final class MessageJumpChromeContainer: UIView {
-    private weak var hostedView: UIView?
-    /// Test seam: last frame applied to the hosted chrome, or `nil` when hidden.
-    private(set) var hostedFrame: CGRect?
-
-    override init(frame: CGRect) {
-        super.init(frame: frame)
-        backgroundColor = .clear
-        isOpaque = false
-        isUserInteractionEnabled = true
-    }
-
-    @available(*, unavailable)
-    required init?(coder: NSCoder) {
-        fatalError("init(coder:) is unavailable")
-    }
-
-    func embed(_ view: UIView) {
-        hostedView?.removeFromSuperview()
-        hostedView = view
-        view.backgroundColor = .clear
-        view.isOpaque = false
-        addSubview(view)
-    }
-
-    override func layoutSubviews() {
-        super.layoutSubviews()
-        guard let hostedView else { return }
-        hostedView.setNeedsLayout()
-        hostedView.layoutIfNeeded()
-        let maxWidth = max(0, bounds.width - MessageJumpPlacement.trailingPadding)
-        let fitting = hostedView.sizeThatFits(
-            CGSize(width: maxWidth > 0 ? maxWidth : CGFloat.greatestFiniteMagnitude,
-                   height: CGFloat.greatestFiniteMagnitude))
-        let width = min(max(fitting.width, 0), maxWidth > 0 ? maxWidth : fitting.width)
-        let height = max(fitting.height, 0)
-        let chromeSize = CGSize(width: width, height: height)
-
-        if let frame = MessageJumpPlacement.frame(
-            terminalSize: bounds.size,
-            chromeSize: chromeSize)
-        {
-            hostedView.isHidden = false
-            hostedView.frame = frame
-            hostedFrame = frame
-            return
-        }
-
-        hostedView.isHidden = true
-        hostedFrame = nil
-    }
-
-    override func hitTest(_ point: CGPoint, with event: UIEvent?) -> UIView? {
-        guard let hostedView, !hostedView.isHidden, hostedView.frame.contains(point) else {
-            return nil
-        }
-        let local = convert(point, to: hostedView)
-        guard let hit = hostedView.hitTest(local, with: event) else {
-            return nil
-        }
-        // Non-interactive and disabled chrome must not steal terminal drags.
-        //
-        // The hit may legitimately *be* the hosting root: SwiftUI does not back
-        // a `Button` with its own `UIView`, so a hosting view answers for its
-        // whole interactive area and its gesture recognizers are what run the
-        // action. Rejecting that identity outright made the buttons respond to
-        // VoiceOver activation but to no actual touch at all (#268) — the
-        // three-round automated pass never caught it, because computer use
-        // drives the accessibility tree. `isInteractive` still decides, and it
-        // finds no recognizer on an inert container.
-        guard Self.isInteractive(hit, stoppingAt: hostedView) else {
-            return nil
-        }
-        return hit
-    }
-
-    /// Whether `view` is an *enabled* control or hosts an enabled gesture on a
-    /// user-interaction-enabled view. Disabled controls and disabled ancestors
-    /// return false so terminal drags pass through. `refs #268`.
-    static func isInteractive(_ view: UIView, stoppingAt root: UIView) -> Bool {
-        var current: UIView? = view
-        while let candidate = current {
-            if !candidate.isUserInteractionEnabled {
-                return false
-            }
-            if let control = candidate as? UIControl {
-                return control.isEnabled
-            }
-            if let recognizers = candidate.gestureRecognizers,
-                recognizers.contains(where: \.isEnabled)
-            {
-                return true
-            }
-            if candidate === root { break }
-            current = candidate.superview
-        }
-        return false
     }
 }

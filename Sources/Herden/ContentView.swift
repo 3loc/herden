@@ -112,6 +112,7 @@ struct ContentView: View {
         // Apply the user's appearance once at the window so every sheet,
         // pushed screen, and UIKit terminal surface resolves the same mode.
         .preferredColorScheme(appearance.preferredColorScheme)
+        .environment(\.appAppearance, appearance)
         .tint(Brand.vine)
         .task {
             console.setHosts(hostStore.hosts)

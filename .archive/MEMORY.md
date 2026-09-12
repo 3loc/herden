@@ -7,6 +7,11 @@
 
 ## Release
 
+- [2026-09-12 — Master deployment: iOS build 46 terminal UI; Host 0.9.6 audited](2026-09-11/master-build46-terminal-ui-release.md)
+- [2026-09-12 — Master deployment: iOS build 33 keyboard ergonomics; Host 0.9.6 audited](2026-09-11/master-build33-keyboard-ergonomics.md)
+- [2026-09-11 — TestFlight build 31 with font controls and Escape key](2026-09-11/testflight-build31-font-escape.md)
+- [2026-09-11 — Latest build 30 with shared font controls installed on Tedda](2026-09-11/tedda-font-controls-build30.md)
+- [2026-09-11 — Audio recordings as user messages, Tedda and TestFlight build 30](2026-09-11/audio-message-build30-release.md)
 - [2026-09-11 — Master deployment: iOS build 29 and Host 0.9.6 audit](2026-09-11/master-build29-host096-release.md)
 - [2026-09-11 — TestFlight build 29: outdoor contrast and permanent terminal controls](2026-09-11/testflight-build-29-outdoor-controls.md)
 - [2026-09-11 — TestFlight build 28: terminal contrast, keyboard and audio](2026-09-11/testflight-build-28-terminal-contrast.md)
@@ -54,6 +59,7 @@
 
 ## Feature
 
+- [2026-09-11 — Shared Agent and Space keyboard font-size controls](2026-09-11/shared-keyboard-font-controls.md)
 - [2026-09-08 — Compact [herden] terminal sidebar identity](2026-09-08/terminal-sidebar-branding.md)
 
 - [2026-09-08: Agent-first iOS Console and tedda deployment](2026-09-08/agent-first-ios-console.md)

@@ -27,6 +27,13 @@ final class ComposerStagingStore {
         case dismiss
     }
 
+    /// Where the inserted text will be interpreted. Plain terminals need the
+    /// path itself; Agent prompts need to identify recordings as user speech.
+    enum InsertionContext: Sendable, Equatable {
+        case terminal
+        case agentPrompt
+    }
+
     enum State: Sendable, Equatable {
         case idle
         case preparing(Medium)
@@ -116,33 +123,34 @@ final class ComposerStagingStore {
         func upload(
             _ file: PreparedFile,
             reporter: AttachmentStageProgressReporter
-        ) async throws -> StagedSource {
-            .file(try await stage(file, reporter))
+        ) async throws -> StagedFile {
+            try await stage(file, reporter)
         }
     }
 
     private enum PreparedSource: Sendable {
         case image(PreparedImage)
         case file(PreparedFile)
+        case recording(PreparedFile)
 
         var medium: Medium {
             switch self {
             case .image: .image
-            case .file: .file
+            case .file, .recording: .file
             }
         }
 
         var byteCount: Int64 {
             switch self {
             case .image(let image): image.byteCount
-            case .file(let file): file.byteCount
+            case .file(let file), .recording(let file): file.byteCount
             }
         }
 
         func remove() throws {
             switch self {
             case .image(let image): try image.remove()
-            case .file(let file): try file.remove()
+            case .file(let file), .recording(let file): try file.remove()
             }
         }
     }
@@ -150,18 +158,33 @@ final class ComposerStagingStore {
     private enum StagedSource: Sendable {
         case image(StagedImage)
         case file(StagedFile)
+        case recording(StagedFile)
 
         var medium: Medium {
             switch self {
             case .image: .image
-            case .file: .file
+            case .file, .recording: .file
             }
         }
 
         var path: String {
             switch self {
             case .image(let image): image.path
-            case .file(let file): file.path
+            case .file(let file), .recording(let file): file.path
+            }
+        }
+
+        /// Text placed in the user's draft after upload. A recording is not
+        /// merely reference material: it carries the user's spoken message.
+        /// Keep this instruction editable and free of submit characters.
+        func insertionText(in context: InsertionContext) -> String {
+            switch self {
+            case .image, .file:
+                "\(path) "
+            case .recording where context == .agentPrompt:
+                "Listen to this audio recording and treat what I say in it as my message: \(path) "
+            case .recording:
+                "\(path) "
             }
         }
     }
@@ -178,7 +201,8 @@ final class ComposerStagingStore {
     private let fileAdapter: FileAdapter
     private let clipboard: any AttachmentClipboard
     private let composer: (any ComposerDraftOperations)?
-    private var insertPath: ((String) -> Bool)?
+    private var insertText: ((String) -> Bool)?
+    private var insertionContext: InsertionContext = .terminal
 
     private var preparedSource: PreparedSource?
     private var operationTask: Task<Void, Never>?
@@ -200,9 +224,14 @@ final class ComposerStagingStore {
     }
 
     @discardableResult
-    func begin(_ source: Source, insertPath: ((String) -> Bool)? = nil) -> Bool {
+    func begin(
+        _ source: Source,
+        insertionContext: InsertionContext = .terminal,
+        insertText: ((String) -> Bool)? = nil
+    ) -> Bool {
         guard !state.isBusy, operationTask == nil else { return false }
-        self.insertPath = insertPath
+        self.insertionContext = insertionContext
+        self.insertText = insertText
         discardRetainedPreparedSource()
         cancellationDisposition = nil
         operationID &+= 1
@@ -242,7 +271,8 @@ final class ComposerStagingStore {
         await task?.value
         discardRetainedPreparedSource()
         state = .idle
-        insertPath = nil
+        insertText = nil
+        insertionContext = .terminal
     }
 
     private func cancel() {
@@ -325,7 +355,7 @@ final class ComposerStagingStore {
         case .file(let sourceURL):
             try await fileAdapter.prepare(sourceURL)
         case .recording(let file):
-            .file(file)
+            .recording(file)
         }
     }
 
@@ -343,7 +373,9 @@ final class ComposerStagingStore {
             case .image(let image):
                 staged = try await imageAdapter.upload(image, reporter: reporter)
             case .file(let file):
-                staged = try await fileAdapter.upload(file, reporter: reporter)
+                staged = .file(try await fileAdapter.upload(file, reporter: reporter))
+            case .recording(let file):
+                staged = .recording(try await fileAdapter.upload(file, reporter: reporter))
             }
             try Task.checkCancellation()
             finishSuccess(staged, operationID: operationID)
@@ -371,15 +403,15 @@ final class ComposerStagingStore {
             copied = true
         } catch {}
         let inserted: Bool
-        if let insertPath {
-            inserted = insertPath("\(staged.path) ")
+        if let insertText {
+            inserted = insertText(staged.insertionText(in: insertionContext))
         } else if let composer {
-            composer.insertIntoDraft("\(staged.path) ")
+            composer.insertIntoDraft(staged.insertionText(in: insertionContext))
             inserted = true
         } else {
             inserted = false
         }
-        insertPath = nil
+        insertText = nil
         state = .completed(
             Outcome(medium: staged.medium, path: staged.path, copied: copied, inserted: inserted))
     }

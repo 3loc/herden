@@ -56,3 +56,18 @@ final class AppAppearanceSettings {
         defaults.set(option.rawValue, forKey: Self.defaultsKey)
     }
 }
+
+/// Reaches the terminal surfaces without threading the object through every
+/// Console initializer. Injected once at the root beside
+/// `preferredColorScheme`, so the control that flips the appearance and the
+/// modifier that applies it read the same object.
+private struct AppAppearanceSettingsKey: EnvironmentKey {
+    static let defaultValue: AppAppearanceSettings? = nil
+}
+
+extension EnvironmentValues {
+    var appAppearance: AppAppearanceSettings? {
+        get { self[AppAppearanceSettingsKey.self] }
+        set { self[AppAppearanceSettingsKey.self] = newValue }
+    }
+}

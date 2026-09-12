@@ -63,11 +63,65 @@ struct ShellTerminalView: View {
         // TerminalScreenView performs the claim only after the UIKit surface
         // reaches a window, when becomeFirstResponder can actually succeed.
         screen.claimsKeyboard = { true }
-        screen.theme = terminal.themes.theme
+        // Resolve the palette here rather than handing libghostty both slots
+        // and trusting it to follow the UIKit trait: it does not re-resolve
+        // when the app's appearance override changes, which left the terminal
+        // black inside light chrome. A resolved theme also changes identity on
+        // a colorScheme change, so `applyTheme` actually reapplies it.
+        screen.theme = terminal.themes.resolvedTheme(for: colorScheme)
         screen.fontSize = terminal.zoom.fontSize
         screen.fontFamily = terminal.fonts.familyName
         screen.onFontSizeChanged = { terminal.zoom.setFontSize($0) }
         return screen
+    }
+
+    /// The same bottom row an Agent terminal has, in the same order: the
+    /// button back to the Console, what this surface is, then its own actions
+    /// behind one ellipsis. A Space has no Agent status to report, so the
+    /// middle slot carries the terminal's name instead.
+    private var terminalStatusRow: some View {
+        HStack(spacing: 4) {
+            AgentConsoleButton {
+                keyboardControl.dismissKeyboard()
+                guard !isReturning else { return }
+                Task { await onBack() }
+            }
+            Text(title)
+                .font(Brand.sans(.caption, weight: .semibold))
+                .foregroundStyle(Brand.muted)
+                .lineLimit(1)
+                .truncationMode(.middle)
+                .padding(.leading, 8)
+                .accessibilityIdentifier("terminal-name")
+            Spacer(minLength: 8)
+            moreMenu
+                .frame(width: 38, height: 30)
+                .padding(.trailing, 8)
+        }
+    }
+
+    private var moreMenu: some View {
+        Menu {
+            Button("Select and Copy Text", systemImage: "doc.on.doc") {
+                keyboardControl.selectText()
+            }
+            if onCloseTerminal != nil {
+                Divider()
+                Button(closeActionTitle, systemImage: "trash", role: .destructive) {
+                    isConfirmingClose = true
+                }
+                .disabled(isClosingTerminal || isReturning)
+            }
+        } label: {
+            Image(systemName: "ellipsis")
+                .font(.system(size: 13, weight: .semibold))
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
+                .contentShape(.rect)
+        }
+        .buttonStyle(.plain)
+        .foregroundStyle(Brand.ink)
+        .accessibilityLabel("More")
+        .accessibilityIdentifier("terminal-more")
     }
 
     /// A raised system keyboard gets its measured footprint; the Herden deck
@@ -100,8 +154,15 @@ struct ShellTerminalView: View {
         terminalScreen
             .id(store.terminalID)
             .overlay { statusOverlay }
+            .safeAreaInset(edge: .top, spacing: 0) {
+                TerminalTopControls(
+                    zoom: terminal.zoom,
+                    backLabel: backLabel,
+                    onBack: { guard !isReturning else { return }; Task { await onBack() } })
+            }
             .safeAreaInset(edge: .bottom, spacing: 0) {
                 VStack(alignment: .leading, spacing: 6) {
+                    terminalStatusRow
                     if let staging, let presentation = staging.presentation {
                         AttachmentStatusBar(
                             icon: presentation.icon,
@@ -142,35 +203,9 @@ struct ShellTerminalView: View {
                 for: .navigationBar
             )
             .navigationBarBackButtonHidden(true)
-            .navigationTitle(title)
+            .navigationTitle("")
             .navigationBarTitleDisplayMode(.inline)
-            .toolbar {
-                ToolbarItem(placement: .navigationBarLeading) {
-                    Button {
-                        Task { await onBack() }
-                    } label: {
-                        Label(backLabel, systemImage: "chevron.left")
-                    }
-                    .disabled(isReturning)
-                }
-                if onCloseTerminal != nil {
-                    ToolbarItem(placement: .navigationBarTrailing) {
-                        Button(role: .destructive) {
-                            isConfirmingClose = true
-                        } label: {
-                            Label(closeActionTitle, systemImage: "trash")
-                        }
-                        .disabled(isClosingTerminal || isReturning)
-                    }
-                }
-                ToolbarItemGroup(placement: .navigationBarTrailing) {
-                    Button("Select and Copy Text", systemImage: "doc.on.doc") {
-                        keyboardControl.selectText()
-                    }
-                    .accessibilityIdentifier("terminal-copy")
-
-                }
-            }
+            .toolbar(.hidden, for: .navigationBar)
             .confirmationDialog(
                 closeConfirmationTitle,
                 isPresented: $isConfirmingClose,
@@ -234,7 +269,7 @@ struct ShellTerminalView: View {
     @discardableResult
     private func beginAttachment(_ source: ComposerStagingStore.Source) -> Bool {
         let generation = store.input.liveGeneration
-        return staging?.begin(source, insertPath: { [weak store, weak keyboardControl] path in
+        return staging?.begin(source, insertText: { [weak store, weak keyboardControl] path in
             guard isOnStage, let store, let generation,
                 store.input.liveGeneration == generation,
                 let keyboardControl, keyboardControl.terminal != nil
@@ -262,12 +297,11 @@ struct ShellTerminalView: View {
         if let presentation = TerminalStatusPresentation(status: store.terminalStatus) {
             switch presentation.kind {
             case .connecting:
-                TerminalStatusDialog(
-                    glyph: .progress,
-                    title: presentation.title,
-                    message: presentation.message,
-                    palette: themePalette,
-                    dimsBackground: presentation.dimsBackground)
+                // Nothing. Connecting is the ordinary way into a terminal, not
+                // a condition worth a modal over the screen you just opened —
+                // and an Agent reattaches fast enough that the dialog only ever
+                // read as a flash. A failure still gets its dialog below.
+                EmptyView()
             case .ended:
                 TerminalStatusDialog(
                     glyph: .symbol("cable.connector.slash"),

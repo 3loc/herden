@@ -82,6 +82,9 @@ struct ConsoleView: View {
                         .accessibilityElement(children: .combine)
                     }
                     ToolbarItem(placement: .primaryAction) {
+                        appearanceToggle
+                    }
+                    ToolbarItem(placement: .primaryAction) {
                         Menu("Settings", systemImage: "ellipsis.circle") {
                             Button("Hosts", systemImage: "server.rack") { presentHosts() }
                             Button("Shared Files", systemImage: "doc.badge.arrow.up") {
@@ -202,6 +205,13 @@ struct ConsoleView: View {
                             openedSpace = nil
                         }
                     }
+                    // A full-screen cover is its own presentation host, so the
+                    // window-level appearance applied in ContentView does not
+                    // reach it — and the Ghostty surface resolves light/dark
+                    // from the UIKit trait it inherits here, not from SwiftUI.
+                    // Without this the light/dark toggle moved the chrome and
+                    // left the terminal itself on the system appearance.
+                    .preferredColorScheme(appearance.preferredColorScheme)
                 }
                 .alert(
                     "Could Not Open Space",
@@ -448,6 +458,22 @@ struct ConsoleView: View {
         }
     }
 
+    /// The same one-tap light/dark switch the terminals carry, so the choice
+    /// is reachable without opening a Space first. The glyph shows what the
+    /// next tap gives you, and reading the effective scheme rather than the
+    /// stored selection means the first tap out of System pins the opposite of
+    /// what is on screen.
+    private var appearanceToggle: some View {
+        let isDark = colorScheme == .dark
+        return Button {
+            appearance.select(isDark ? .light : .dark)
+        } label: {
+            Image(systemName: isDark ? "sun.max" : "moon")
+        }
+        .accessibilityLabel(isDark ? "Switch to Light Mode" : "Switch to Dark Mode")
+        .accessibilityIdentifier("console-appearance-toggle")
+    }
+
     @ViewBuilder
     private func spaceRow(_ space: ConsoleSpace) -> some View {
         Group {
@@ -459,13 +485,22 @@ struct ConsoleView: View {
                 NavigationLink(value: ConsoleAgent.ID(
                     hostID: space.hostID, paneID: paneID)
                 ) {
-                    SpaceCardView(space: space, isOpening: false)
+                    SpaceCardView(space: space)
                 }
             } else {
+                // A Button in a List only takes hits where it actually draws,
+                // so without an explicit shape the gaps between the mark, the
+                // labels and the trailing glyph are dead. An Agent row does
+                // not need this — NavigationLink makes the whole row
+                // selectable — which is why only Space terminals were hard to
+                // tap, and why the row with the fewest drawn elements was the
+                // hardest of all.
                 Button {
                     openSpace(space)
                 } label: {
-                    SpaceCardView(space: space, isOpening: openingSpaceID == space.id)
+                    SpaceCardView(space: space)
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                        .contentShape(Rectangle())
                 }
             }
         }

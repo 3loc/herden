@@ -8,15 +8,53 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+### Added
+
+- Added a one-tap Light/Dark switch to the Spaces list and to both terminal
+  screens. The glyph shows the appearance the next tap gives, and the first tap
+  out of System pins the opposite of what is on screen.
+- Added Tab, Up and Down as permanent keys on the shared terminal keyboard, and
+  a dedicated dictation-language key in place of the overflow menu.
+- Added persistent one-tap terminal font-size controls to the shared Agent and Space keyboard.
+- Added one-tap `/` and `$` shell-character keys to the shared terminal keyboard.
+
 ### Changed
+
+- Lay the terminal keyboard out on one grid: Escape opens the first row and
+  Backspace closes it with the four arrows as a single cluster between them, the
+  four actions share the second row with a wide Return, and Tab joins the shell
+  characters on the third. Every row spans the deck, and the overflow menu is
+  gone rather than hiding keys behind an ellipsis.
+- Give Agent and Space terminals the same top controls — Back, Light/Dark, font
+  size, and message jump where a jump can go anywhere — and the same status row
+  above the keyboard. A Space no longer carries a second navigation bar.
+- Move terminal font size and the message-jump arrows out of the keyboard and
+  off the terminal surface into those top controls, so neither covers output.
 
 - Simplify the iOS terminal keyboard with repeating left/right arrows, Attach,
   Paste and clearly labelled Apple text dictation. Keep advanced keys under More.
+- Optimize shared keyboard touch ergonomics by normalizing key height/widths on
+  the fixed control rows, increasing Escape visibility and removing uneven
+  spacing artifacts in the shell-character row.
 - Record, review and attach compressed audio through the existing file upload
   flow, with cancellation and retry support and no automatic prompt submission.
 
 ### Fixed
 
+- Follow the app's Light/Dark choice in the terminal itself, not just its
+  chrome. The renderer resolves a palette from its own interface style, which a
+  full-screen Space kept inheriting from the system, leaving a black terminal
+  inside a light app.
+- Make a whole Space row tappable instead of only the text drawn inside it.
+  Terminal rows, which draw the fewest elements, were the hardest to hit.
+- Let the Agent switcher take a tap on the first press rather than after
+  several, by not letting its scroll view sit on each touch first.
+- Stop covering a terminal with a Connecting dialog and a progress spinner on
+  the way in. Connecting is how a terminal opens, not a condition to report; a
+  failed terminal still gets its dialog and Reattach button.
+
+- Tell Agents to treat an attached audio recording as the user's spoken
+  message instead of inserting an ambiguous file path as reference material.
 - Resume Agents using their own terminal's client colour context, not the global
   foreground palette. Keep direct-attach input and resize working during the
   bounded observation wait, including client takeover.

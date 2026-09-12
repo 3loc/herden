@@ -326,6 +326,13 @@ final class TerminalAgentSwitcherBar: UIView, UIScrollViewDelegate,
         scrollView.showsHorizontalScrollIndicator = false
         scrollView.alwaysBounceHorizontal = true
         scrollView.contentInsetAdjustmentBehavior = .never
+        // Chips are UIControls inside a scroll view. With the default
+        // `delaysContentTouches`, UIKit sits on each touch long enough to
+        // decide whether it is a scroll, and any finger movement in that
+        // window hands it to the pan recognizer instead of the chip — which
+        // reads as a strip that ignores the first taps. Cancelling is left on,
+        // so dragging from a chip still scrolls the strip.
+        scrollView.delaysContentTouches = false
         scrollView.delegate = self
         // The strip is measured over several passes and its content width is
         // published last, so that is when the open Agent's position is finally
