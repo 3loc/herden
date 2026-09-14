@@ -7,7 +7,7 @@ you need within thumb reach.
 ## Write, correct, then send
 
 Tap the prompt to show the iPhone keyboard. Type your message, or choose a
-**Dictation Language** from **More** and tap **Dictate text**. Dictation transcribes
+**Dictation Language** from the language button and tap **Dictate**. Dictation transcribes
 on the phone and never presses Return. Tap Stop when finished.
 
 To correct a character or word, tap within the prompt and drag left or right
@@ -30,19 +30,14 @@ on-device models.
 
 ## Everyday controls
 
-The toolbar stays above Apple's keyboard. **Left** and **Right** move the
-cursor; hold either arrow to repeat. **Attach** opens Documents or Photos,
-and **Paste** inserts clipboard text. The keyboard button shows or hides the
-system keyboard. **More** holds Escape, Tab, interrupt (Ctrl-C), Ctrl-B, Up,
-Down, Return and dictation language.
-
-Existing Agents may use Vim editing. If an Agent is in normal mode, choose
-**More → Insert text (Vim)** before typing. Herden passes that explicit action
-to the Agent; scrolling and cursor movement do not change editing modes.
+The shared deck keeps Escape, arrows, Ctrl-C, Backspace, Attach, Paste, Dictate,
+Audio, Return, Tab, `/`, `$`, dictation language and the system keyboard within
+reach. Hold an arrow or Backspace to repeat it. Attach opens Documents or
+Photos. Dictate is wider than the neighboring attachment actions.
 
 ## Record an audio attachment
 
-**Dictate text** uses Apple's on-device speech recognition and inserts text.
+**Dictate** uses Apple's on-device speech recognition and inserts text.
 **Record audio** keeps your voice as a compressed M4A recording instead.
 
 Tap **Stop recording**, listen with **Play**, then choose **Attach audio** or
@@ -52,8 +47,9 @@ local recording. An upload that fails can be retried through the attachment
 status bar.
 
 Audio uses the same SSH file upload as Documents. Herden inserts its Host path
-without pressing Return. The Agent needs audio support to consume the file.
-Completed Host files remain there; Herden removes its temporary local copy.
+without pressing Return or adding an instruction. You decide how the Agent,
+hook or skill should treat it. Completed Host files remain there; Herden removes
+its temporary local copy.
 
 ## Move between work
 

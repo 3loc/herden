@@ -58,9 +58,9 @@ _Avoid_: attachment, uploaded file
 **Shared File Transfer**:
 A document, image or video received through iOS Share, addressed to one Agent.
 The Share Extension stages it over SFTP and inserts its Host path without Return.
-Herden's Shared Files view shows the same durable progress and opens the Agent
-so the user can add instructions. Interrupted uploads support explicit retry;
-uncertain path insertion requires checking the Agent before pasting again.
+Transfer state exists only while the Share Sheet is active and is removed after
+delivery. Interrupted uploads support explicit retry; uncertain path insertion
+requires checking the Agent before pasting again.
 
 **Image Attachment**:
 A Staged Image that the Agent has accepted into its current prompt as image input.
@@ -177,7 +177,8 @@ terminal pane view
 **Direct Input**:
 Herden's default Agent-detail mode that hides the Composer card and routes the
 system keyboard plus the shared toolbar (arrows, Attach, Paste, text dictation
-and audio recording) into the live Attach PTY. The draft stays in `AgentComposerStore`
+and audio recording) into the live Attach PTY. Uploaded recordings insert only
+their remote path. The draft stays in `AgentComposerStore`
 untouched. Mode preference is app-wide; the legacy injectable model retains its
 Composer fallback for compatibility tests, while the production app defaults
 to Direct Input. Distinct from Shell
