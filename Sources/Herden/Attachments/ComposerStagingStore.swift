@@ -27,13 +27,6 @@ final class ComposerStagingStore {
         case dismiss
     }
 
-    /// Where the inserted text will be interpreted. Plain terminals need the
-    /// path itself; Agent prompts need to identify recordings as user speech.
-    enum InsertionContext: Sendable, Equatable {
-        case terminal
-        case agentPrompt
-    }
-
     enum State: Sendable, Equatable {
         case idle
         case preparing(Medium)
@@ -174,19 +167,7 @@ final class ComposerStagingStore {
             }
         }
 
-        /// Text placed in the user's draft after upload. A recording is not
-        /// merely reference material: it carries the user's spoken message.
-        /// Keep this instruction editable and free of submit characters.
-        func insertionText(in context: InsertionContext) -> String {
-            switch self {
-            case .image, .file:
-                "\(path) "
-            case .recording where context == .agentPrompt:
-                "Listen to this audio recording and treat what I say in it as my message: \(path) "
-            case .recording:
-                "\(path) "
-            }
-        }
+        var insertionText: String { "\(path) " }
     }
 
     private(set) var state: State = .idle
@@ -202,7 +183,6 @@ final class ComposerStagingStore {
     private let clipboard: any AttachmentClipboard
     private let composer: (any ComposerDraftOperations)?
     private var insertText: ((String) -> Bool)?
-    private var insertionContext: InsertionContext = .terminal
 
     private var preparedSource: PreparedSource?
     private var operationTask: Task<Void, Never>?
@@ -226,11 +206,9 @@ final class ComposerStagingStore {
     @discardableResult
     func begin(
         _ source: Source,
-        insertionContext: InsertionContext = .terminal,
         insertText: ((String) -> Bool)? = nil
     ) -> Bool {
         guard !state.isBusy, operationTask == nil else { return false }
-        self.insertionContext = insertionContext
         self.insertText = insertText
         discardRetainedPreparedSource()
         cancellationDisposition = nil
@@ -272,7 +250,6 @@ final class ComposerStagingStore {
         discardRetainedPreparedSource()
         state = .idle
         insertText = nil
-        insertionContext = .terminal
     }
 
     private func cancel() {
@@ -404,9 +381,9 @@ final class ComposerStagingStore {
         } catch {}
         let inserted: Bool
         if let insertText {
-            inserted = insertText(staged.insertionText(in: insertionContext))
+            inserted = insertText(staged.insertionText)
         } else if let composer {
-            composer.insertIntoDraft(staged.insertionText(in: insertionContext))
+            composer.insertIntoDraft(staged.insertionText)
             inserted = true
         } else {
             inserted = false

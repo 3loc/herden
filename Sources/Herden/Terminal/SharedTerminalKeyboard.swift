@@ -131,7 +131,7 @@ struct TerminalKeyboard: View {
 
 /// One grid, three rows, every row edge to edge. Rows 1 and 3 share the same
 /// seven columns so the keys line up vertically; row 2 carries the four
-/// labelled actions plus a Return key spanning two of those columns.
+/// actions plus a Return key spanning two of those columns.
 ///
 /// Ordering is deliberate. Escape opens row 1 and Backspace closes it, the way
 /// they sit on a physical keyboard, with the four arrows as one contiguous
@@ -213,7 +213,7 @@ struct TerminalDirectInputDeck: View {
             Button(action: toggleDictation) {
                 label(isDictating ? "Stop" : "Dictate",
                       image: isDictating ? "stop.fill" : "mic.fill",
-                      width: layout.actionKey)
+                      width: layout.dictateKey)
             }
             .buttonStyle(TerminalToolbarButtonStyle(isRecording: isDictating))
             .disabled(!canInput)
@@ -355,10 +355,15 @@ struct TerminalDeckLayout: Equatable {
     /// Return spans two columns and the gap between them.
     var returnKey: CGFloat { column * 2 + Self.spacing }
 
-    /// The four labelled actions divide whatever Return leaves.
     var actionKey: CGFloat {
         guard width > 0 else { return 0 }
-        return (width - 4 * Self.spacing - returnKey) / 4
+        return (width - 4 * Self.spacing - returnKey) / 4.5
+    }
+
+    /// Dictate is wider than the neighboring attachment actions.
+    var dictateKey: CGFloat {
+        guard width > 0 else { return 0 }
+        return actionKey * 1.5
     }
 }
 

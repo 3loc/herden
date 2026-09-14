@@ -18,7 +18,6 @@ struct ComposerStagingStoreTests {
         #expect(
             fixture.store.begin(
                 .recording(file),
-                insertionContext: .agentPrompt,
                 insertText: { pasted.append($0); return true }))
         try await waitUntil("audio upload should fail") {
             if case .failed = fixture.store.state { return true }; return false
@@ -28,27 +27,22 @@ struct ComposerStagingStoreTests {
         fixture.store.perform(.retry)
         try await waitUntil("audio retry should complete") { fixture.store.state.isCompleted }
         #expect(await fixture.transport.fileStageRequests == [file, file])
-        #expect(
-            pasted == [
-                "Listen to this audio recording and treat what I say in it as my message: /tmp/herden/audio/file.m4a "
-            ])
+        #expect(pasted == ["/tmp/herden/audio/file.m4a "])
         #expect(!pasted.joined().contains("\n"))
         #expect(!pasted.joined().contains("\r"))
         #expect(!FileManager.default.fileExists(atPath: url.path))
     }
 
-    @Test func recordedAudioInsertsSpokenMessageInstructionIntoComposer() async throws {
+    @Test func recordedAudioInsertsOnlyItsPathIntoComposer() async throws {
         let fixture = try await makeFixture(
             .file,
             stagePlans: [.success("/tmp/herden/audio/file.m4a")])
         defer { fixture.cleanup() }
 
-        fixture.store.begin(.recording(fixture.preparedFile), insertionContext: .agentPrompt)
+        fixture.store.begin(.recording(fixture.preparedFile))
         try await waitUntil("audio upload should complete") { fixture.store.state.isCompleted }
 
-        #expect(
-            fixture.composer.draft
-                == "Listen to this audio recording and treat what I say in it as my message: /tmp/herden/audio/file.m4a ")
+        #expect(fixture.composer.draft == "/tmp/herden/audio/file.m4a ")
         #expect(fixture.clipboard.copiedPaths == ["/tmp/herden/audio/file.m4a"])
     }
 

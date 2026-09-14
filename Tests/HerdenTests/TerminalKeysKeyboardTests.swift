@@ -164,12 +164,13 @@ struct TerminalKeysKeyboardTests {
             let terminalKeyRow = layout.column * 7 + spacing * 6
             #expect(abs(terminalKeyRow - width) < 0.001, "row 1 at \(width)")
 
-            let actionRow = layout.actionKey * 4 + layout.returnKey + spacing * 4
+            let actionRow = layout.actionKey * 3 + layout.dictateKey
+                + layout.returnKey + spacing * 4
             #expect(abs(actionRow - width) < 0.001, "row 2 at \(width)")
 
             // Return spans two of row 1's columns, so it lines up with them.
             #expect(layout.returnKey == layout.column * 2 + spacing)
-            #expect(layout.actionKey > layout.column)
+            #expect(layout.dictateKey == layout.actionKey * 1.5)
         }
     }
 
@@ -179,6 +180,7 @@ struct TerminalKeysKeyboardTests {
         let layout = TerminalDeckLayout(width: 0)
         #expect(layout.column == 0)
         #expect(layout.actionKey == 0)
+        #expect(layout.dictateKey == 0)
     }
 
     @Test func everyTabHasItsOwnIconAndLabel() {

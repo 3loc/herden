@@ -20,7 +20,7 @@ Paths below are relative to `Sources/Herden/`.
 | `Transport/Transport.swift`, `Transport/HerdenSSHTransport.swift` | New Space specification, remote home resolution and launch in the returned root pane. |
 | `Terminal/SharedTerminalKeyboard.swift` | Shared arrow/attachment toolbar, Apple dictation and recording sheet for Agent and shell terminals. |
 | `Dictation/HerdenAudioRecorder.swift` + `AudioRecordingSheet.swift` | Protected M4A capture, review, interruption handling and explicit file ownership transfer. |
-| `Attachments/ComposerStagingStore.swift` | File upload and retries; accepted recordings enter the existing SFTP path. |
+| `Attachments/ComposerStagingStore.swift` | File upload and retries; recordings use the same path-only result as other files. |
 
 New Agent flows through StartAgentStore to the transport, which creates a
 Space and starts the Agent in its existing root pane; the refreshed snapshot

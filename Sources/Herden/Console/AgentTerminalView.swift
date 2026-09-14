@@ -750,14 +750,13 @@ struct AgentTerminalView: View {
     @discardableResult
     private func beginAttachment(_ source: ComposerStagingStore.Source) -> Bool {
         guard isDirectInput else {
-            return attach.staging.begin(source, insertionContext: .agentPrompt)
+            return attach.staging.begin(source)
         }
         let generation = attach.input.liveGeneration
         let control = keyboardControl
         let onStage = isOnStage
         return attach.staging.begin(
             source,
-            insertionContext: .agentPrompt,
             insertText: { [weak attach, weak control] text in
                 guard let attach, let generation, attach.input.liveGeneration == generation,
                       let control, control.terminal != nil, onStage() else { return false }

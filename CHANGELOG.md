@@ -50,6 +50,10 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
   spacing artifacts in the shell-character row.
 - Record, review and attach compressed audio through the existing file upload
   flow, with cancellation and retry support and no automatic prompt submission.
+  Insert only its uploaded path, leaving interpretation to the user or their
+  Agent tooling.
+- Make Dictate wider than the other attachment actions on the shared
+  terminal keyboard.
 
 ### Fixed
 
@@ -74,8 +78,6 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
   the way in. Connecting is how a terminal opens, not a condition to report; a
   failed terminal still gets its dialog and Reattach button.
 
-- Tell Agents to treat an attached audio recording as the user's spoken
-  message instead of inserting an ambiguous file path as reference material.
 - Resume Agents using their own terminal's client colour context, not the global
   foreground palette. Keep direct-attach input and resize working during the
   bounded observation wait, including client takeover.

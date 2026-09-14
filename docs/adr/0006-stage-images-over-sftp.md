@@ -5,8 +5,9 @@ Paste. Record audio prepares a compressed M4A file in protected local storage,
 then offers playback, discard and explicit attachment. Accepted recordings pass
 ownership directly to the file staging path; rejected attempts retain the
 recording for review. Audio does not use speech recognition or auto-submit.
-It reuses the staging module below, but supplies a per-operation insertion
-callback to the live terminal paste path. The callback checks that the Agent
+It is uploaded like any other file and inserts only its remote path. The user,
+Agent configuration, hook or skill decides how to interpret it. The insertion
+callback checks that the Agent
 screen and terminal generation are still current. If either changed during
 upload, completion retains Copy Path and does not claim insertion. It never
 presses Return. Composer mode keeps its local draft insertion behaviour.
