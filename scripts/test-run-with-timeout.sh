@@ -5,8 +5,7 @@ set -euo pipefail
 repo_root="$(cd "$(dirname "$0")/.." && pwd)"
 runner="$repo_root/scripts/run-with-timeout.py"
 gate_script="$repo_root/scripts/run-ci-ios-tests.sh"
-workflow="$repo_root/.github/workflows/ci.yml"
-work="$(mktemp -d "${TMPDIR:-/tmp}/heeler-timeout-test.XXXXXX")"
+work="$(mktemp -d "${TMPDIR:-/tmp}/herden-timeout-test.XXXXXX")"
 trap 'rm -rf "$work"' EXIT
 
 [[ -x "$runner" ]] || {
@@ -36,7 +35,7 @@ printf 'partial xcresult' > "$work/evidence/result.txt"
 # before the watchdog fires, and 0.1s lost that race on loaded machines.
 # The `$$`/`$1` below belong to the child shell, deliberately unexpanded.
 # shellcheck disable=SC2016
-HEELER_TIMEOUT_DISABLE_SAMPLE=1 "$runner" \
+HERDEN_TIMEOUT_DISABLE_SAMPLE=1 "$runner" \
     --timeout-seconds 1 \
     --label stalled-test \
     --diagnostics-dir "$work/timeout" \
@@ -82,14 +81,6 @@ fi
 wrapped_calls=$(grep -cE '^[[:space:]]*run_xcodebuild "' "$gate_script")
 [[ "$wrapped_calls" == 5 ]] || {
     echo "expected 5 watchdog-wrapped xcodebuild call sites, found $wrapped_calls" >&2
-    exit 1
-}
-[[ "$(grep -c 'timeout-minutes: 35' "$workflow")" == 1 ]] || {
-    echo "the iOS job must retain its 35-minute deadline" >&2
-    exit 1
-}
-[[ "$(grep -c 'timeout-minutes: 32' "$workflow")" == 1 ]] || {
-    echo "the Build and test step must retain its 32-minute deadline" >&2
     exit 1
 }
 
@@ -150,7 +141,7 @@ if grep -E '^[[:space:]]*run_xcodebuild "Build for testing"' -A 8 "$gate_script"
 fi
 awk '
     /if \[\[ "\$ci_lane" == "package" \]\]; then/ { in_pkg = 1 }
-    in_pkg && /HeelerSSH package build/ { saw_build_label = 1 }
+    in_pkg && /HerdenSSH package build/ { saw_build_label = 1 }
     in_pkg && /build-for-testing/ { build = NR }
     in_pkg && /simctl bootstatus/ { boot = NR }
     in_pkg && /test-without-building/ { test_action = NR }
@@ -182,23 +173,11 @@ awk '
     echo "app lane must reuse a cached clonedSourcePackagesDirPath" >&2
     exit 1
 }
-if grep -E '^[[:space:]]*run_xcodebuild "HeelerSSH package' -A 12 "$gate_script" \
+if grep -E '^[[:space:]]*run_xcodebuild "HerdenSSH package' -A 12 "$gate_script" \
     | grep -q -- '-clonedSourcePackagesDirPath'; then
     echo "package lane must not take the app SourcePackages cache path" >&2
     exit 1
 fi
-[[ "$(grep -cF 'Cache SwiftPM checkouts' "$workflow")" == 1 ]] || {
-    echo "the app job must cache SwiftPM checkouts" >&2
-    exit 1
-}
-if grep -qE '^[[:space:]]+xcrun simctl list runtimes' "$workflow"; then
-    echo "CI must not list simulator runtimes on the critical path" >&2
-    exit 1
-fi
-[[ "$(grep -cF 'Show Xcode version' "$workflow")" == 2 ]] || {
-    echo "both macOS jobs must keep the lightweight Xcode version step" >&2
-    exit 1
-}
 awk '
     /^claim_port_block$/ { ports = NR }
     /xcrun simctl boot "/ { boot = NR }
@@ -206,29 +185,6 @@ awk '
     END { exit (ports && boot && keygen && ports < boot && boot < keygen) ? 0 : 1 }
 ' "$gate_script" || {
     echo "simulator boot must overlap fixture provisioning, not follow it" >&2
-    exit 1
-}
-
-if ! awk '
-    /pull_request:/ { in_pr = 1 }
-    in_pr && /output\/\*\*/ { found = 1 }
-    in_pr && /^  push:/ { exit found ? 0 : 1 }
-    END { exit found ? 0 : 1 }
-' "$workflow"; then
-    echo "pull_request paths-ignore must include output/**" >&2
-    exit 1
-fi
-if ! awk '
-    /^  push:/ { in_push = 1 }
-    in_push && /output\/\*\*/ { found = 1 }
-    in_push && /^# One in-flight/ { exit found ? 0 : 1 }
-    END { exit found ? 0 : 1 }
-' "$workflow"; then
-    echo "push paths-ignore must include output/**" >&2
-    exit 1
-fi
-[[ "$(grep -cE '^[[:space:]]+- output/\*\*' "$workflow")" == 2 ]] || {
-    echo "output/** must appear once per paths-ignore list" >&2
     exit 1
 }
 

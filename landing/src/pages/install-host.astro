@@ -1,0 +1,87 @@
+---
+import InfoLayout from '../layouts/InfoLayout.astro';
+---
+
+<InfoLayout
+  title="Install a Herden Host"
+  description="Install Herden Host on Linux or macOS, connect it over Tailscale, and pair your iPhone."
+  eyebrow="Linux + macOS"
+  heading="Install a Host"
+  canonicalPath="/install-host"
+>
+  <p>
+    A Host is the computer that runs your coding agents. Run these commands on
+    that computer as the user who will run Claude Code or Codex.
+  </p>
+
+  <h2>1. Enable SSH</h2>
+  <p>On Ubuntu or Debian:</p>
+  <pre><code>sudo apt update
+sudo apt install openssh-server
+sudo systemctl enable --now ssh</code></pre>
+  <p>
+    On macOS, open <strong>System Settings → General → Sharing → Remote Login</strong>.
+    Enable it for your user account and keep the Host awake for remote access.
+  </p>
+  <p>
+    Herden needs public-key authentication, PTY sessions, and OpenSSH stream-local
+    forwarding. Standard OpenSSH defaults allow them. Herden does not alter SSH
+    or firewall configuration.
+  </p>
+
+  <h2>2. Connect with Tailscale</h2>
+  <ol>
+    <li>Install <a href="https://tailscale.com/download">Tailscale</a> on the Host and sign in.</li>
+    <li>Install Tailscale on the iPhone, join the same tailnet, and connect.</li>
+    <li>Keep ordinary OpenSSH on port 22. Do not enable Tailscale SSH; Herden pairs its own SSH key and needs Unix-socket forwarding.</li>
+  </ol>
+  <p>
+    The phone must be able to reach the Host on TCP port 22. No router port
+    forwarding is needed.
+  </p>
+
+  <h2>3. Install Herden</h2>
+  <pre><code>curl -fsSL https://herden.app/install.sh | sh</code></pre>
+  <p>
+    The installer selects the binary for your OS and architecture, verifies its
+    SHA-256 checksum, installs it to <code>~/.local/bin</code>, and adds that
+    directory to common shell startup files. It also installs the release licence
+    and attribution notice. Running the same command again safely verifies or
+    upgrades an existing installation.
+  </p>
+  <p>Open a new Terminal, or refresh the current one:</p>
+  <pre><code>exec "$SHELL" -l
+herden --version</code></pre>
+
+  <h2>4. Start and pair</h2>
+  <p>
+    Install and sign in to Claude Code or Codex on the Host. Complete their
+    first-run login and directory-trust prompts there, then start Herden:
+  </p>
+  <pre><code>herden</code></pre>
+  <p>In an ordinary shell tab inside that session, run:</p>
+  <pre><code>herden pair</code></pre>
+  <p>
+    Leave the QR code visible. On the iPhone, open{' '}
+    <strong>Herden → Hosts → Add Host</strong>, choose the scanner, and scan it.
+    Each code expires after two minutes and enrols one phone.
+  </p>
+
+  <h2>Troubleshooting</h2>
+  <table>
+    <thead><tr><th>Symptom</th><th>Next step</th></tr></thead>
+    <tbody>
+      <tr><td><code>herden: command not found</code></td><td>Run <code>export PATH="$HOME/.local/bin:$PATH"</code> or open a new Terminal.</td></tr>
+      <tr><td>Expired QR code</td><td>Run <code>herden pair</code> again and keep its Terminal open.</td></tr>
+      <tr><td>Host unreachable</td><td>Check Tailscale on both devices, the Host address, firewall, and access policy.</td></tr>
+      <tr><td>Permission denied</td><td>Pair as the user running Herden. Check Remote Login and confirm Tailscale SSH is not intercepting port 22.</td></tr>
+      <tr><td>Stream-local forwarding denied</td><td>Enable <code>AllowStreamLocalForwarding yes</code> and ensure <code>DisableForwarding</code> is not enabled for the user.</td></tr>
+      <tr><td>Agent waits on first launch</td><td>Finish its login or directory-trust dialogue on the Host.</td></tr>
+    </tbody>
+  </table>
+  <p>
+    For a custom SSH port, add <code>--port 2222</code> to the pairing command,
+    using the port configured on your Host. Reconnection cannot wake a sleeping
+    computer.
+  </p>
+</InfoLayout>

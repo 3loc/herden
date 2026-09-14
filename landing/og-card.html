@@ -1,0 +1,181 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=1200, initial-scale=1" />
+    <title>Herden OpenGraph card</title>
+    <style>
+      @font-face {
+        font-family: "JetBrains Mono";
+        src: url("../Sources/Herden/Resources/Fonts/JetBrainsMono-Regular.ttf") format("truetype");
+      }
+
+      @font-face {
+        font-family: "JetBrains Mono";
+        src: url("../Sources/Herden/Resources/Fonts/JetBrainsMono-Bold.ttf") format("truetype");
+        font-weight: 700;
+      }
+
+      :root {
+        --canvas: #fffcf0;
+        --raised: #fffef8;
+        --ink: #100f0f;
+        --muted: #575653;
+        --border: #cecdc3;
+        --primary: #205ea6;
+      }
+
+      * { box-sizing: border-box; }
+
+      html,
+      body {
+        width: 1200px;
+        height: 630px;
+        margin: 0;
+        overflow: hidden;
+      }
+
+      body {
+        position: relative;
+        background: var(--canvas);
+        color: var(--ink);
+        font-family: "JetBrains Mono", monospace;
+      }
+
+      .copy {
+        position: absolute;
+        z-index: 4;
+        top: 52px;
+        left: 66px;
+        width: 615px;
+      }
+
+      .brand {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        font-size: 25px;
+        font-weight: 700;
+        letter-spacing: -1px;
+        font-family: "JetBrains Mono", monospace;
+      }
+
+      .brand svg { width: 36px; height: 36px; }
+
+      .kicker {
+        margin-top: 62px;
+        color: var(--primary);
+        font-size: 14px;
+        font-family: "JetBrains Mono", monospace;
+        font-weight: 700;
+        letter-spacing: 1.1px;
+        text-transform: uppercase;
+      }
+
+      .kicker span { color: inherit; }
+
+      h1 {
+        margin: 22px 0 20px;
+        font-size: 65px;
+        font-weight: 700;
+        line-height: 1.03;
+        letter-spacing: -4px;
+      }
+
+      h1 span { color: var(--primary); }
+
+      .description {
+        width: 575px;
+        margin: 0;
+        color: var(--muted);
+        font-size: 19px;
+        line-height: 1.45;
+      }
+
+      .facts {
+        display: flex;
+        gap: 24px;
+        margin-top: 32px;
+        color: var(--primary);
+        font-size: 13px;
+        font-weight: 700;
+        font-family: "JetBrains Mono", monospace;
+      }
+
+      .facts span::before { color: var(--primary); content: "> "; }
+
+      .url {
+        position: absolute;
+        bottom: 36px;
+        left: 68px;
+        color: var(--muted);
+        font-size: 15px;
+      }
+
+      .screens {
+        position: absolute;
+        top: 24px;
+        right: 30px;
+        width: 430px;
+        height: 590px;
+      }
+
+      .screen {
+        position: absolute;
+        overflow: hidden;
+        border: 1px solid var(--border);
+        border-radius: 34px;
+        background: var(--raised);
+        box-shadow: 0 20px 45px rgba(16, 15, 15, 0.14);
+      }
+
+      .screen img { display: block; width: 100%; height: auto; }
+
+      .terminal {
+        z-index: 3;
+        top: 0;
+        right: 12px;
+        width: 254px;
+        transform: rotate(1deg);
+      }
+
+      .spaces-list {
+        z-index: 2;
+        top: 76px;
+        left: 0;
+        width: 202px;
+        transform: rotate(-2deg);
+      }
+
+      .glasses { position: absolute; z-index: 4; left: 0; bottom: 8px; width: 250px; }
+      .glasses img { display: block; width: 100%; height: auto; filter: brightness(1.04); }
+
+    </style>
+  </head>
+  <body>
+    <section class="copy">
+      <div class="brand">
+        <svg viewBox="0 0 120 120" aria-hidden="true">
+          <g fill="#205EA6">
+            <rect x="16" y="22" width="32" height="32" rx="2" />
+            <rect x="72" y="66" width="32" height="32" rx="2" />
+          </g>
+          <path d="M44 38h20v44h12" fill="none" stroke="#205EA6" stroke-width="14" stroke-linecap="square" stroke-linejoin="miter" />
+        </svg>
+        <span>Herden</span>
+      </div>
+      <p class="kicker"><span>●</span> Persistent agents · Your machines</p>
+      <h1>All your agents.<br /><span>See who needs you.</span></h1>
+      <p class="description">See their status, open the real terminal and reply from your iPhone.</p>
+      <div class="facts"><span>Type or dictate</span><span>Send files</span><span>Pair by QR</span></div>
+    </section>
+
+    <span class="url">herden.app</span>
+
+    <section class="screens" aria-label="Actual Herden app screens">
+      <div class="screen spaces-list"><img src="src/assets/screenshots/herden-spaces-generic.png" alt="Herden Spaces" /></div>
+      <div class="screen terminal"><img src="src/assets/screenshots/herden-terminal-generic.png" alt="Herden terminal" /></div>
+      <div class="glasses"><img src="src/assets/screenshots/herden-ar-simulator-transparent.png" alt="AR glasses with the actual Herden simulator display" /></div>
+    </section>
+  </body>
+</html>

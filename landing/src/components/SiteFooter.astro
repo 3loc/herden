@@ -1,30 +1,31 @@
 ---
 import { Image } from 'astro:assets';
-import logo from '../assets/logo.png';
+import logoDark from '../assets/logo-dark.svg';
+import logoLight from '../assets/logo-light.svg';
 
 const links = [
-  { href: 'https://github.com/ZingerLittleBee/Heeler', label: 'GitHub' },
-  { href: 'https://herdr.dev', label: 'herdr' },
-  { href: 'https://github.com/ZingerLittleBee/Heeler/blob/main/PRIVACY.md', label: 'Privacy' },
+  { href: '/install-host', label: 'Host guide' },
+  { href: '/privacy', label: 'Privacy' },
+  { href: '/licenses', label: 'Licences + attribution' },
 ];
 ---
 
 <footer class="footer">
   <div class="container layout">
     <div class="brand">
-      <Image class="mark" src={logo} alt="" width={18} height={18} densities={[2, 3]} loading="eager" />
-      <span class="tagline">Heeler — an agent console for herdr</span>
+      <Image class="mark mark-light" src={logoLight} alt="" width={18} height={18} densities={[2, 3]} loading="eager" />
+      <Image class="mark mark-dark" src={logoDark} alt="" width={18} height={18} densities={[2, 3]} loading="eager" />
+      <span class="tagline">Self-hosted coding agents on iPhone.</span>
     </div>
     <div class="links">
       {links.map((link) => <a class="link" href={link.href}>{link.label}</a>)}
-      <span class="license">Apache-2.0</span>
     </div>
   </div>
 </footer>
 
 <style>
   .footer {
-    padding: var(--sp-12) 0 var(--sp-16);
+    padding: 22px 0 28px;
   }
 
   .layout {
@@ -41,9 +42,8 @@ const links = [
     gap: var(--sp-2-5);
   }
 
-  .mark {
-    border-radius: var(--r-sm);
-  }
+  .mark { flex: none; }
+  .mark-dark { display: none; }
 
   .tagline,
   .link {
@@ -62,9 +62,15 @@ const links = [
     color: var(--text-primary);
   }
 
-  .license {
-    font: var(--type-mono-sm);
-    letter-spacing: var(--tr-mono);
-    color: var(--text-muted);
+  @media (max-width: 640px) {
+    .layout { gap: 12px; }
+    .links { gap: 14px; }
+    .tagline,
+    .link { font-size: 10px; }
+  }
+
+  @media (prefers-color-scheme: dark) {
+    .mark-light { display: none; }
+    .mark-dark { display: block; }
   }
 </style>

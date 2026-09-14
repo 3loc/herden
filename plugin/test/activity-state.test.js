@@ -106,10 +106,10 @@ suite("buildActivityState", () => {
         agent("w2:p1", "blocked", { agent: "claude", workspace_id: "missing" }),
       ],
       hostName: "mbp",
-      workspaceLabels: new Map([["w1", "Heeler"]]),
+      workspaceLabels: new Map([["w1", "Herden"]]),
     });
     const byPane = Object.fromEntries(plaintextObject.agents.map((entry) => [entry.pane, entry]));
-    assert.equal(byPane["w1:p1"].workspace, "Heeler");
+    assert.equal(byPane["w1:p1"].workspace, "Herden");
     assert.equal("workspace" in byPane["w2:p1"], false);
     assert.deepEqual(Object.keys(byPane["w1:p1"]), ["kind", "pane", "status", "workspace"]);
   });

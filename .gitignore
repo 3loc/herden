@@ -1,10 +1,19 @@
 # Xcode
 build/
+# The vendored Ghostty tree has source directories named `build`; they are
+# required inputs, not generated Xcode output.
+!runtime/vendor/libghostty-vt/src/build/
+!runtime/vendor/libghostty-vt/src/build/**
+!runtime/vendor/libghostty-vt/src/apprt/gtk/build/
+!runtime/vendor/libghostty-vt/src/apprt/gtk/build/**
 xcuserdata/
 *.xcuserstate
 DerivedData/
 *.xcscmblueprint
 *.xccheckout
+# Local Apple signing choice. Public project files intentionally contain no
+# maintainer team ID.
+.herden.local.mk
 
 # SPM
 .build/
@@ -22,6 +31,13 @@ relay/.wrangler/
 relay/node_modules/
 *.p8
 
+# Native Herden Host runtime build output.
+runtime/target/
+runtime/.zig-global-cache/
+runtime/.zig-cache/
+runtime/vendor/libghostty-vt/.zig-cache/
+runtime/vendor/libghostty-vt/zig-out/
+
 # Python (test fixtures under scripts/fixtures)
 __pycache__/
 *.pyc
@@ -32,9 +48,14 @@ __pycache__/
 # Local-only notes and experiments
 .local/
 
-# testloop scratch artifacts; keep concise run reports as repository history
-.testloop/*
-!.testloop/reports/
+# Local testloop scratch artifacts
+.testloop/
 
-# Agent workspace (research reports, scratch)
-.claude/
+# Local agent workspaces, research notes and scratch files.
+.claude/*
+.codex/*
+.agents/
+.archive/
+.skill-archive/
+HANDOFF.md
+handoff.txt

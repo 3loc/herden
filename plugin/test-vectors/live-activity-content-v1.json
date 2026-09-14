@@ -5,7 +5,7 @@
       "name": "single working agent",
       "key": "AAECAwQFBgcICQoLDA0ODxAREhMUFRYXGBkaGxwdHh8",
       "keyId": "Yw3NKWbEM2Y",
-      "envelope": "{\"v\":1,\"kid\":\"Yw3NKWbEM2Y\",\"n\":\"AAECAwQFBgcICQoL\",\"ct\":\"PCC3fKCLtmive8zwk4IRA-f0vRaTFz4JXALHqT8ZYdxkMpTe2Jco6EWGU8_780lMmypCt3ihzKhU_kR-Os_XmplIqh_x6wSEsspN4F9mmmndO0aE7t20zEfd_6sdns2tLk_8AhndL5Ao-r4zalkDCNUVCdiTpEb_b8V1heeDAmvJcH2bmPWjPHuVapsfty6yFNjBQxcrojcNZwS5VIpvnN0kJjgYmmMb\"}",
+      "envelope": "{\"v\":1,\"kid\":\"Yw3NKWbEM2Y\",\"n\":\"AAECAwQFBgcICQoL\",\"ct\":\"PCC3fKCLtmive8zwk4IRA-f0vRaTFz4JXALHqT8ZYdxkMpTe2Jco6EWGU8_780lMmypCt3ihzKhU_kR-Os_XmplIqh_x6wSEsspN4F9mmmndO0aE7t20zEfd_6sdns2tLk_8AhndL5Ao-r4zalkDCNUVCdiTpEb_b8V1heeUCmvVcH2bmPWjPHuVapsfty6yFNjBQxcrojcNP15plBpOAoNo4oJ0N4dn\"}",
       "payload": {
         "agents": [
           {
@@ -13,7 +13,7 @@
             "pane": "wV:p1",
             "status": "working",
             "title": "实现锁屏显示 agent 工作状态",
-            "workspace": "Heeler"
+            "workspace": "Herden"
           }
         ],
         "host": "mbp",

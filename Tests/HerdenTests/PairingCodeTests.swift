@@ -1,0 +1,74 @@
+import Foundation
+import Testing
+
+@testable import Herden
+
+/// Decoder tests for the legacy v1 and compact v2 Pairing Code envelopes.
+@Suite("Pairing Code envelope")
+struct PairingCodeTests {
+    @Test func decodesAdditiveHostName() throws {
+        let json = #"{"addrs":["100.64.0.9"],"port":22,"user":"dev","name":"buildbox","fp":"SHA256:AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA"}"#
+        let body = Data(json.utf8).base64URLEncodedString()
+        let code = try PairingCode.decode("HERDR-PAIR:1:\(body)")
+
+        #expect(code.hostName == "buildbox")
+    }
+
+    private static let vectors = PairingCodeVectorFile.shared
+    private static let compactVectors = PairingCodeVectorFile.compact
+
+    /// Guards against silently loading an empty or truncated vector file;
+    /// mirrors the same assertion in the Node suite.
+    @Test func sharedVectorFileHasCases() {
+        #expect(Self.vectors.valid.count >= 3)
+        #expect(Self.vectors.invalid.count >= 10)
+    }
+
+    @Test(arguments: vectors.valid)
+    func decodesValidVector(vector: PairingCodeVectorFile.Valid) throws {
+        try assertDecoded(vector)
+    }
+
+    @Test(arguments: compactVectors.valid)
+    func decodesCompactVector(vector: PairingCodeVectorFile.Valid) throws {
+        try assertDecoded(vector)
+    }
+
+    private func assertDecoded(_ vector: PairingCodeVectorFile.Valid) throws {
+        let code = try PairingCode.decode(vector.code)
+
+        #expect(code.addresses == vector.payload.addresses)
+        #expect(code.port == vector.payload.port)
+        #expect(code.username == vector.payload.username)
+        #expect(code.hostName == vector.payload.hostName)
+        #expect(code.hostKeyFingerprint.displayString == vector.payload.hostKeyFingerprint)
+
+        if let expectedSeed = vector.payload.bootstrapSeed {
+            let bootstrap = try #require(code.bootstrap)
+            #expect(bootstrap.seed.base64URLEncodedString() == expectedSeed)
+            let expectedExpiry = try #require(vector.payload.expiresAt)
+            #expect(bootstrap.expiresAt == Date(timeIntervalSince1970: TimeInterval(expectedExpiry)))
+        } else {
+            #expect(code.bootstrap == nil)
+        }
+    }
+
+    @Test(arguments: vectors.invalid)
+    func rejectsInvalidVector(vector: PairingCodeVectorFile.Invalid) {
+        assertRejected(vector)
+    }
+
+    @Test(arguments: compactVectors.invalid)
+    func rejectsInvalidCompactVector(vector: PairingCodeVectorFile.Invalid) {
+        assertRejected(vector)
+    }
+
+    private func assertRejected(_ vector: PairingCodeVectorFile.Invalid) {
+        do {
+            _ = try PairingCode.decode(vector.code)
+            Issue.record("unexpectedly decoded \(vector.name)")
+        } catch {
+            #expect(error.wireCode == vector.error, "\(vector.name)")
+        }
+    }
+}

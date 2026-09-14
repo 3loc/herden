@@ -1,0 +1,13 @@
+#!/bin/sh
+set -eu
+
+sdk=/Library/Developer/CommandLineTools/SDKs/MacOSX15.4.sdk
+real_xcrun=${HERDEN_REAL_XCRUN:-/usr/bin/xcrun}
+
+if [ "$#" -eq 3 ] && [ "$1" = --sdk ] && [ "$2" = macosx ] \
+    && [ "$3" = --show-sdk-path ] && [ -d "$sdk" ]; then
+    printf '%s\n' "$sdk"
+    exit 0
+fi
+
+exec "$real_xcrun" "$@"

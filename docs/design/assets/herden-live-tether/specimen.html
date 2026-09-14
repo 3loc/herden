@@ -1,0 +1,104 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Herden Live Tether identity</title>
+    <style>
+      @font-face { font-family: "JetBrains Mono"; src: url("../../../../landing/src/assets/fonts/JetBrainsMono-Regular.ttf") format("truetype"); font-weight: 400; }
+      @font-face { font-family: "JetBrains Mono"; src: url("../../../../landing/src/assets/fonts/JetBrainsMono-Bold.ttf") format("truetype"); font-weight: 700; }
+      * { box-sizing: border-box; }
+      :root { font-family: "JetBrains Mono", ui-monospace, monospace; background: #F2F0E5; color: #100F0F; }
+      body { width: 1600px; margin: 0; background: #F2F0E5; }
+      header { display: grid; grid-template-columns: 1fr 600px; align-items: end; gap: 70px; min-height: 196px; padding: 38px 52px 34px; border-bottom: 1px solid #CECDC3; background: #FFFCF0; }
+      .kicker, .label { color: #205EA6; font-size: 10px; font-weight: 700; letter-spacing: .1em; text-transform: uppercase; }
+      h1 { margin: 10px 0 0; font-size: 48px; line-height: 1.02; letter-spacing: -.065em; }
+      header p { margin: 0; color: #575653; font-size: 12px; line-height: 1.62; }
+      header strong { color: #BC5215; }
+      main { display: grid; grid-template-columns: 1fr 1fr; gap: 1px; padding: 1px; background: #CECDC3; }
+      section { min-width: 0; background: #FFFCF0; }
+      .lockup { display: flex; align-items: center; justify-content: center; gap: 28px; height: 286px; }
+      .lockup.dark { background: #100F0F; color: #F2F0E5; }
+      .lockup img { width: 138px; height: 138px; }
+      .lockup span { font-size: 58px; font-weight: 700; letter-spacing: -.065em; }
+      .section-head { display: flex; justify-content: space-between; align-items: center; height: 42px; padding: 0 20px; border-bottom: 1px solid #CECDC3; }
+      .section-head span:last-child { color: #6F6E69; font-size: 9px; }
+      .icons { display: grid; grid-template-columns: repeat(3, 1fr); height: 228px; }
+      .icon-cell { display: grid; place-items: center; border-right: 1px solid #CECDC3; text-align: center; }
+      .icon-cell:last-child { border-right: 0; }
+      .icon-cell img { width: 104px; height: 104px; }
+      .icon-cell b { display: block; margin-top: 8px; font-size: 11px; }
+      .icon-cell small { display: block; margin-top: 4px; color: #6F6E69; font-size: 8px; }
+      .app-icons { display: grid; grid-template-columns: repeat(2, 1fr); height: 228px; }
+      .app-cell { display: grid; place-items: center; background: #F2F0E5; }
+      .app-cell + .app-cell { border-left: 1px solid #CECDC3; background: #1C1B1A; }
+      .app-cell img { width: 132px; height: 132px; border-radius: 30px; box-shadow: 0 18px 38px rgba(16, 15, 15, .15); }
+      .tests { display: grid; grid-template-columns: 1fr 1fr; height: 164px; }
+      .scale, .mono { display: flex; align-items: center; justify-content: center; gap: 18px; }
+      .scale { color: #205EA6; }
+      .scale-item { display: flex; align-items: center; gap: 7px; color: #6F6E69; font-size: 8px; }
+      .scale-item img { display: block; }
+      .mono { border-left: 1px solid #CECDC3; background: #100F0F; }
+      .mono div { display: grid; place-items: center; width: 94px; height: 94px; }
+      .mono img { width: 68px; height: 68px; }
+      .mono .paper { background: #FFFCF0; }
+      .mono .ink { border: 1px solid #403E3C; }
+      footer { display: flex; justify-content: space-between; gap: 50px; padding: 21px 52px 25px; color: #575653; font-size: 10px; line-height: 1.5; }
+      footer strong { color: #100F0F; }
+    </style>
+  </head>
+  <body>
+    <header>
+      <div><div class="kicker">Herden identity / final mark</div><h1>Live Tether.<br>Same work, still live.</h1></div>
+      <p>Two stable endpoints joined by one explicit channel. The endpoints remain distinct so the symbol says connection, not merger. <strong>Rust is never baked into the identity.</strong></p>
+    </header>
+    <main>
+      <section>
+        <div class="section-head"><span class="label">Primary lock-up</span><span>Light appearance</span></div>
+        <div class="lockup"><img src="herden-mark-light.svg" alt=""><span>Herden</span></div>
+      </section>
+      <section>
+        <div class="section-head"><span class="label">Primary lock-up</span><span>Dark appearance</span></div>
+        <div class="lockup dark"><img src="herden-mark-dark.svg" alt=""><span>Herden</span></div>
+      </section>
+      <section>
+        <div class="section-head"><span class="label">Product system</span><span>One grammar, three roles</span></div>
+        <div class="icons">
+          <div class="icon-cell"><div><img src="herden-mark-light.svg" alt=""><b>Herden</b><small>complete tether</small></div></div>
+          <div class="icon-cell"><div><img src="herden-space-light.svg" alt=""><b>Space</b><small>source + route</small></div></div>
+          <div class="icon-cell"><div><img src="herden-agent-light.svg" alt=""><b>Agent</b><small>route + destination</small></div></div>
+        </div>
+      </section>
+      <section>
+        <div class="section-head"><span class="label">App icons</span><span>Platform mask applied in preview</span></div>
+        <div class="app-icons">
+          <div class="app-cell"><img src="herden-app-icon-light.svg" alt=""></div>
+          <div class="app-cell"><img src="herden-app-icon-dark.svg" alt=""></div>
+        </div>
+      </section>
+      <section>
+        <div class="section-head"><span class="label">Small-size test</span><span>16 / 20 / 32 / 64 px</span></div>
+        <div class="tests">
+          <div class="scale">
+            <span class="scale-item">16<img src="herden-mark-light.svg" alt="" width="16" height="16"></span>
+            <span class="scale-item">20<img src="herden-mark-light.svg" alt="" width="20" height="20"></span>
+            <span class="scale-item">32<img src="herden-mark-light.svg" alt="" width="32" height="32"></span>
+            <span class="scale-item">64<img src="herden-mark-light.svg" alt="" width="64" height="64"></span>
+          </div>
+          <div class="mono">
+            <div class="paper"><img src="herden-mark-monochrome.svg" alt=""></div>
+            <div class="ink"><img src="herden-mark-inverse.svg" alt=""></div>
+          </div>
+        </div>
+      </section>
+      <section>
+        <div class="section-head"><span class="label">Colour contract</span><span>Paper + Cobalt</span></div>
+        <div class="tests">
+          <div class="scale"><span class="scale-item">Paper #FFFCF0</span><span class="scale-item">Cobalt #205EA6</span></div>
+          <div class="mono"><span class="scale-item">Ink #100F0F</span><span class="scale-item">Night cobalt #4385BE</span></div>
+        </div>
+      </section>
+    </main>
+    <footer><span><strong>Geometry:</strong> 120-unit master, 32-unit endpoints, 14-unit tether, square caps.</span><span><strong>Integration:</strong> app and website swap together during the full palette rollout.</span></footer>
+  </body>
+</html>

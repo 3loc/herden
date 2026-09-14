@@ -1,0 +1,21 @@
+title = "Herden gitleaks configuration"
+
+[extend]
+useDefault = true
+
+[[allowlists]]
+description = "Generated and deterministic test fixtures"
+paths = [
+  '''^Packages/HerdenSSH/Tests/''',
+  '''^Tests/''',
+  '''^plugin/test-vectors/''',
+  '''^relay/test/''',
+  '''^runtime/vendor/''',
+]
+
+[[allowlists]]
+description = "Private-key type and Keychain service declarations"
+paths = [
+  '''^Sources/Herden/Support/SharedAppStorage\.swift$''',
+  '''^Sources/Herden/Transport/DeviceKey\.swift$''',
+]

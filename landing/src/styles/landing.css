@@ -1,27 +1,117 @@
-/* Page-level structure shared by every section.
- *
- * Substrate tokens carry all the visual decisions; this file only owns the
- * page skeleton (gutters, section rhythm, the two repeated text roles) and the
- * breakpoints, which the static design did not specify. */
+@font-face {
+  font-family: "JetBrains Mono";
+  src: url("../assets/fonts/JetBrainsMono-Regular.ttf") format("truetype");
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: "JetBrains Mono";
+  src: url("../assets/fonts/JetBrainsMono-Bold.ttf") format("truetype");
+  font-style: normal;
+  font-weight: 700;
+  font-display: swap;
+}
 
 :root {
-  --gutter-x: 32px;
+  /* Paper + Cobalt. These semantic values match the native app. */
+  --herden-canvas: #fffcf0;
+  --herden-surface: #f2f0e5;
+  --herden-raised: #fffef8;
+  --herden-pressed: #e6e4d9;
+  --herden-ink: #100f0f;
+  --herden-muted: #575653;
+  --herden-subtle: #6f6e69;
+  --herden-border: #cecdc3;
+  --herden-border-strong: #b7b5ac;
+  --herden-primary: #205ea6;
+  --herden-primary-hover: #1a4f8c;
+  --herden-primary-soft: rgba(32, 94, 166, 0.1);
+  --herden-attention: #bc5215;
+  --herden-attention-ink: #a5470f;
+  --herden-attention-soft: rgba(188, 82, 21, 0.1);
+  --herden-success: #5e6f00;
+  --herden-fault: #af3029;
+  --primary-fill-text: #fffcf0;
+  --code-foreground: #f2f0e5;
+
+  --font-display: "JetBrains Mono", ui-monospace, "SFMono-Regular", Menlo, monospace;
+  --font-sans: "JetBrains Mono", ui-monospace, "SFMono-Regular", Menlo, monospace;
+  --font-mono: "JetBrains Mono", ui-monospace, "SFMono-Regular", Menlo, monospace;
+  --h-header: 56px;
+
+  /* Override the vendored dark substrate without modifying the snapshot. */
+  --surface-void: var(--herden-ink);
+  --surface-canvas: var(--herden-canvas);
+  --surface-raised: var(--herden-raised);
+  --surface-card: var(--herden-raised);
+  --surface-inset: var(--herden-surface);
+  --surface-input: var(--herden-raised);
+  --surface-code: var(--herden-ink);
+  --surface-hover: var(--herden-surface);
+  --surface-active: var(--herden-pressed);
+  --surface-selected: var(--herden-primary-soft);
+  --surface-overlay: rgba(16, 15, 15, 0.62);
+  --surface-glass: rgba(255, 252, 240, 0.9);
+  --surface-elevated: var(--herden-surface);
+
+  --text-primary: var(--herden-ink);
+  --text-secondary: var(--herden-muted);
+  --text-muted: var(--herden-subtle);
+  --text-disabled: var(--herden-border-strong);
+  --text-inverse: var(--code-foreground);
+  --text-link: var(--herden-primary);
+  --text-accent: var(--herden-primary);
+
+  --border-hairline: var(--herden-border);
+  --border-default: var(--herden-border);
+  --border-strong: var(--herden-border-strong);
+  --border-focus: var(--herden-primary);
+  --border-input: var(--herden-border-strong);
+
+  --control-primary-bg: var(--herden-primary);
+  --control-primary-fg: var(--primary-fill-text);
+  --control-primary-bg-hover: var(--herden-primary-hover);
+  --control-secondary-bg: var(--herden-raised);
+  --control-secondary-fg: var(--herden-ink);
+  --control-secondary-bg-hover: var(--herden-surface);
+
+  --grid-line: rgba(32, 94, 166, 0.045);
+  --outline-focus: 2px solid var(--herden-primary);
 }
 
-@media (max-width: 720px) {
-  :root {
-    --gutter-x: 20px;
-  }
-}
-
-/* The design system underlines every link; on a marketing page the underline
- * is opt-in (see `.text-link`) rather than the default. */
-a {
-  border-bottom: none;
+html {
+  scroll-behavior: smooth;
+  color-scheme: light dark;
 }
 
 body {
   background: var(--surface-canvas);
+}
+
+::selection {
+  background: var(--herden-primary);
+  color: var(--primary-fill-text);
+}
+
+a {
+  border-bottom: 0;
+}
+
+a,
+button {
+  touch-action: manipulation;
+  -webkit-tap-highlight-color: var(--herden-primary-soft);
+}
+
+summary:focus-visible {
+  outline: var(--outline-focus);
+  outline-offset: 4px;
+}
+
+[id] {
+  scroll-margin-top: calc(var(--h-header) + 24px);
 }
 
 .container {
@@ -31,82 +121,88 @@ body {
   padding: 0 var(--gutter-x);
 }
 
-.section {
-  padding: var(--section-y) 0;
-  border-bottom: 1px solid var(--border-hairline);
-}
-
-@media (max-width: 720px) {
-  .section {
-    padding: 64px 0;
-  }
-}
-
-.eyebrow {
-  font: var(--type-eyebrow);
-  letter-spacing: var(--tr-eyebrow);
-  text-transform: uppercase;
-  color: var(--text-muted);
-}
-
-/* Section headings track the display scale but must not overflow a phone. */
-.section-title {
-  font: var(--type-h1);
-  font-size: clamp(28px, 5.4vw, var(--fs-h1));
-  letter-spacing: var(--tr-display);
-  margin-top: var(--sp-4);
-}
-
-.section-lede {
-  font: var(--type-body-lg);
-  color: var(--text-secondary);
-  margin-top: var(--sp-6);
-}
-
-/* Inline machine vocabulary: paths, methods, key names. */
-.mono {
-  font: var(--type-mono-sm);
-  color: var(--text-primary);
-}
-
-/* Syntax token colours, the three the pairing snippet needs. Named after the
- * design system's code component so a later switch to the full `sb-code`
- * markup keeps working. */
-.tk-comment {
-  color: var(--syn-comment);
-}
-
-.tk-fn {
-  color: var(--syn-fn);
-}
-
-.tk-string {
-  color: var(--syn-string);
-}
-
-.text-link {
-  color: var(--text-primary);
-  border-bottom: 1px solid var(--n-500);
-}
-
-.text-link:hover {
-  border-bottom-color: var(--n-900);
-}
-
 .skip-link {
   position: absolute;
-  left: var(--sp-4);
-  top: var(--sp-4);
   z-index: var(--z-tooltip, 500);
+  top: var(--sp-4);
+  left: var(--sp-4);
   padding: var(--sp-2) var(--sp-3);
-  border-radius: var(--r-control);
-  background: var(--n-999);
-  color: var(--n-000);
-  font: var(--type-label);
   transform: translateY(-200%);
+  border-radius: var(--r-control);
+  background: var(--herden-ink);
+  color: var(--herden-canvas);
+  font: var(--type-label);
   transition: transform var(--dur-fast) var(--ease-standard);
 }
 
 .skip-link:focus-visible {
   transform: none;
+}
+
+.section {
+  padding: var(--section-y) 0;
+  border-bottom: 1px solid var(--border-hairline);
+}
+
+.eyebrow {
+  color: var(--herden-primary);
+  font: var(--type-eyebrow);
+  letter-spacing: var(--tr-eyebrow);
+  text-transform: uppercase;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --herden-canvas: #100f0f;
+    --herden-surface: #1c1b1a;
+    --herden-raised: #282726;
+    --herden-pressed: #343331;
+    --herden-ink: #f2f0e5;
+    --herden-muted: #b7b5ac;
+    --herden-subtle: #878580;
+    --herden-border: #403e3c;
+    --herden-border-strong: #575653;
+    --herden-primary: #4385be;
+    --herden-primary-hover: #6ca6d9;
+    --herden-primary-soft: rgba(67, 133, 190, 0.16);
+    --herden-attention: #da702c;
+    --herden-attention-ink: #ec8b49;
+    --herden-attention-soft: rgba(218, 112, 44, 0.16);
+    --herden-success: #879a39;
+    --herden-fault: #d65a50;
+    --primary-fill-text: #100f0f;
+    --code-foreground: #f2f0e5;
+    --surface-code: #080807;
+    --surface-overlay: rgba(0, 0, 0, 0.7);
+    --surface-glass: rgba(16, 15, 15, 0.9);
+    --grid-line: rgba(67, 133, 190, 0.055);
+  }
+}
+
+.section-title {
+  margin-top: var(--sp-4);
+  font: 700 clamp(30px, 5vw, 52px) / 1.08 var(--font-display);
+  letter-spacing: -0.045em;
+}
+
+.section-lede {
+  margin-top: var(--sp-6);
+  color: var(--text-secondary);
+  font: var(--type-body-lg);
+}
+
+@media (max-width: 720px) {
+  :root {
+    --gutter-x: 20px;
+  }
+
+  .section {
+    padding: 64px 0;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  html {
+    scroll-behavior: auto;
+  }
 }

@@ -6,8 +6,6 @@
 	<string>app-store-connect</string>
 	<key>destination</key>
 	<string>upload</string>
-	<key>teamID</key>
-	<string>9VM4RM39R3</string>
 	<key>uploadSymbols</key>
 	<true/>
 	<key>manageAppVersionAndBuildNumber</key>

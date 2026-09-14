@@ -1,0 +1,110 @@
+---
+import InfoLayout from '../layouts/InfoLayout.astro';
+---
+
+<InfoLayout
+  title="Privacy: Herden"
+  description="How Herden handles SSH credentials, terminal data, notifications, and device information."
+  eyebrow="Plain-language policy"
+  heading="Privacy"
+  updated="September 13, 2026"
+  canonicalPath="/privacy"
+>
+  <p>
+    Herden is a native iOS console for the Herden Host. It connects to machines
+    you control over SSH. Herden has no user accounts, advertising, analytics,
+    or tracking. Your SSH credentials, terminal output, prompts, files, and live
+    agent sessions do not pass through a service operated by Herden’s developer.
+  </p>
+  <p>Agent Notifications use the limited-purpose Push Relay described below.</p>
+
+  <h2>Data stored on your device and Hosts</h2>
+  <ul>
+    <li><strong>SSH credentials.</strong> The Device Key’s private half is generated on your device, remains in the iOS Keychain, and never leaves it. Host fingerprints are stored locally. Saved Host passwords are stored in the Keychain.</li>
+    <li><strong>Notification Keys.</strong> A separate key is generated on your device for each Host. It is stored in the shared Keychain and mirrored in the app’s shared container so Live Activities can be decrypted while the device is locked. The protected mirror is excluded from backups. Herden copies the key over SSH to that Host; the Push Relay never receives it.</li>
+    <li><strong>Host list and settings.</strong> Your Hosts and Herden settings are stored locally. Each Host stores its own notification registration and delivery preferences.</li>
+    <li><strong>Live agent activity.</strong> Terminal output, prompts, and pane contents travel only over the direct SSH connection between your device and your Host.</li>
+  </ul>
+
+  <h2>Agent Notifications and the Push Relay</h2>
+  <p>
+    Agent Notifications can tell you when an agent is blocked or done while
+    Herden is backgrounded or closed. Apple Push Notification service requires
+    an Apple credential authorized for this app’s bundle ID, so the TestFlight
+    build uses a relay hosted by the developer at{' '}
+    <code>https://herden-apns.austrheim.ca7.fm</code>.
+  </p>
+  <p>
+    The relay has no accounts, database, durable queue, retry queue, or message
+    history. A Host encrypts notification details with its Notification Key,
+    then the relay signs and forwards the request to APNs without receiving the
+    key needed to decrypt those details.
+  </p>
+
+  <h3>Data processed by the Push Relay</h3>
+  <p>For every notification request, the relay processes:</p>
+  <ul>
+    <li>the Apple push token needed to address your device;</li>
+    <li>the encrypted notification envelope;</li>
+    <li>the Host’s source IP address;</li>
+    <li>request timing, frequency, and size; and</li>
+    <li>the APNs environment and limited delivery-routing values.</li>
+  </ul>
+  <p>For a Live Activity update, APNs must also receive these values in cleartext:</p>
+  <ul>
+    <li>aggregate counts of agents that are working, blocked, or done;</li>
+    <li>the event, delivery priority, and event timestamp; and</li>
+    <li>when present, stale and dismissal timestamps.</li>
+  </ul>
+  <p>
+    These values do not identify an individual agent. Project names, task titles,
+    agent types and names, Host names, pane IDs, and per-agent details remain
+    inside the encrypted envelope. If a notification cannot be decrypted,
+    Herden shows a generic fallback instead of unverified content.
+  </p>
+
+  <h3>Purpose, retention, and providers</h3>
+  <p>
+    The relay uses this data only to validate requests, limit abuse, and deliver
+    notifications to APNs. It does not use the data for advertising, analytics,
+    tracking, profiling, or sale. It does not write device tokens, notification
+    bodies, ciphertext, or request history to application-managed durable storage.
+    Source IP addresses and Apple push tokens are held in volatile memory for
+    one-minute rate-limit windows.
+  </p>
+  <p>
+    Notifications are delivered by Apple APNs, which may process network and
+    delivery metadata under the <a href="https://www.apple.com/legal/privacy/">Apple Privacy Policy</a>.
+  </p>
+
+  <h2>Your choices and deletion</h2>
+  <ul>
+    <li>You can decline or revoke notification and Live Activity permissions in iOS Settings.</li>
+    <li>Removing a Host’s Notification Registration deletes this device’s token and Notification Key from that Host, then removes the local per-Host Notification Key.</li>
+    <li>Removing a Host from Herden deletes its local Host record and any saved Host password.</li>
+  </ul>
+  <p>
+    Herden has no account or user-content database, so there is normally no
+    server-side profile or content to retrieve or delete. For a privacy or
+    deletion request, email <a href="mailto:ted@3loc.ltd?subject=Herden%20privacy">ted@3loc.ltd</a>.
+    Do not include credentials, tokens, Host details, or other sensitive
+    information in the first message.
+  </p>
+
+  <h2>Custom relay URL</h2>
+  <p>
+    The notification plugin and Herden accept a custom push relay base URL, so
+    you can operate your own relay. A custom relay works only with an app you
+    build and sign yourself and requires APNs credentials authorized for that
+    app’s bundle ID. The maintained source is not currently published while
+    Herden is in private beta.
+  </p>
+
+  <h2>Contact</h2>
+  <p>
+    For policy questions, email <a href="mailto:ted@3loc.ltd?subject=Herden%20privacy">ted@3loc.ltd</a>.
+    Report suspected vulnerabilities to the same address with the subject
+    “Herden security”, the affected version, and a minimal reproduction. Never
+    include private keys, passwords, tokens, Host addresses, or user content.
+  </p>
+</InfoLayout>

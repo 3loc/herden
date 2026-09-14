@@ -1,0 +1,51 @@
+---
+import InfoLayout from '../layouts/InfoLayout.astro';
+---
+
+<InfoLayout
+  title="Licences and attribution: Herden"
+  description="Herden licence and upstream software attribution."
+  eyebrow="Licence record"
+  heading="Licences + attribution"
+  canonicalPath="/licenses"
+>
+  <p>
+    Herden is distributed under the Apache License, Version 2.0. Every Host
+    installation includes the full licence and attribution notice under
+    <code>~/.local/share/doc/herden</code>.
+  </p>
+
+  <div class="callout">
+    <p><strong>Current Host release: 0.9.8</strong></p>
+    <p>
+      <a href="/releases/host-v0.9.8/LICENSE">Apache-2.0 licence</a> ·
+      <a href="/releases/host-v0.9.8/NOTICE">Release notice</a>
+    </p>
+  </div>
+
+  <h2>Upstream work</h2>
+  <p>
+    Herden includes and modifies software from the Apache-2.0 projects
+    <a href="https://github.com/herdrdev/herdr">herdr</a> and
+    <a href="https://github.com/ZingerLittleBee/Heeler">Heeler</a>.
+  </p>
+  <p>
+    The native iOS application, plugin, relay, and original landing site began
+    from Heeler, including the iOS QR scanner, secure pairing flow, and file
+    upload foundation. The Host runtime began from herdr. Herden’s work includes
+    product integration, moving inherited Host-side pairing into Rust, compact
+    Pairing Codes, Space-first navigation, shared terminal controls, and the iOS
+    Share Extension.
+  </p>
+  <p>
+    Neither upstream project endorses Herden. Their names are used only to
+    describe the origin of the software.
+  </p>
+
+  <h2>Third-party components</h2>
+  <p>
+    The iOS app uses pinned builds of libssh2, OpenSSL, and libghostty-spm.
+    Their required notices ship with the corresponding application or release
+    bundle. The website uses JetBrains Mono under the SIL Open Font License 1.1.
+  </p>
+</InfoLayout>

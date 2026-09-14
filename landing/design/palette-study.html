@@ -1,0 +1,566 @@
+<!doctype html>
+<html lang="en" data-palette="paper">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Herden palette study</title>
+    <style>
+      @font-face {
+        font-family: "JetBrains Mono";
+        src: url("../src/assets/fonts/JetBrainsMono-Regular.ttf") format("truetype");
+        font-weight: 400;
+      }
+
+      @font-face {
+        font-family: "JetBrains Mono";
+        src: url("../src/assets/fonts/JetBrainsMono-Bold.ttf") format("truetype");
+        font-weight: 700;
+      }
+
+      * { box-sizing: border-box; }
+
+      html,
+      body {
+        min-width: 1180px;
+        min-height: 100%;
+        margin: 0;
+      }
+
+      body {
+        background: #111315;
+        color: #f6f6f3;
+        font-family: "JetBrains Mono", ui-monospace, monospace;
+      }
+
+      a { color: inherit; text-decoration: none; }
+      button { font: inherit; }
+
+      .study-head {
+        display: grid;
+        grid-template-columns: 1fr auto;
+        gap: 30px;
+        align-items: end;
+        min-height: 142px;
+        padding: 24px 42px 22px;
+        border-bottom: 1px solid rgba(255, 255, 255, 0.14);
+        background: #111315;
+      }
+
+      .study-kicker {
+        margin: 0 0 8px;
+        color: #8d9398;
+        font-size: 10px;
+        font-weight: 700;
+        letter-spacing: 0.12em;
+        text-transform: uppercase;
+      }
+
+      .study-title {
+        margin: 0;
+        font-size: 28px;
+        line-height: 1.08;
+        letter-spacing: -0.045em;
+      }
+
+      .study-description {
+        max-width: 720px;
+        margin: 8px 0 0;
+        color: #aeb3b6;
+        font-size: 11px;
+        line-height: 1.5;
+      }
+
+      .chooser {
+        display: flex;
+        gap: 8px;
+      }
+
+      .choice {
+        display: grid;
+        min-width: 144px;
+        gap: 3px;
+        padding: 10px 12px;
+        border: 1px solid rgba(255, 255, 255, 0.17);
+        border-radius: 6px;
+        color: #aeb3b6;
+        font-size: 9px;
+      }
+
+      .choice b { color: #f6f6f3; font-size: 11px; }
+      .choice:hover { border-color: rgba(255, 255, 255, 0.44); }
+      .choice.active { border-color: var(--chooser, #78a8ff); background: rgba(255, 255, 255, 0.08); }
+
+      .modes {
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        min-height: calc(100vh - 142px);
+      }
+
+      .mode {
+        position: relative;
+        overflow: hidden;
+        padding: 22px 32px 30px;
+        border-right: 1px solid var(--border);
+        background: var(--bg);
+        color: var(--ink);
+      }
+
+      .mode:last-child { border-right: 0; }
+
+      .mode-head {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 18px;
+        padding-bottom: 14px;
+        border-bottom: 1px solid var(--border);
+      }
+
+      .mode-title {
+        display: flex;
+        align-items: center;
+        gap: 9px;
+        font-size: 10px;
+        font-weight: 700;
+        letter-spacing: 0.1em;
+        text-transform: uppercase;
+      }
+
+      .mode-title::before {
+        width: 7px;
+        height: 7px;
+        border-radius: 50%;
+        background: var(--signal);
+        content: "";
+      }
+
+      .tokens { display: flex; gap: 12px; }
+
+      .token {
+        display: flex;
+        align-items: center;
+        gap: 5px;
+        color: var(--muted);
+        font-size: 7px;
+        letter-spacing: 0.04em;
+        text-transform: uppercase;
+      }
+
+      .token::before {
+        width: 9px;
+        height: 9px;
+        border: 1px solid var(--border);
+        border-radius: 2px;
+        background: var(--swatch);
+        content: "";
+      }
+
+      .product-bar {
+        display: flex;
+        align-items: center;
+        height: 54px;
+        gap: 20px;
+        border-bottom: 1px solid var(--border);
+      }
+
+      .brand {
+        display: flex;
+        align-items: center;
+        gap: 7px;
+        font-size: 14px;
+        font-weight: 700;
+        letter-spacing: -0.04em;
+      }
+
+      .fold { width: 21px; height: 21px; flex: none; }
+      .fold-primary { fill: var(--primary); }
+      .fold-signal { fill: var(--signal); }
+
+      .product-nav {
+        display: flex;
+        gap: 18px;
+        color: var(--muted);
+        font-size: 8px;
+      }
+
+      .github {
+        margin-left: auto;
+        padding: 7px 9px;
+        border: 1px solid var(--border);
+        border-radius: 5px;
+        font-size: 8px;
+        font-weight: 700;
+      }
+
+      .hero {
+        display: grid;
+        grid-template-columns: minmax(0, 1fr) 292px;
+        gap: 22px;
+        align-items: center;
+        min-height: 550px;
+        padding: 28px 0 18px;
+      }
+
+      .eyebrow {
+        margin: 0;
+        color: var(--primary);
+        font-size: 8px;
+        font-weight: 700;
+        letter-spacing: 0.08em;
+        text-transform: uppercase;
+      }
+
+      .eyebrow::before { color: var(--signal); content: "● "; }
+
+      h2 {
+        margin: 16px 0 0;
+        font-size: clamp(35px, 3vw, 49px);
+        line-height: 1.03;
+        letter-spacing: -0.065em;
+      }
+
+      h2 em { color: var(--primary); font-style: normal; }
+
+      .lede {
+        max-width: 390px;
+        margin: 18px 0 0;
+        color: var(--muted);
+        font-size: 10px;
+        line-height: 1.55;
+      }
+
+      .actions {
+        display: flex;
+        align-items: center;
+        gap: 14px;
+        margin-top: 19px;
+      }
+
+      .primary-button {
+        padding: 10px 12px;
+        border-radius: 6px;
+        background: var(--primary);
+        color: var(--button-ink);
+        font-size: 8px;
+        font-weight: 700;
+      }
+
+      .source-link { color: var(--muted); font-size: 8px; font-weight: 700; }
+
+      .devices {
+        position: relative;
+        height: 414px;
+      }
+
+      .phone {
+        position: absolute;
+        width: 184px;
+        height: 392px;
+        overflow: hidden;
+        border: 1px solid var(--border);
+        border-radius: 26px;
+        background: var(--card);
+        box-shadow: 0 20px 48px var(--shadow);
+      }
+
+      .spaces-phone {
+        z-index: 1;
+        top: 22px;
+        left: 0;
+        transform: rotate(-2.2deg);
+      }
+
+      .terminal-phone {
+        z-index: 2;
+        top: 0;
+        right: 0;
+        transform: rotate(1.5deg);
+      }
+
+      .phone-top {
+        display: flex;
+        align-items: center;
+        height: 46px;
+        padding: 12px 13px 7px;
+        gap: 6px;
+        border-bottom: 1px solid var(--border);
+        font-size: 7px;
+        font-weight: 700;
+      }
+
+      .phone-top .fold { width: 13px; height: 13px; }
+      .phone-action { margin-left: auto; color: var(--primary); }
+
+      .list-label {
+        padding: 11px 12px 5px;
+        color: var(--muted);
+        font-size: 6px;
+        font-weight: 700;
+        letter-spacing: 0.12em;
+        text-transform: uppercase;
+      }
+
+      .space-row {
+        display: grid;
+        grid-template-columns: 11px 1fr auto;
+        gap: 7px;
+        align-items: center;
+        min-height: 45px;
+        margin: 0 9px;
+        border-bottom: 1px solid var(--border);
+      }
+
+      .mini-fold {
+        width: 8px;
+        height: 17px;
+        border-radius: 8px 0 0 8px;
+        background: var(--primary);
+      }
+
+      .space-name { font-size: 7px; font-weight: 700; }
+      .agent-name { margin-top: 2px; color: var(--muted); font-size: 5px; }
+
+      .status {
+        padding: 3px 4px;
+        border-radius: 999px;
+        background: var(--status-bg);
+        color: var(--status);
+        font-size: 4px;
+        font-weight: 700;
+      }
+
+      .status.done { background: var(--success-bg); color: var(--success); }
+
+      .terminal-copy {
+        min-height: 244px;
+        padding: 12px 10px;
+        background: var(--term-bg);
+        color: var(--term-fg);
+        font-size: 5.5px;
+        line-height: 1.55;
+      }
+
+      .terminal-copy b { color: var(--term-accent); }
+      .terminal-copy .dim { color: var(--term-muted); }
+
+      .keyboard {
+        display: grid;
+        grid-template-columns: repeat(5, 1fr);
+        gap: 3px;
+        padding: 7px;
+        border-top: 1px solid var(--border);
+        background: var(--surface);
+      }
+
+      .key {
+        padding: 5px 2px;
+        border: 1px solid var(--border);
+        border-radius: 4px;
+        background: var(--card);
+        text-align: center;
+        font-size: 5px;
+      }
+
+      .fact-row {
+        display: grid;
+        grid-template-columns: repeat(3, 1fr);
+        border-block: 1px solid var(--border);
+      }
+
+      .fact {
+        display: grid;
+        gap: 4px;
+        padding: 12px 13px;
+        border-right: 1px solid var(--border);
+      }
+
+      .fact:last-child { border-right: 0; }
+      .fact b { color: var(--primary); font-size: 8px; }
+      .fact span { color: var(--muted); font-size: 6px; }
+
+      @media (max-width: 1250px) {
+        html,
+        body { min-width: 960px; }
+        .study-head { padding-inline: 24px; }
+        .mode { padding-inline: 22px; }
+        .hero { grid-template-columns: minmax(0, 1fr) 240px; }
+        .devices { transform: scale(0.82); transform-origin: center right; }
+      }
+    </style>
+  </head>
+  <body>
+    <header class="study-head">
+      <div>
+        <p class="study-kicker">Herden brand study · paired light + dark</p>
+        <h1 class="study-title"><span id="palette-letter">A</span> / <span id="palette-name">Paper + cobalt</span></h1>
+        <p class="study-description" id="palette-description">Warm editor paper, serious cobalt controls, rust only when something needs attention.</p>
+      </div>
+      <nav class="chooser" aria-label="Palette direction">
+        <a class="choice" data-choice="paper" href="?palette=paper"><b>A · Paper</b><span>Cobalt + rust</span></a>
+        <a class="choice" data-choice="polar" href="?palette=polar"><b>B · Polar</b><span>Blue + amber</span></a>
+        <a class="choice" data-choice="mineral" href="?palette=mineral"><b>C · Mineral</b><span>Petrol + copper</span></a>
+      </nav>
+    </header>
+
+    <main class="modes">
+      <section class="mode light" data-mode="light" aria-label="Light mode preview">
+        <div class="mode-head">
+          <span class="mode-title">Light mode</span>
+          <div class="tokens">
+            <span class="token" data-token="bg"></span>
+            <span class="token" data-token="ink"></span>
+            <span class="token" data-token="primary"></span>
+            <span class="token" data-token="signal"></span>
+          </div>
+        </div>
+        <div class="product-bar">
+          <span class="brand"><svg class="fold" viewBox="0 0 120 120" aria-hidden="true"><path class="fold-primary" fill-rule="evenodd" d="M18 65C18 36 39 16 71 16C60 22 49 32 43 44C37 56 36 70 42 84C27 82 18 76 18 65ZM35 66C37 52 45 40 57 31C45 37 36 49 35 66Z"/><path class="fold-signal" fill-rule="evenodd" d="M55 102C67 94 76 83 80 70C84 57 83 45 78 34C94 38 103 48 102 62C100 82 82 99 55 102ZM84 84C92 75 96 65 95 54C93 66 90 75 84 84Z"/></svg>Herden</span>
+          <nav class="product-nav"><span>Install</span><span>Glasses</span></nav>
+          <span class="github">GitHub</span>
+        </div>
+        <div class="hero">
+          <div>
+            <p class="eyebrow">Persistent agents · Your machines</p>
+            <h2>All your agents.<br /><em>See who needs you.</em></h2>
+            <p class="lede">See Claude Code, Codex and other coding-agent terminals on your iPhone. Check their status, reply, and send files.</p>
+            <div class="actions"><span class="primary-button">Get iPhone beta</span><span class="source-link">Source →</span></div>
+          </div>
+          <div class="devices" aria-label="Herden app preview">
+            <div class="phone spaces-phone">
+              <div class="phone-top"><svg class="fold" viewBox="0 0 120 120" aria-hidden="true"><path class="fold-primary" fill-rule="evenodd" d="M18 65C18 36 39 16 71 16C60 22 49 32 43 44C37 56 36 70 42 84C27 82 18 76 18 65Z"/><path class="fold-signal" fill-rule="evenodd" d="M55 102C67 94 76 83 80 70C84 57 83 45 78 34C94 38 103 48 102 62C100 82 82 99 55 102Z"/></svg>Herden <span class="phone-action">◒ ··· ＋</span></div>
+              <div class="list-label">Spaces</div>
+              <div class="space-row"><span class="mini-fold"></span><span><span class="space-name">landing-page</span><span class="agent-name">Codex</span></span><span class="status done">Done</span></div>
+              <div class="space-row"><span class="mini-fold"></span><span><span class="space-name">fix-auth</span><span class="agent-name">Claude</span></span><span class="status">Working</span></div>
+              <div class="space-row"><span class="mini-fold"></span><span><span class="space-name">payments</span><span class="agent-name">Codex</span></span><span class="status">Question</span></div>
+              <div class="space-row"><span class="mini-fold"></span><span><span class="space-name">mobile-polish</span><span class="agent-name">Codex</span></span><span class="status done">Idle</span></div>
+            </div>
+            <div class="phone terminal-phone">
+              <div class="phone-top">‹ <span>OpenAI Codex</span><span class="phone-action">− 10 pt ＋</span></div>
+              <div class="terminal-copy"><b>~ OpenAI Codex</b><br /><br /><span class="dim">model:</span> gpt-5.6-sol<br /><span class="dim">directory:</span> landing-page<br /><span class="dim">permissions:</span> YOLO mode<br /><br />Tip: Run /review to get a code review of your current changes.<br /><br /><span class="dim">› Ask Codex to do anything</span></div>
+              <div class="keyboard"><span class="key">Esc</span><span class="key">←</span><span class="key">→</span><span class="key">↑</span><span class="key">↓</span><span class="key">Attach</span><span class="key">Paste</span><span class="key">Dictate</span><span class="key">Audio</span><span class="key">↵</span></div>
+            </div>
+          </div>
+        </div>
+        <div class="fact-row"><span class="fact"><b>Pair a Host</b><span>One QR scan</span></span><span class="fact"><b>Reply</b><span>Type or dictate</span></span><span class="fact"><b>Send files</b><span>From any iOS app</span></span></div>
+      </section>
+
+      <section class="mode dark" data-mode="dark" aria-label="Dark mode preview">
+        <div class="mode-head">
+          <span class="mode-title">Dark mode</span>
+          <div class="tokens">
+            <span class="token" data-token="bg"></span>
+            <span class="token" data-token="ink"></span>
+            <span class="token" data-token="primary"></span>
+            <span class="token" data-token="signal"></span>
+          </div>
+        </div>
+        <div class="product-bar">
+          <span class="brand"><svg class="fold" viewBox="0 0 120 120" aria-hidden="true"><path class="fold-primary" fill-rule="evenodd" d="M18 65C18 36 39 16 71 16C60 22 49 32 43 44C37 56 36 70 42 84C27 82 18 76 18 65ZM35 66C37 52 45 40 57 31C45 37 36 49 35 66Z"/><path class="fold-signal" fill-rule="evenodd" d="M55 102C67 94 76 83 80 70C84 57 83 45 78 34C94 38 103 48 102 62C100 82 82 99 55 102ZM84 84C92 75 96 65 95 54C93 66 90 75 84 84Z"/></svg>Herden</span>
+          <nav class="product-nav"><span>Install</span><span>Glasses</span></nav>
+          <span class="github">GitHub</span>
+        </div>
+        <div class="hero">
+          <div>
+            <p class="eyebrow">Persistent agents · Your machines</p>
+            <h2>All your agents.<br /><em>See who needs you.</em></h2>
+            <p class="lede">See Claude Code, Codex and other coding-agent terminals on your iPhone. Check their status, reply, and send files.</p>
+            <div class="actions"><span class="primary-button">Get iPhone beta</span><span class="source-link">Source →</span></div>
+          </div>
+          <div class="devices" aria-label="Herden app preview">
+            <div class="phone spaces-phone">
+              <div class="phone-top"><svg class="fold" viewBox="0 0 120 120" aria-hidden="true"><path class="fold-primary" fill-rule="evenodd" d="M18 65C18 36 39 16 71 16C60 22 49 32 43 44C37 56 36 70 42 84C27 82 18 76 18 65Z"/><path class="fold-signal" fill-rule="evenodd" d="M55 102C67 94 76 83 80 70C84 57 83 45 78 34C94 38 103 48 102 62C100 82 82 99 55 102Z"/></svg>Herden <span class="phone-action">◒ ··· ＋</span></div>
+              <div class="list-label">Spaces</div>
+              <div class="space-row"><span class="mini-fold"></span><span><span class="space-name">landing-page</span><span class="agent-name">Codex</span></span><span class="status done">Done</span></div>
+              <div class="space-row"><span class="mini-fold"></span><span><span class="space-name">fix-auth</span><span class="agent-name">Claude</span></span><span class="status">Working</span></div>
+              <div class="space-row"><span class="mini-fold"></span><span><span class="space-name">payments</span><span class="agent-name">Codex</span></span><span class="status">Question</span></div>
+              <div class="space-row"><span class="mini-fold"></span><span><span class="space-name">mobile-polish</span><span class="agent-name">Codex</span></span><span class="status done">Idle</span></div>
+            </div>
+            <div class="phone terminal-phone">
+              <div class="phone-top">‹ <span>OpenAI Codex</span><span class="phone-action">− 10 pt ＋</span></div>
+              <div class="terminal-copy"><b>~ OpenAI Codex</b><br /><br /><span class="dim">model:</span> gpt-5.6-sol<br /><span class="dim">directory:</span> landing-page<br /><span class="dim">permissions:</span> YOLO mode<br /><br />Tip: Run /review to get a code review of your current changes.<br /><br /><span class="dim">› Ask Codex to do anything</span></div>
+              <div class="keyboard"><span class="key">Esc</span><span class="key">←</span><span class="key">→</span><span class="key">↑</span><span class="key">↓</span><span class="key">Attach</span><span class="key">Paste</span><span class="key">Dictate</span><span class="key">Audio</span><span class="key">↵</span></div>
+            </div>
+          </div>
+        </div>
+        <div class="fact-row"><span class="fact"><b>Pair a Host</b><span>One QR scan</span></span><span class="fact"><b>Reply</b><span>Type or dictate</span></span><span class="fact"><b>Send files</b><span>From any iOS app</span></span></div>
+      </section>
+    </main>
+
+    <script>
+      const systems = {
+        paper: {
+          letter: 'A',
+          name: 'Paper + cobalt',
+          description: 'Warm editor paper, serious cobalt controls, rust only when something needs attention. Inspired by the restraint of Flexoki, not by SaaS dashboards.',
+          chooser: '#6CA6D9',
+          light: {
+            bg: '#FFFCF0', surface: '#F2F0E5', card: '#FFFEF8', ink: '#100F0F', muted: '#575653', border: '#CECDC3',
+            primary: '#205EA6', signal: '#BC5215', success: '#66800B', successBg: '#E6E4D9', status: '#9A3E0F', statusBg: '#F8E4D5',
+            buttonInk: '#FFFCF0', shadow: 'rgba(32, 94, 166, 0.15)', termBg: '#100F0F', termFg: '#CECDC3', termMuted: '#878580', termAccent: '#6CA6D9'
+          },
+          dark: {
+            bg: '#100F0F', surface: '#1C1B1A', card: '#282726', ink: '#F2F0E5', muted: '#B7B5AC', border: '#403E3C',
+            primary: '#6CA6D9', signal: '#DA702C', success: '#A0AF54', successBg: '#30331F', status: '#F5A35C', statusBg: '#3B281C',
+            buttonInk: '#100F0F', shadow: 'rgba(0, 0, 0, 0.42)', termBg: '#0A0909', termFg: '#CECDC3', termMuted: '#878580', termAccent: '#6CA6D9'
+          }
+        },
+        polar: {
+          letter: 'B',
+          name: 'Polar + utility blue',
+          description: 'Cool, exact and highly legible. Blue handles actions, amber handles attention, and the rest stays quiet blue-grey.',
+          chooser: '#47A3F3',
+          light: {
+            bg: '#F5F7FA', surface: '#E4E7EB', card: '#FFFFFF', ink: '#1F2933', muted: '#52606D', border: '#CBD2D9',
+            primary: '#0552B5', signal: '#CB6E17', success: '#147D64', successBg: '#D9F2E8', status: '#8D4A08', statusBg: '#FFF3C4',
+            buttonInk: '#FFFFFF', shadow: 'rgba(3, 68, 158, 0.15)', termBg: '#102A43', termFg: '#D9E2EC', termMuted: '#829AB1', termAccent: '#62B0E8'
+          },
+          dark: {
+            bg: '#0B121A', surface: '#111C27', card: '#182532', ink: '#F0F4F8', muted: '#9FB3C8', border: '#334E68',
+            primary: '#47A3F3', signal: '#F7C948', success: '#65D6AD', successBg: '#153B34', status: '#FADB5F', statusBg: '#40381B',
+            buttonInk: '#07111C', shadow: 'rgba(0, 0, 0, 0.46)', termBg: '#07111C', termFg: '#D9E2EC', termMuted: '#829AB1', termAccent: '#47A3F3'
+          }
+        },
+        mineral: {
+          letter: 'C',
+          name: 'Mineral + petrol',
+          description: 'Warm stone neutrals with petrol controls and copper attention. Calmer than blue, less predictable than green, and still at home in a terminal.',
+          chooser: '#54D1DB',
+          light: {
+            bg: '#FAF9F7', surface: '#E8E6E1', card: '#FFFFFF', ink: '#27241D', muted: '#625D52', border: '#D3CEC4',
+            primary: '#0A6C74', signal: '#B44D12', success: '#207227', successBg: '#E3F2E5', status: '#8D3C0D', statusBg: '#F9E7D9',
+            buttonInk: '#FFFFFF', shadow: 'rgba(10, 108, 116, 0.16)', termBg: '#102A2D', termFg: '#E8E6E1', termMuted: '#A39E93', termAccent: '#54D1DB'
+          },
+          dark: {
+            bg: '#0C1314', surface: '#111D1F', card: '#172628', ink: '#F4F1EA', muted: '#B8B2A7', border: '#2E4447',
+            primary: '#54D1DB', signal: '#F29B5F', success: '#7BC47F', successBg: '#233B2A', status: '#FFC08D', statusBg: '#432B1C',
+            buttonInk: '#071113', shadow: 'rgba(0, 0, 0, 0.46)', termBg: '#071113', termFg: '#E8E6E1', termMuted: '#857F72', termAccent: '#54D1DB'
+          }
+        }
+      };
+
+      const requested = new URLSearchParams(location.search).get('palette');
+      const key = Object.hasOwn(systems, requested) ? requested : 'paper';
+      const system = systems[key];
+      document.documentElement.dataset.palette = key;
+      document.documentElement.style.setProperty('--chooser', system.chooser);
+      document.querySelector('#palette-letter').textContent = system.letter;
+      document.querySelector('#palette-name').textContent = system.name;
+      document.querySelector('#palette-description').textContent = system.description;
+      document.querySelector(`[data-choice="${key}"]`).classList.add('active');
+      document.title = `Herden palette ${system.letter}: ${system.name}`;
+
+      for (const mode of ['light', 'dark']) {
+        const element = document.querySelector(`[data-mode="${mode}"]`);
+        const values = system[mode];
+        for (const [name, value] of Object.entries(values)) {
+          element.style.setProperty(`--${name.replace(/[A-Z]/g, letter => `-${letter.toLowerCase()}`)}`, value);
+        }
+        for (const token of element.querySelectorAll('[data-token]')) {
+          const name = token.dataset.token;
+          token.style.setProperty('--swatch', values[name]);
+          token.textContent = values[name];
+        }
+      }
+    </script>
+  </body>
+</html>

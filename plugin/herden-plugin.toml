@@ -1,0 +1,17 @@
+id = "herden"
+name = "herden"
+version = "0.4.0"
+min_herdr_version = "0.7.5"
+description = "Encrypted Herden notifications and Live Activities"
+platforms = ["linux", "macos"]
+
+[[build]]
+command = ["npm", "ci"]
+
+[[events]]
+on = "pane.agent_status_changed"
+command = ["node", "src/notify-hook.js"]
+
+[[events]]
+on = "pane.agent_status_changed"
+command = ["node", "src/activity-hook.js"]
