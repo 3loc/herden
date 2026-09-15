@@ -140,7 +140,7 @@ struct TerminalKeysKeyboardTests {
             "Escape", "Left Arrow", "Right Arrow", "Up Arrow", "Down Arrow",
             "Control C", "Backspace",
             "Attach", "Paste", "Dictate text", "Record audio", "Return",
-            "Tab", "Slash", "Dollar sign", "Dictation Language", "Keyboard",
+            "Tab", "Slash", "Dollar sign", "Alt Up Arrow", "Dictation Language", "Keyboard",
         ]))
     }
 

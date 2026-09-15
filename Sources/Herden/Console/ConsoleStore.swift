@@ -13,6 +13,9 @@ final class ConsoleStore {
     }
 
     private(set) var agents: [ConsoleAgent] = []
+    /// Last proven rows remain visible during a new connection's snapshot.
+    /// They are presentation data only; Host operations still use `agents`.
+    private(set) var displayedAgents: [ConsoleAgent] = []
     private(set) var hostStatuses: [Host.ID: EventsSessionStatus] = [:]
     private(set) var hostStandingFailures: [Host.ID: TransportError] = [:]
     private(set) var hostLatencies: [Host.ID: Duration] = [:]
@@ -26,6 +29,9 @@ final class ConsoleStore {
     /// than a projection lookup so an open New Agent picker refreshes when a
     /// snapshot arrives or a workspace membership event resyncs the Host.
     private(set) var workspacesByHost: [Host.ID: [ConsoleWorkspace]] = [:]
+    private(set) var displayedWorkspacesByHost: [Host.ID: [ConsoleWorkspace]] = [:]
+    private(set) var terminalShellBySpace: [ConsoleSpace.ID: TerminalShellKind] = [:]
+    private(set) var displayedTerminalShellBySpace: [ConsoleSpace.ID: TerminalShellKind] = [:]
     /// Successful or snapshot-reconciled removals keyed by the exact Agents
     /// that belonged to the validated worktree. This survives their rows
     /// disappearing so Agent detail can show a stable result.
@@ -501,6 +507,10 @@ final class ConsoleStore {
                 .map { (agent.id, $0) }
         })
         agents = unsorted.consoleSorted { pinRanks[$0.id] }
+        let displayed = current.flatMap { $0.displayedAgentsByPane.values }
+        displayedAgents = displayed.consoleSorted { agent in
+            pins.pinRank(hostID: agent.hostID, paneID: agent.agent.paneID)
+        }
         hostStatuses = Dictionary(
             uniqueKeysWithValues: current.compactMap { projection in
                 projection.status.map { (projection.host.id, $0) }
@@ -530,6 +540,33 @@ final class ConsoleStore {
         if workspacesByHost != nextWorkspacesByHost {
             workspacesByHost = nextWorkspacesByHost
         }
+        let nextDisplayedWorkspacesByHost = Dictionary(
+            uniqueKeysWithValues: current.map {
+                ($0.host.id, $0.displayedWorkspaces)
+            })
+        if displayedWorkspacesByHost != nextDisplayedWorkspacesByHost {
+            displayedWorkspacesByHost = nextDisplayedWorkspacesByHost
+        }
+        let nextTerminalShellBySpace: [ConsoleSpace.ID: TerminalShellKind] =
+            current.reduce(into: [:]) { result, projection in
+                for (workspaceID, shell) in projection.terminalShellByWorkspace {
+                    result[ConsoleSpace.ID(
+                        hostID: projection.host.id, workspaceID: workspaceID)] = shell
+                }
+            }
+        if terminalShellBySpace != nextTerminalShellBySpace {
+            terminalShellBySpace = nextTerminalShellBySpace
+        }
+        let nextDisplayedTerminalShellBySpace: [ConsoleSpace.ID: TerminalShellKind] =
+            current.reduce(into: [:]) { result, projection in
+                for (workspaceID, shell) in projection.displayedTerminalShellByWorkspace {
+                    result[ConsoleSpace.ID(
+                        hostID: projection.host.id, workspaceID: workspaceID)] = shell
+                }
+            }
+        if displayedTerminalShellBySpace != nextDisplayedTerminalShellBySpace {
+            displayedTerminalShellBySpace = nextDisplayedTerminalShellBySpace
+        }
         let nextRemovedWorktreesByAgent = current.reduce(into: [:]) { result, projection in
             result.merge(projection.removedWorktreesByAgent) { _, latest in latest }
         }
@@ -555,6 +592,10 @@ final class ConsoleStore {
             liveUpdatesAvailable: status != nil
                 && hostStatuses[id.hostID] == .connected
                 && !hostsAwaitingSnapshot.contains(id.hostID))
+    }
+
+    func isHostInventoryReady(_ hostID: Host.ID) -> Bool {
+        hostStatuses[hostID] == .connected && !hostsAwaitingSnapshot.contains(hostID)
     }
 
     private func removeAgentStatusObserver(_ observerID: UUID, for id: ConsoleAgent.ID) {

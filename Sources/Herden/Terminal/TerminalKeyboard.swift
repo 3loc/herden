@@ -10,6 +10,8 @@ private enum TerminalEscapeSequences {
     static let pageUp: [UInt8] = [0x1B, 0x5B, 0x35, 0x7E]
     static let upNormal: [UInt8] = [0x1B, 0x5B, 0x41]
     static let upApplication: [UInt8] = [0x1B, 0x4F, 0x41]
+    // xterm's Alt/Option modifier (3) on Up, in both cursor-key modes.
+    static let altUp: [UInt8] = [0x1B, 0x5B, 0x31, 0x3B, 0x33, 0x41]
     static let pageDown: [UInt8] = [0x1B, 0x5B, 0x36, 0x7E]
     static let endNormal: [UInt8] = [0x1B, 0x5B, 0x46]
     static let endApplication: [UInt8] = [0x1B, 0x4F, 0x46]
@@ -39,6 +41,7 @@ enum AgentQuickKey: CaseIterable, Hashable {
     case shiftEnter
     case left
     case up
+    case altUp
     case down
     case right
     case enter
@@ -54,6 +57,7 @@ enum AgentQuickKey: CaseIterable, Hashable {
         case .enter: "Enter"
         case .backspace: "Backspace"
         case .left, .up, .down, .right: nil
+        case .altUp: "Alt↑"
         }
     }
 
@@ -65,7 +69,7 @@ enum AgentQuickKey: CaseIterable, Hashable {
         case .right: "arrow.right"
         case .enter: "return"
         case .backspace: "delete.left"
-        case .escape, .tab, .controlC, .shiftTab, .shiftEnter: nil
+        case .escape, .tab, .controlC, .shiftTab, .shiftEnter, .altUp: nil
         }
     }
 
@@ -78,6 +82,7 @@ enum AgentQuickKey: CaseIterable, Hashable {
         case .shiftEnter: "Shift Enter"
         case .left: "Left Arrow"
         case .up: "Up Arrow"
+        case .altUp: "Alt Up Arrow"
         case .down: "Down Arrow"
         case .right: "Right Arrow"
         case .enter: "Enter"
@@ -96,6 +101,7 @@ enum AgentQuickKey: CaseIterable, Hashable {
         case .shiftEnter: TerminalEscapeSequences.newLine
         case .left: TerminalControlKey.left.bytes(applicationCursor: applicationCursor)
         case .up: TerminalControlKey.up.bytes(applicationCursor: applicationCursor)
+        case .altUp: TerminalEscapeSequences.altUp
         case .down: TerminalControlKey.down.bytes(applicationCursor: applicationCursor)
         case .right: TerminalControlKey.right.bytes(applicationCursor: applicationCursor)
         case .enter: TerminalControlKey.enter.bytes(applicationCursor: applicationCursor)

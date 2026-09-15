@@ -15,7 +15,7 @@ struct AgentCardView: View {
 
     var body: some View {
         HStack(spacing: 12) {
-            HerdenAgentMark(size: 42)
+            HarnessPixelMark(subject: .agent(agent.agent.kind))
             VStack(alignment: .leading, spacing: 6) {
                 HStack(alignment: .firstTextBaseline) {
                     Text(presentation.headline)
@@ -112,7 +112,7 @@ struct SpaceCardView: View {
     private var occupantLabel: String {
         switch space.occupant {
         case .terminal:
-            "Terminal"
+            space.shellKind.map { "\($0.displayName) terminal" } ?? "Terminal"
         case .agent(let kind, _, _):
             SupportedAgentKind(rawValue: kind)?.displayName ?? kind.capitalized
         case .agents(let count, _):
@@ -122,10 +122,14 @@ struct SpaceCardView: View {
 
     var body: some View {
         HStack(spacing: 12) {
-            // The derived Space endpoint reads as a cropped Live Tether at row
-            // size. Keep the complete product mark here; the row label already
-            // carries the Space meaning.
-            HerdenLogoMark(size: 42)
+            switch space.occupant {
+            case .terminal:
+                HarnessPixelMark(subject: .terminal(space.shellKind))
+            case .agent(let kind, _, _):
+                HarnessPixelMark(subject: .agent(kind))
+            case .agents(let count, _):
+                HarnessPixelMark(subject: .agents(count))
+            }
             VStack(alignment: .leading, spacing: 6) {
                 HStack(alignment: .firstTextBaseline) {
                     Text(space.workspace.label)

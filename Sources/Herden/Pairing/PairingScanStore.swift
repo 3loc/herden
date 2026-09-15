@@ -198,9 +198,10 @@ final class PairingScanStore {
         case .hostUnreachable:
             PairingFailure(
                 step: .reach,
-                message: "The Host did not answer at any of its addresses. Check that this "
-                    + "device is on the same network or VPN as the computer, then try again "
-                    + "with the same code.",
+                message: "The Host did not answer at any of its addresses. Make sure this "
+                    + "iPhone and the computer are on the same local network, or both "
+                    + "connected through Tailscale or another VPN. Then try again with "
+                    + "the same code.",
                 canRetry: true)
         case .bootstrapRejected:
             PairingFailure(

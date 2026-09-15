@@ -172,6 +172,8 @@ struct ConsoleSpace: Identifiable, Hashable, Sendable {
     let workspace: ConsoleWorkspace
     let agentCount: Int
     let occupant: Occupant
+    /// Set only after the Host reports an exact foreground shell process.
+    let shellKind: TerminalShellKind?
     /// The most recent pin rank among Agents in this Space. A terminal-only
     /// Space has no pin because pins address Agent panes.
     let pinRank: Int?
@@ -201,6 +203,7 @@ struct ConsoleSpace: Identifiable, Hashable, Sendable {
         workspacesByHost: [Host.ID: [ConsoleWorkspace]],
         agents: [ConsoleAgent],
         filteredHostID: Host.ID? = nil,
+        shellKind: (ID) -> TerminalShellKind? = { _ in nil },
         pinRank: (ConsoleAgent) -> Int? = { _ in nil }
     ) -> [ConsoleSpace] {
         let agentsBySpace = Dictionary(grouping: agents) {
@@ -236,6 +239,7 @@ struct ConsoleSpace: Identifiable, Hashable, Sendable {
                         workspace: workspace,
                         agentCount: spaceAgents.count,
                         occupant: occupant,
+                        shellKind: spaceAgents.isEmpty ? shellKind(id) : nil,
                         pinRank: spaceAgents.compactMap(pinRank).min())
                 }
             }

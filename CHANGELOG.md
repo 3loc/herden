@@ -10,6 +10,12 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ### Added
 
+- QR pairing now names the same local network or Tailscale/another VPN when
+  the Host cannot be reached, so the iPhone's network check is explicit.
+- Added distinct brand-colored pixel-letter marks for all 24 supported Agent
+  kinds on Space and Agent rows. Plain terminals get a shell mark, with zsh,
+  Bash or fish shown only when the Host reports that foreground shell.
+- Added a saved Light/Dark switch to the public website header.
 - Added saved-machine CLI routing, Letta and Cline detection, and terminal link resolution to the Host.
 - Added Muse as a discoverable and launchable Agent kind, with recovery advice
   when an older Host rejects it.
@@ -22,9 +28,13 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
   a dedicated dictation-language key in place of the overflow menu.
 - Added persistent one-tap terminal font-size controls to the shared Agent and Space keyboard.
 - Added one-tap `/` and `$` shell-character keys to the shared terminal keyboard.
+- Added a one-tap Alt+Up key to the shared Agent and Space keyboard for Codex question replies.
 
 ### Changed
 
+- Replace the website's warm light background and demo-screen neutrals with cool
+  grey, and refresh its privacy-safe iPhone and OpenGraph captures with the
+  corrected terminal keyboard.
 - Keep Herden in private beta while leaving the signed Host runtime, installer,
   privacy policy, licence attribution, and setup guide available at `herden.app`.
 - Adopt Paper + Cobalt and the Live Tether identity across the iOS app and
@@ -57,6 +67,16 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ### Fixed
 
+- Keep the last known Spaces visible but disabled while the app reconnects on
+  foreground return, then replace them when the Host's fresh snapshot arrives.
+- Terminal long-press copy now uses Ghostty's native Select All capture so its
+  Copy All window includes shell scrollback and every available Agent screen
+  line, even when the older lines were reached by scrolling.
+- The terminal text window has one explicit Copy button. Selecting a passage
+  changes it to Copy Selection, and the iOS text-edit Copy menu no longer appears.
+- Clear Ghostty's terminal selection after opening the copy window and remove
+  its separate terminal Copy popup.
+- Keep action-key captions inside their keys on the shared iPhone terminal keyboard.
 - Improved Host SSH bridge cleanup, reconnect handling, alternate-screen reads, terminal input, and observer recovery.
 - Discover Agents installed through mise shims during non-interactive SSH probes.
 - Freeze a shared terminal's application-facing palette once its child observes

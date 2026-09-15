@@ -15,14 +15,31 @@ import UIKit
 @Suite("Terminal attach")
 struct TerminalAttachTests {
     @MainActor
-    @Test func copySheetCopiesOnlyTheSelectedText() {
+    @Test func copySheetUsesOneButtonForAllTextOrASelection() throws {
         var copied: [String] = []
         let selection = TerminalTextSelectionViewController(
             text: "hello 世界", anchorRange: NSRange(location: 6, length: 2),
             writeClipboard: { copied.append($0) })
         selection.loadViewIfNeeded()
-        #expect(selection.navigationItem.leftBarButtonItem?.title == "Copy")
-        selection.copySelection()
+        #expect(selection.navigationItem.leftBarButtonItem?.title == "Copy All")
+        let textView = try #require(
+            selection.view.subviews.compactMap { $0 as? UITextView }.first)
+        #expect(textView.selectedRange.length == 0)
+        #expect(!textView.canPerformAction(#selector(UITextView.copy(_:)), withSender: nil))
+        let menu = try #require(selection.textView(
+            textView, editMenuForTextIn: NSRange(location: 6, length: 2),
+            suggestedActions: []))
+        #expect(menu.children.isEmpty)
+        if #available(iOS 26.0, *) {
+            let rangesMenu = try #require(selection.textView(
+                textView, editMenuForTextInRanges: [NSValue(range: NSRange(location: 6, length: 2))],
+                suggestedActions: []))
+            #expect(rangesMenu.children.isEmpty)
+        }
+        textView.selectedRange = NSRange(location: 6, length: 2)
+        selection.textViewDidChangeSelection(textView)
+        #expect(selection.navigationItem.leftBarButtonItem?.title == "Copy Selection")
+        selection.copyText()
         #expect(copied == ["世界"])
     }
 
@@ -33,15 +50,63 @@ struct TerminalAttachTests {
             text: "first\nsecond", anchorRange: nil,
             writeClipboard: { copied.append($0) })
         selection.loadViewIfNeeded()
-        selection.copySelection()
+        selection.copyText()
         #expect(copied == ["first\nsecond"])
+
+        let collapsed = TerminalTextSelectionViewController(
+            text: "visible output", anchorRange: NSRange(location: 2, length: 0),
+            writeClipboard: { copied.append($0) })
+        collapsed.loadViewIfNeeded()
+        #expect(collapsed.navigationItem.leftBarButtonItem?.isEnabled == true)
+        collapsed.copyText()
+        #expect(copied.last == "visible output")
 
         let empty = TerminalTextSelectionViewController(
             text: "", anchorRange: nil, writeClipboard: { copied.append($0) })
         empty.loadViewIfNeeded()
         #expect(empty.navigationItem.leftBarButtonItem?.isEnabled == false)
-        empty.copySelection()
-        #expect(copied.count == 1)
+        empty.copyText()
+        #expect(copied.count == 2)
+    }
+
+    @MainActor
+    @Test func ghosttySelectAllCopiesScrollbackAndAlternateScreenRows() async throws {
+        let terminal = TerminalScreenView.makeConfiguredTerminal()
+        terminal.frame = CGRect(x: 0, y: 0, width: 390, height: 720)
+        let controller = UIViewController()
+        controller.view.addSubview(terminal)
+        let window = try await makeTestWindow(
+            frame: terminal.bounds, rootViewController: controller)
+        defer { window.isHidden = true }
+        try await waitForGhosttyContentLayer(in: terminal)
+
+        let originalPasteboardItems = UIPasteboard.general.items
+        defer { UIPasteboard.general.items = originalPasteboardItems }
+        UIPasteboard.general.string = "saved clipboard"
+        let shellLines = (0..<80).map { "shell-line-\($0)" }.joined(separator: "\r\n")
+        terminal.receive(Data((shellLines + "\r\n").utf8))
+        try await Task.sleep(for: .milliseconds(100))
+        let shellCopy = try #require(
+            TerminalTextSelectionPresenter.readAllSelectableText(terminal))
+        #expect(shellCopy.contains("shell-line-0"))
+        #expect(shellCopy.contains("shell-line-79"))
+        #expect(UIPasteboard.general.string == "saved clipboard")
+        #expect(!terminal.copySelectedTextToPasteboard())
+        #expect(!terminal.canPerformAction(#selector(UITerminalView.copy(_:)), withSender: nil))
+
+        terminal.receive(Data("\u{1B}[?1049h\u{1B}[2J\u{1B}[Hagent-visible-first\r\nagent-visible-last".utf8))
+        try await Task.sleep(for: .milliseconds(100))
+        let agentCopy = try #require(
+            TerminalTextSelectionPresenter.readAllSelectableText(terminal))
+        #expect(agentCopy.contains("agent-visible-first"))
+        #expect(agentCopy.contains("agent-visible-last"))
+        #expect(UIPasteboard.general.string == "saved clipboard")
+        #expect(!terminal.copySelectedTextToPasteboard())
+        let anchor = TerminalTextSelectionPresenter.selectionAnchor(
+            in: "older\nagent-visible-first\nagent-visible-last",
+            viewportText: "agent-visible-first\nagent-visible-last",
+            viewportAnchor: NSRange(location: 20, length: 18))
+        #expect(anchor.location == 26)
     }
 
     @MainActor
@@ -2136,7 +2201,7 @@ struct TerminalAttachTests {
     @Test func agentQuickKeysEncodeExpectedBytes() {
         #expect(
             AgentQuickKey.allCases == [
-                .escape, .tab, .controlC, .shiftTab, .shiftEnter, .left, .up, .down, .right,
+                .escape, .tab, .controlC, .shiftTab, .shiftEnter, .left, .up, .altUp, .down, .right,
                 .enter, .backspace,
             ])
         #expect(AgentQuickKey.escape.bytes(applicationCursor: false) == [0x1B])
@@ -2146,6 +2211,8 @@ struct TerminalAttachTests {
         #expect(AgentQuickKey.shiftEnter.bytes(applicationCursor: false) == [0x0A])
         #expect(AgentQuickKey.left.bytes(applicationCursor: false) == [0x1B, 0x5B, 0x44])
         #expect(AgentQuickKey.up.bytes(applicationCursor: true) == [0x1B, 0x4F, 0x41])
+        #expect(AgentQuickKey.altUp.bytes(applicationCursor: false) == [0x1B, 0x5B, 0x31, 0x3B, 0x33, 0x41])
+        #expect(AgentQuickKey.altUp.bytes(applicationCursor: true) == [0x1B, 0x5B, 0x31, 0x3B, 0x33, 0x41])
         #expect(AgentQuickKey.down.bytes(applicationCursor: false) == [0x1B, 0x5B, 0x42])
         #expect(AgentQuickKey.right.bytes(applicationCursor: false) == [0x1B, 0x5B, 0x43])
         #expect(AgentQuickKey.enter.bytes(applicationCursor: false) == [0x0D])

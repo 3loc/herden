@@ -926,8 +926,9 @@ final class HerdenTerminalView: UITerminalView, TerminalByteSink {
         let clampedFontSize = TerminalZoomSettings.clamped(fontSize)
         terminalController = TerminalController(
             theme: theme,
-            terminalConfiguration: Self.fontConfiguration(
-                size: clampedFontSize, family: fontFamily))
+            terminalConfiguration: Self.copyClearingConfiguration(
+                Self.fontConfiguration(
+                    size: clampedFontSize, family: fontFamily)))
         appliedTheme = theme
         appliedFontSize = clampedFontSize
         appliedFontFamily = fontFamily
@@ -986,7 +987,8 @@ final class HerdenTerminalView: UITerminalView, TerminalByteSink {
         let clamped = TerminalZoomSettings.clamped(fontSize)
         guard clamped != appliedFontSize,
             terminalController.setTerminalConfiguration(
-                TerminalConfiguration().fontSize(clamped))
+                Self.copyClearingConfiguration(
+                    TerminalConfiguration().fontSize(clamped)))
         else {
             return false
         }
@@ -998,7 +1000,8 @@ final class HerdenTerminalView: UITerminalView, TerminalByteSink {
     func applyFontFamily(_ family: String?) -> Bool {
         guard family != appliedFontFamily,
             terminalController.setTerminalConfiguration(
-                Self.fontConfiguration(size: nil, family: family))
+                Self.copyClearingConfiguration(
+                    Self.fontConfiguration(size: nil, family: family)))
         else {
             return false
         }
@@ -1019,6 +1022,12 @@ final class HerdenTerminalView: UITerminalView, TerminalByteSink {
             configuration = configuration.fontFamily(family)
         }
         return configuration
+    }
+
+    private static func copyClearingConfiguration(
+        _ configuration: TerminalConfiguration
+    ) -> TerminalConfiguration {
+        configuration.appending(.custom(key: "selection-clear-on-copy", value: "true"))
     }
 
     /// Applies a zoom the user performed on this terminal and reports it, so
@@ -1068,10 +1077,12 @@ final class HerdenTerminalView: UITerminalView, TerminalByteSink {
     }
 
     func selectViewportText() {
-        guard let text = terminalSession.readViewportText(),
+        let captured = TerminalTextSelectionPresenter.readAllSelectableText(self)
+        guard let text = captured ?? terminalSession.readViewportText(),
               !text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
         else { return }
-        TerminalTextSelectionPresenter.present(text: text, from: self)
+        TerminalTextSelectionPresenter.present(
+            text: text, includesScrollback: captured != nil, from: self)
     }
 
     private func scheduleViewportSnapshot() {
@@ -1316,11 +1327,14 @@ final class HerdenTerminalView: UITerminalView, TerminalByteSink {
     }
 
     override func canPerformAction(_ action: Selector, withSender sender: Any?) -> Bool {
+        if action == #selector(copy(_:)) { return false }
         if action == #selector(paste(_:)) {
             return isLocalInputEnabled && clipboard.hasStrings()
         }
         return super.canPerformAction(action, withSender: sender)
     }
+
+    override func showSelectionCopyMenu(at point: CGPoint) {}
 
     override func reloadInputViews() {
         inputViewRebuildCount += 1

@@ -194,28 +194,26 @@
                             workspaceID: "docs", kind: "claude",
                             name: "docs-review", title: "Refresh the setup guide",
                             cwd: "/workspace/product-docs"),
-                        agent(
-                            paneID: "mobile:p4", status: .done,
-                            workspaceID: "mobile", kind: "gemini",
-                            name: "accessibility", title: "Audit VoiceOver labels",
-                            cwd: "/workspace/herden"),
                     ],
                     workspaces: [
                         workspace(
                             id: "mobile", label: "iOS App", repo: "herden",
                             isLinkedWorktree: true),
                         workspace(id: "docs", label: "Product Docs", repo: "docs-site"),
-                    ]),
+                        workspace(id: "shell", label: "Shell Workbench", repo: "herden"),
+                    ],
+                    panes: [shellPane(paneID: "shell:p1", workspaceID: "shell")]),
                 paneSnippets: [
                     "mobile:p1": "Running AttachViewTests… 24 passed",
                     "docs:p2": "Ready when you are.",
-                    "mobile:p4": "VoiceOver audit complete. 0 blockers.",
                 ],
                 terminalOutputs: [
                     "mobile:p1": terminalOutput,
                     "docs:p2": terminalOutput,
-                    "mobile:p4": terminalOutput,
-                ]),
+                ],
+                shellProcesses: ["shell:p1": PaneProcessInfo(
+                    paneID: "shell:p1", foregroundProcessGroupID: 71,
+                    foregroundProcesses: [.init(name: "zsh", pid: 71)], shellPid: 71)]),
             buildHostID: DemoHostProfile(
                 snapshot: snapshot(
                     agents: [
@@ -226,7 +224,7 @@
                             cwd: "/workspace/storefront"),
                         agent(
                             paneID: "api:p7", status: .working,
-                            workspaceID: "api", kind: "opencode",
+                            workspaceID: "api", kind: "pi",
                             name: "api-tests", title: "Harden webhook retries",
                             cwd: "/workspace/payments-api"),
                     ],
@@ -289,16 +287,24 @@
         }
 
         private static func snapshot(
-            agents: [AgentInfo], workspaces: [WorkspaceInfo]
+            agents: [AgentInfo], workspaces: [WorkspaceInfo], panes: [PaneInfo] = []
         ) -> SessionSnapshot {
             SessionSnapshot(
                 agents: agents,
                 layouts: [],
-                panes: [],
+                panes: panes,
                 protocolVersion: 17,
                 tabs: [],
                 version: "0.7.5-demo",
                 workspaces: workspaces)
+        }
+
+        private static func shellPane(paneID: String, workspaceID: String) -> PaneInfo {
+            PaneInfo(
+                agentStatus: .unknown, focused: false,
+                paneID: paneID, revision: 1,
+                tabID: "\(workspaceID):t1", terminalID: "terminal:\(paneID)",
+                workspaceID: workspaceID, cwd: "/workspace/herden")
         }
 
         private static func agent(
@@ -353,6 +359,7 @@
         let snapshot: SessionSnapshot
         let paneSnippets: [String: String]
         let terminalOutputs: [String: String]
+        var shellProcesses: [String: PaneProcessInfo] = [:]
     }
 
     private actor DemoScreenshotTransport: Transport {
@@ -374,7 +381,14 @@
         }
 
         func availableAgentKinds() async throws -> [SupportedAgentKind] {
-            [.claude, .codex, .gemini, .opencode]
+            [.claude, .codex, .pi]
+        }
+
+        func paneProcessInfo(_ paneID: String) async throws -> PaneProcessInfo {
+            guard let process = profile.shellProcesses[paneID] else {
+                throw TransportError.channelFailed(detail: "Demo shell unavailable")
+            }
+            return process
         }
 
         func sessionSnapshot() async throws -> SessionSnapshot {

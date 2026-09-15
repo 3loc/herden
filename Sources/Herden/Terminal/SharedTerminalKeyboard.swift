@@ -136,8 +136,8 @@ struct TerminalKeyboard: View {
 /// Ordering is deliberate. Escape opens row 1 and Backspace closes it, the way
 /// they sit on a physical keyboard, with the four arrows as one contiguous
 /// cluster between them. Tab opens row 3 beside the shell characters, and the
-/// two set-once controls — dictation language and the system keyboard — close
-/// it. Font size is not here: it belongs to the screen's top controls, beside
+/// Alt+Up follows the shell characters; dictation language and the system
+/// keyboard close it. Font size belongs to the screen's top controls, beside
 /// the terminal it resizes.
 struct TerminalDirectInputDeck: View {
     let isKeyboardUp: Bool
@@ -159,7 +159,7 @@ struct TerminalDirectInputDeck: View {
         "Escape", "Left Arrow", "Right Arrow", "Up Arrow", "Down Arrow",
         "Control C", "Backspace",
         "Attach", "Paste", "Dictate text", "Record audio", "Return",
-        "Tab", "Slash", "Dollar sign", "Dictation Language", "Keyboard",
+        "Tab", "Slash", "Dollar sign", "Alt Up Arrow", "Dictation Language", "Keyboard",
     ]
 
     var body: some View {
@@ -202,12 +202,14 @@ struct TerminalDirectInputDeck: View {
             }
             .buttonStyle(TerminalToolbarButtonStyle())
             .disabled(!canUpload)
+            .accessibilityLabel("Attach")
             .accessibilityIdentifier("terminal-attach")
             Button(action: paste) {
                 label("Paste", image: "doc.on.clipboard", width: layout.actionKey)
             }
             .buttonStyle(TerminalToolbarButtonStyle())
             .disabled(!canInput)
+            .accessibilityLabel("Paste")
             .accessibilityHint("Pastes clipboard text immediately")
             .accessibilityIdentifier("terminal-paste")
             Button(action: toggleDictation) {
@@ -217,6 +219,7 @@ struct TerminalDirectInputDeck: View {
             }
             .buttonStyle(TerminalToolbarButtonStyle(isRecording: isDictating))
             .disabled(!canInput)
+            .accessibilityLabel(isDictating ? "Stop dictating" : "Dictate text")
             .accessibilityHint("Uses Apple speech recognition on this iPhone")
             .accessibilityIdentifier("terminal-dictate")
             Button(action: recordAudio) {
@@ -224,19 +227,21 @@ struct TerminalDirectInputDeck: View {
             }
             .buttonStyle(TerminalToolbarButtonStyle())
             .disabled(!canUpload)
+            .accessibilityLabel("Record audio")
             .accessibilityHint("Record and review an audio attachment")
             .accessibilityIdentifier("terminal-record-audio")
             quickKey(.enter, systemImage: "return", width: layout.returnKey)
         }
     }
 
-    /// Tab and the two shell characters the iOS keyboard buries, then the
+    /// Tab, shell characters, and Codex's Alt+Up reply shortcut, then the
     /// controls that are set once and left alone.
     private func shellRow(_ layout: TerminalDeckLayout) -> some View {
         HStack(spacing: TerminalDeckLayout.spacing) {
             quickKey(.tab, title: "Tab", width: layout.column)
             quickTextKey("/", accessibilityLabel: "Slash", width: layout.column)
             quickTextKey("$", accessibilityLabel: "Dollar sign", width: layout.column)
+            quickKey(.altUp, title: "Alt↑", width: layout.column)
             Spacer(minLength: 0)
             languageMenu(width: layout.column)
             Button(action: toggleKeyboard) {
@@ -273,10 +278,13 @@ struct TerminalDirectInputDeck: View {
                 } else {
                     Text(title ?? key.title ?? key.accessibilityLabel)
                         .font(Brand.mono(.caption, weight: .semibold))
+                        .lineLimit(1)
                         .minimumScaleFactor(0.75)
+                        .allowsTightening(true)
                 }
             }
             .frame(width: width, height: TerminalDeckLayout.keyHeight)
+            .clipped()
             .contentShape(Rectangle())
         }
         .buttonStyle(TerminalToolbarButtonStyle())
@@ -303,11 +311,19 @@ struct TerminalDirectInputDeck: View {
     }
 
     private func label(_ title: String, image: String, width: CGFloat) -> some View {
-        Label(title, systemImage: image)
-            .font(Brand.sans(.caption, weight: .semibold))
-            .lineLimit(1)
-            .minimumScaleFactor(0.8)
+        VStack(spacing: 2) {
+            Image(systemName: image)
+                .font(.system(size: 15, weight: .semibold))
+            Text(title)
+                .font(Brand.sans(.caption2, weight: .semibold))
+                .lineLimit(1)
+                .minimumScaleFactor(0.8)
+                .allowsTightening(true)
+                .frame(maxWidth: .infinity)
+        }
+            .padding(.horizontal, 3)
             .frame(width: width, height: TerminalDeckLayout.keyHeight)
+            .clipped()
             .contentShape(Rectangle())
     }
 

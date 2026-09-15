@@ -505,7 +505,7 @@ struct ConsoleView: View {
             }
         }
         .accessibilityElement(children: .combine)
-        .disabled(openingSpaceID != nil)
+        .disabled(openingSpaceID != nil || !console.isHostInventoryReady(space.hostID))
         .accessibilityHint(space.agentCount > 1
             ? "Shows the Agents in this Space"
             : "Opens this Space")
@@ -721,8 +721,9 @@ struct ConsoleView: View {
     private var filteredSpaces: [ConsoleSpace] {
         ConsoleSpace.project(
             hosts: hosts.hosts,
-            workspacesByHost: console.workspacesByHost,
-            agents: console.agents,
+            workspacesByHost: console.displayedWorkspacesByHost,
+            agents: console.displayedAgents,
+            shellKind: { console.displayedTerminalShellBySpace[$0] },
             pinRank: { console.pins.pinRank(hostID: $0.hostID, paneID: $0.agent.paneID) })
     }
 

@@ -11,6 +11,21 @@ final class HostConsoleProjection {
 
     private(set) var agentsByPane: [String: ConsoleAgent] = [:]
     private(set) var workspaces: [ConsoleWorkspace] = []
+    private(set) var terminalShellByWorkspace: [String: TerminalShellKind] = [:]
+    /// A display-only copy of the last proven inventory. Live rows are still
+    /// invalidated on disconnect so RPCs and subscriptions cannot use them.
+    private var lastKnownAgentsByPane: [String: ConsoleAgent] = [:]
+    private var lastKnownWorkspaces: [ConsoleWorkspace] = []
+    private var lastKnownTerminalShellByWorkspace: [String: TerminalShellKind] = [:]
+    var displayedAgentsByPane: [String: ConsoleAgent] {
+        isAwaitingSnapshot ? lastKnownAgentsByPane : agentsByPane
+    }
+    var displayedWorkspaces: [ConsoleWorkspace] {
+        isAwaitingSnapshot ? lastKnownWorkspaces : workspaces
+    }
+    var displayedTerminalShellByWorkspace: [String: TerminalShellKind] {
+        isAwaitingSnapshot ? lastKnownTerminalShellByWorkspace : terminalShellByWorkspace
+    }
     private(set) var status: EventsSessionStatus?
     /// The failure that last stopped automatic recovery, retained after the
     /// next activation begins and discarded when that activation resolves.
@@ -65,6 +80,8 @@ final class HostConsoleProjection {
     /// written. A snapshot already in flight cannot resolve its outcome.
     private var snapshotRequestGeneration: UInt64 = 0
     private var workspacesByID: [String: WorkspaceInfo] = [:]
+    private var shellProbePaneIDs: [String: String] = [:]
+    private var shellProbeTasks: [String: Task<Void, Never>] = [:]
     private var worktreeRemovalOperations: [UUID: WorktreeRemovalOperation] = [:]
     private var worktreeRemovalReceiptsByAgent: [
         ConsoleAgent.ID: WorktreeRemovalReceiptRecord
@@ -656,6 +673,11 @@ final class HostConsoleProjection {
     }
 
     private func invalidateSnapshot() {
+        if !isAwaitingSnapshot {
+            lastKnownAgentsByPane = agentsByPane
+            lastKnownWorkspaces = workspaces
+            lastKnownTerminalShellByWorkspace = terminalShellByWorkspace
+        }
         snapshotEpoch &+= 1
         isAwaitingSnapshot = true
         resyncPending = false
@@ -667,6 +689,10 @@ final class HostConsoleProjection {
         agentsByPane.removeAll(keepingCapacity: true)
         workspaces.removeAll(keepingCapacity: true)
         workspacesByID.removeAll(keepingCapacity: true)
+        terminalShellByWorkspace.removeAll(keepingCapacity: true)
+        shellProbePaneIDs.removeAll(keepingCapacity: true)
+        shellProbeTasks.values.forEach { $0.cancel() }
+        shellProbeTasks.removeAll(keepingCapacity: true)
     }
 
     private func apply(
@@ -711,10 +737,58 @@ final class HostConsoleProjection {
                     cwd: cwd)
             }
             .sorted { $0.label.localizedCaseInsensitiveCompare($1.label) == .orderedAscending }
+        refreshTerminalShells(from: snapshot)
         pruneReceiptsReintroducedByCurrentSnapshot(
             requestGeneration: requestGeneration)
         reconcileUnconfirmedWorktreeRemovals(requestGeneration: requestGeneration)
         publish()
+    }
+
+    /// The snapshot does not name a plain shell. Probe one pane per terminal
+    /// Space, once per pane identity, and keep every response tied to the
+    /// connection and snapshot topology that requested it.
+    private func refreshTerminalShells(from snapshot: SessionSnapshot) {
+        let agentWorkspaces = Set(snapshot.agents.map(\.workspaceID))
+        let candidatePanes = snapshot.panes.filter {
+            !agentWorkspaces.contains($0.workspaceID)
+        }
+        let panesByWorkspace = Dictionary(
+            candidatePanes.map { ($0.workspaceID, $0.paneID) }) { first, _ in first }
+        for workspaceID in Set(shellProbePaneIDs.keys).union(terminalShellByWorkspace.keys)
+        where panesByWorkspace[workspaceID] == nil {
+            shellProbeTasks[workspaceID]?.cancel()
+            shellProbeTasks[workspaceID] = nil
+            shellProbePaneIDs[workspaceID] = nil
+            terminalShellByWorkspace[workspaceID] = nil
+        }
+        for (workspaceID, paneID) in panesByWorkspace {
+            guard shellProbePaneIDs[workspaceID] != paneID else { continue }
+            shellProbeTasks[workspaceID]?.cancel()
+            shellProbePaneIDs[workspaceID] = paneID
+            terminalShellByWorkspace[workspaceID] = nil
+            let epoch = snapshotEpoch
+            shellProbeTasks[workspaceID] = Task { [weak self] in
+                guard let self else { return }
+                let info: PaneProcessInfo
+                do {
+                    info = try await session.withTransport { transport in
+                        try await transport.paneProcessInfo(paneID)
+                    }
+                } catch {
+                    return // Older Hosts simply keep the generic Terminal mark.
+                }
+                guard !Task.isCancelled, !hasEnded, status == .connected,
+                    snapshotEpoch == epoch,
+                    shellProbePaneIDs[workspaceID] == paneID,
+                    !agentsByPane.values.contains(where: { $0.agent.workspaceID == workspaceID })
+                else { return }
+                shellProbeTasks[workspaceID] = nil
+                let shell = TerminalShellKind.detected(in: info)
+                guard terminalShellByWorkspace[workspaceID] != shell else { return }
+                terminalShellByWorkspace[workspaceID] = shell
+                publish()
+            }
+        }
     }
 
     private static func isUsableDirectory(_ value: String?) -> Bool {

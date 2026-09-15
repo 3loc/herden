@@ -618,6 +618,13 @@ actor HerdenSSHTransport: Transport {
             .snapshot
     }
 
+    func paneProcessInfo(_ paneID: String) async throws -> PaneProcessInfo {
+        try await request(
+            method: "pane.process_info",
+            params: PaneProcessInfoParams(paneID: paneID),
+            decoding: PaneProcessInfoResponse.self).processInfo
+    }
+
     func readPane(_ params: PaneReadParams) async throws -> PaneReadResult {
         try await request(method: "pane.read", params: params, decoding: PaneReadResponse.self)
             .read

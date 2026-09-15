@@ -281,7 +281,7 @@ struct PairingScanStoreTests {
     }
 
     @Test(arguments: [
-        (PairingCeremonyError.hostUnreachable(detail: "x"), true, "same network"),
+        (PairingCeremonyError.hostUnreachable(detail: "x"), true, "Tailscale"),
         (.bootstrapRejected, false, "Generate a new Pairing Code"),
         (.enrollmentRefused(.unknownPairing), false, "Generate a new Pairing Code"),
         (.enrollmentRefused(.expired), false, "expired"),

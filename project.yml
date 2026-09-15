@@ -100,6 +100,7 @@ targets:
       - Sources/Herden/Skills/SkillProbe.swift
       - Sources/Herden/Transport
       - Sources/Herden/Console/ConsoleAgent.swift
+      - Sources/Herden/Console/TerminalShellKind.swift
       - Sources/Herden/Console/WorktreeRemoval.swift
       - Sources/Herden/Hosts/Host.swift
       - Sources/Herden/Hosts/HostCredentialsProvider.swift

@@ -1154,6 +1154,68 @@ struct AppForegroundRecoveryTests {
         #expect(projection.syncError == nil)
     }
 
+    @Test func spacesStayVisibleButUnavailableUntilTheFreshSnapshotArrives() async throws {
+        let host = Host.fixture()
+        let old = ScriptedTransport(snapshot: .fixture(
+            agents: [.fixture(paneID: "w1:p1")],
+            workspaces: [.fixture(workspaceID: "w1", label: "Old Space")]))
+        let fresh = ScriptedTransport(snapshot: .fixture(
+            agents: [.fixture(paneID: "w2:p1", workspaceID: "w2")],
+            workspaces: [.fixture(workspaceID: "w2", label: "New Space")]))
+        let store = makeStore(connector: SequencedTransportConnector([old, fresh]))
+        store.setHosts([host])
+        await store.resume()
+        try await waitUntil("the first Space should be proven") {
+            store.isHostInventoryReady(host.id)
+                && store.displayedWorkspacesByHost[host.id]?.first?.id == "w1"
+        }
+        let initialSpaces = ConsoleSpace.project(
+            hosts: [host], workspacesByHost: store.displayedWorkspacesByHost,
+            agents: store.displayedAgents)
+        #expect(initialSpaces.map(\.workspace.label) == ["Old Space"])
+
+        let closeGate = ScriptedTransportCallGate()
+        let snapshotGate = ScriptedTransportCallGate()
+        await old.gateNextClose(using: closeGate)
+        await fresh.gateNextSnapshot(using: snapshotGate)
+        let retrying = Task { await store.retryHost(host.id) }
+        try await waitUntil("the old connection should enter teardown") {
+            await closeGate.entryCount == 1
+        }
+        #expect(store.hostStatuses[host.id] == .connecting)
+        #expect(!store.isHostInventoryReady(host.id))
+        #expect(store.agents.isEmpty)
+        #expect(store.workspacesByHost[host.id]?.isEmpty == true)
+        #expect(ConsoleSpace.project(
+            hosts: [host], workspacesByHost: store.displayedWorkspacesByHost,
+            agents: store.displayedAgents) == initialSpaces)
+
+        await closeGate.open()
+        await retrying.value
+        try await waitUntil("the new connection should be awaiting its snapshot") {
+            let snapshotStarted = await snapshotGate.entryCount == 1
+            return store.hostStatuses[host.id] == .connected
+                && store.hostsAwaitingSnapshot.contains(host.id)
+                && snapshotStarted
+        }
+        #expect(!store.isHostInventoryReady(host.id))
+        #expect(ConsoleSpace.project(
+            hosts: [host], workspacesByHost: store.displayedWorkspacesByHost,
+            agents: store.displayedAgents) == initialSpaces)
+
+        await snapshotGate.open()
+        try await waitUntil("the new snapshot should replace the old Space") {
+            store.isHostInventoryReady(host.id)
+                && store.displayedWorkspacesByHost[host.id]?.first?.id == "w2"
+        }
+        #expect(ConsoleSpace.project(
+            hosts: [host], workspacesByHost: store.displayedWorkspacesByHost,
+            agents: store.displayedAgents).map(\.workspace.label) == ["New Space"])
+        store.setHosts([])
+        #expect(store.displayedAgents.isEmpty)
+        #expect(store.displayedWorkspacesByHost.isEmpty)
+    }
+
     /// A store whose session factory hands out scripted transports in order,
     /// in the keepalive shape production uses (`ConsoleStore.sshSessionFactory`
     /// takes the default): 30 s, far longer than any of these tests live.

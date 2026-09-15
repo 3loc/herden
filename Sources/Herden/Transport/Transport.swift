@@ -21,6 +21,9 @@ protocol Transport: Sendable {
     /// effective PATH; alternative transports without a Host process
     /// environment report no detected kinds by default.
     func availableAgentKinds() async throws -> [SupportedAgentKind]
+    /// Reports the foreground shell when the Host can identify one. A plain
+    /// terminal still renders as Terminal if an older Host lacks this method.
+    func paneProcessInfo(_ paneID: String) async throws -> PaneProcessInfo
 
     /// The full session tree in one call: agents plus the workspace context
     /// (labels, worktrees) that `listAgents()` lacks. The Console's snapshot
@@ -239,6 +242,11 @@ extension Transport {
         []
     }
 
+    func paneProcessInfo(_ paneID: String) async throws -> PaneProcessInfo {
+        throw TransportError.channelFailed(
+            detail: "This transport cannot report Pane processes.")
+    }
+
     func sendPaneInput(_ params: PaneSendInputParams) async throws {
         throw TransportError.channelFailed(
             detail: "This transport cannot send Pane input.")
@@ -349,6 +357,7 @@ enum SupportedAgentKind: String, CaseIterable, Identifiable, Sendable, Equatable
     case maki
     case muse
     case qwen
+    case letta
 
     var id: String { rawValue }
 
@@ -377,6 +386,7 @@ enum SupportedAgentKind: String, CaseIterable, Identifiable, Sendable, Equatable
         case .maki: "Maki"
         case .muse: "Muse"
         case .qwen: "Qwen Code"
+        case .letta: "Letta Code"
         }
     }
 
