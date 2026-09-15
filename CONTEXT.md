@@ -260,11 +260,14 @@ _Avoid_: Agent Status, Reconnect Request, loading, syncing
 The Agents the Console believes a Host has. It is replaced wholesale when a
 snapshot lands, never merged, because herdr replays no state on subscribe.
 It becomes unknown when a Host Connection Status transition invalidates the
-prior snapshot — so an empty Console during a connection problem means unknown
-rather than none, and the window between a fresh Connected and its first
+prior snapshot — so an empty live inventory during a connection problem means
+unknown rather than none, and the window between a fresh Connected and its first
 snapshot is loading rather than empty. A same-Transport subscription reinstall
 is not such a transition and may keep the current inventory until its refresh
 lands.
+The Console may still display the last proven Spaces while inventory is
+unknown. Those rows are presentation only and disabled until a new snapshot
+proves them; they do not make the prior snapshot usable for Host operations.
 Readiness is a data condition and not a Host Connection Status: a Host is
 Connected while its inventory is still unknown. Surfaces say the Agents are
 loading there. They must not say the Host is connecting, and must never say a

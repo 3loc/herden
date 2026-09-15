@@ -14,11 +14,13 @@ Paths below are relative to `Sources/Herden/`.
 | `Console/ConsoleView.swift` | Primary Space list, Agent/Terminal creation and navigation after sheet dismissal. |
 | `Console/StartAgentView.swift` | Default automatic Space creation, explicit reuse and Worktree options, plus the ordered success handoff used by both presentation sites. |
 | `Console/StartAgentStore.swift` | Launch destination policy, inherited directory and backing Space label. |
-| `Console/ConsoleStore.swift`, `Console/HostConsoleProjection.swift` | Snapshot-backed existing Space destination: first Agent, otherwise first terminal. |
-| `Console/ConsoleAgent.swift`, `Console/AgentCardView.swift` | Name-first presentation; Host + pane identity stays independent of display labels. |
+| `Console/ConsoleStore.swift`, `Console/HostConsoleProjection.swift` | Live Host inventory for operations and separate last-proven display rows during reconnect; snapshot-backed existing Space destination. |
+| `Console/ConsoleAgent.swift`, `Console/AgentCardView.swift` | One row per Space, with occupant and attention ordering; Host + pane identity stays independent of display labels. |
+| `Console/HarnessPixelMark.swift`, `Console/TerminalShellKind.swift` | Brand-colour pixel letters for Agents and foreground-shell detection for plain terminals. |
 | `Console/AgentTerminalView.swift` | New Agent navigation from an attached Agent, after the launch sheet dismisses. |
 | `Transport/Transport.swift`, `Transport/HerdenSSHTransport.swift` | New Space specification, remote home resolution and launch in the returned root pane. |
 | `Terminal/SharedTerminalKeyboard.swift` | Shared arrow/attachment toolbar, Apple dictation and recording sheet for Agent and shell terminals. |
+| `Terminal/TerminalScreenView.swift`, `Terminal/TerminalTextSelectionPresenter.swift` | Ghostty snapshot capture, one copy sheet, and suppression of the terminal's separate Copy popup. |
 | `Dictation/HerdenAudioRecorder.swift` + `AudioRecordingSheet.swift` | Protected M4A capture, review, interruption handling and explicit file ownership transfer. |
 | `Attachments/ComposerStagingStore.swift` | File upload and retries; recordings use the same path-only result as other files. |
 
@@ -27,6 +29,14 @@ Space and starts the Agent in its existing root pane; the refreshed snapshot
 supplies the Host/pane destination. StartAgentView records that destination
 before dismissing, then the presenting view yields once after dismissal before
 opening the terminal surface.
+
+On connection loss, HostConsoleProjection invalidates live Agents and
+workspaces but keeps its last proven rows for display. ConsoleStore publishes
+those collections separately; ConsoleView keeps Spaces visible and disables
+each row until that Host is Connected and its fresh snapshot has landed. A
+successful snapshot replaces the display copy, so a removed Space disappears
+only after the Host has proved its absence. Never use display rows for RPCs,
+subscriptions or Agent delivery.
 
 ## Boundaries and failure modes
 
@@ -42,9 +52,15 @@ opening the terminal surface.
   its terminal in the sheet teardown transaction. Either race can produce a
   blank first-open surface that appears after leaving and re-entering; keep the
   ordering in `StartAgentPresentationTransition` covered by tests.
+- Capturing Ghostty selection with `select_all` alone leaves the native grid
+  highlighted and can surface its own Copy popup behind Herden's text sheet.
+  Use `copy_to_clipboard` with `selection-clear-on-copy` enabled, restore the
+  clipboard before presenting the sheet, and keep the native terminal Copy
+  responder/menu suppressed. The sheet's Copy button owns the actual user copy.
 
 Regression coverage: `StartAgentStoreTests`, `TerminalAgentSwitcherTests`,
-`ConsoleListPresentationStoreTests`, `ConsoleStoreTests` and the new-Space launch
+`ConsoleListPresentationStoreTests`, `ConsoleStoreTests`,
+`AppForegroundRecoveryTests`, `TerminalAttachTests` and the new-Space launch
 cases in `HerdenSSHTransportBehaviorE2ETests`. Run Swift validation on a Mac
 through `make`; real-SSH cases need their fixtures and may skip locally.
 

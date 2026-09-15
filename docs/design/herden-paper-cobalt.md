@@ -65,7 +65,7 @@ views.
 
 | Token | Value | Use |
 | --- | --- | --- |
-| `canvas` | `#FFFCF0` | Main application and website background |
+| `canvas` | `#FFFCF0` | Main application background; the website uses cool grey `#F5F7FA` in light mode |
 | `surface` | `#F2F0E5` | Grouped areas, input wells and quiet controls |
 | `surface-raised` | `#FFFEF8` | Menus, sheets and the few elements that must lift from paper |
 | `surface-pressed` | `#E6E4D9` | Pressed and selected neutral controls |
@@ -306,9 +306,10 @@ cropped product logo when repeated beside labelled rows.
 
 ### Public site
 
-The landing page uses the same tokens but retains its all-monospace voice. It
-must stay compact and zero-client-JavaScript. Logo SVGs, favicon, OpenGraph card
-and product screenshots are one release unit.
+The landing page retains the same cobalt and semantic status colours, but uses
+cool-grey neutral surfaces in light mode so its real iPhone captures stand out.
+It keeps its all-monospace voice, stays compact and zero-client-JavaScript.
+Logo SVGs, favicon, OpenGraph card and product screenshots are one release unit.
 
 ### Terminal
 
