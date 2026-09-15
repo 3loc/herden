@@ -31,6 +31,10 @@ struct ConsoleView: View {
     @State private var selectedSpace: ConsoleSpace?
     @State private var openedSpace: OpenedSpace?
     @State private var openingSpaceID: ConsoleSpace.ID?
+    /// Preserve the selected Agent's Space while a membership snapshot drops
+    /// its row. The pane can then be reopened as the shell that outlived it.
+    @State private var lastSelectedAgent: ConsoleAgent?
+    @State private var agentExitHandoffID: ConsoleAgent.ID?
     @State private var spaceOpenFailureMessage: String?
     @State private var isClosingOpenedSpace = false
     @State private var spaceCloseFailureMessage: String?
@@ -259,6 +263,7 @@ struct ConsoleView: View {
                 lastOpenedAgentID = opened
                 lastOpenedSpaceID = nil
                 openedSpace = nil
+                lastSelectedAgent = console.agents.first(where: { $0.id == opened })
             }
             guard !path.isEmpty else { return }
             hostSheet = nil
@@ -266,6 +271,15 @@ struct ConsoleView: View {
             isCreatingSpace = false
             isShowingSettings = false
             selectedSpace = nil
+        }
+        .onChange(of: console.agents) { _, agents in
+            if let selected = agents.first(where: {
+                $0.id == notificationRouter.path.last
+            }) {
+                lastSelectedAgent = selected
+            } else {
+                openShellAfterAgentExit()
+            }
         }
     }
 
@@ -566,6 +580,42 @@ struct ConsoleView: View {
             } catch {
                 spaceOpenFailureMessage = Self.spaceOpenMessage(for: error)
             }
+        }
+    }
+
+    private func openShellAfterAgentExit() {
+        guard let agent = lastSelectedAgent,
+              notificationRouter.path.last == agent.id,
+              agentExitHandoffID == nil,
+              console.isHostInventoryReady(agent.hostID),
+              let workspace = console.workspacesByHost[agent.hostID]?.first(where: {
+                  $0.id == agent.agent.workspaceID
+              }),
+              matchingRemovedWorktreeReceipt(for: agent.id) == nil
+        else { return }
+
+        agentExitHandoffID = agent.id
+        Task { @MainActor in
+            defer { agentExitHandoffID = nil }
+            guard let destination = try? await console.existingSpaceDestination(
+                    workspaceID: workspace.id, on: agent.hostID),
+                case .terminal(let identity) = destination,
+                notificationRouter.path.last == agent.id,
+                console.isHostInventoryReady(agent.hostID),
+                !console.agents.contains(where: { $0.id == agent.id })
+            else { return }
+            console.rememberShellTerminal(
+                identity, forWorkspaceID: workspace.id, on: agent.hostID)
+            openedSpace = makeOpenedSpace(
+                hostID: agent.hostID,
+                workspaceID: workspace.id,
+                label: workspace.label,
+                terminalIdentity: identity)
+            lastOpenedSpaceID = ConsoleSpace.ID(
+                hostID: agent.hostID, workspaceID: workspace.id)
+            lastOpenedAgentID = nil
+            lastSelectedAgent = nil
+            notificationRouter.path = []
         }
     }
 
