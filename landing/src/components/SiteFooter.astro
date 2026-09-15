@@ -69,8 +69,6 @@ const links = [
     .link { font-size: 10px; }
   }
 
-  @media (prefers-color-scheme: dark) {
-    .mark-light { display: none; }
-    .mark-dark { display: block; }
-  }
+  :global(html[data-theme="dark"]) .mark-light { display: none; }
+  :global(html[data-theme="dark"]) .mark-dark { display: block; }
 </style>

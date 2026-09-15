@@ -59,7 +59,12 @@ assets are under the SIL Open Font License 1.1; no font service is required.
 
 The hero screenshots come from the app's deterministic `--demo-screenshots`
 fixture. Its Hosts use `.demo.invalid` addresses and its Spaces and Agents are
-privacy-safe sample data. Never publish a capture of real Spaces or project names.
+privacy-safe sample data. The Spaces capture shows Claude Code, Codex, Pi and
+a zsh terminal with distinct pixel-letter marks. For the public hero, the warm
+neutral planes in those captures are recoloured to match the site's cool-grey
+light palette; UI content
+and native app appearance are otherwise unchanged. Never publish a capture of
+real Spaces or project names.
 
 The smaller AR glasses stay visible alongside both phones in the hero and link
 to `/ar`. Their transparent artwork uses the real Even G2 simulator's generic
@@ -70,9 +75,12 @@ endpoint.
 
 ## Paper + Cobalt
 
-The public site and native app share the same light and dark semantic palette.
-Live Tether and primary controls use cobalt. Rust is reserved for attention,
-green for success, and red for failure or destructive actions.
+The website uses cool-grey light surfaces and matching demo-screen neutrals;
+the native app keeps its Paper surfaces. The header Light/Dark button follows
+the device appearance until someone chooses a mode, then saves that choice
+for later pages and visits. Live Tether and primary controls use the
+same cobalt. Rust is reserved for attention, green for success, and red for
+failure or destructive actions.
 
 `logo.png` and `favicon.png` bake Live Tether into a rounded Paper tile.
 `logo-light.svg` and `logo-dark.svg` provide appearance-specific transparent
@@ -80,11 +88,11 @@ marks for the header and footer.
 
 | Token | Value | Use |
 | --- | --- | --- |
-| Canvas | `#FFFCF0` / `#100F0F` | Light and dark page backgrounds |
-| Surface | `#F2F0E5` / `#1C1B1A` | Grouped and inset areas |
-| Raised | `#FFFEF8` / `#282726` | Cards and overlapping objects |
+| Canvas | `#F5F7FA` / `#100F0F` | Light and dark page backgrounds |
+| Surface | `#E4E7EB` / `#1C1B1A` | Grouped and inset areas |
+| Raised | `#FFFFFF` / `#282726` | Cards and overlapping objects |
 | Ink | `#100F0F` / `#F2F0E5` | Primary text |
-| Muted | `#575653` / `#B7B5AC` | Supporting text |
+| Muted | `#52606D` / `#B7B5AC` | Supporting text |
 | Primary | `#205EA6` / `#4385BE` | Live Tether, controls and links |
 | Attention | `#BC5215` / `#DA702C` | Pending, preview and recommended states |
 | Success | `#5E6F00` / `#879A39` | Healthy and completed states only |

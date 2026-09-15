@@ -28,9 +28,39 @@ const ogImage = new URL('/og.png?v=paper-cobalt-live-tether-v1', Astro.site);
          of normal HTTP cache invalidation and can retain an old mark for days. -->
     <link rel="icon" type="image/png" href="/favicon.png?v=paper-cobalt-live-tether-v1" />
     <link rel="apple-touch-icon" href="/logo.png?v=paper-cobalt-live-tether-v1" />
-    <meta name="theme-color" content="#fffcf0" media="(prefers-color-scheme: light)" />
-    <meta name="theme-color" content="#100f0f" media="(prefers-color-scheme: dark)" />
-    <meta name="color-scheme" content="light dark" />
+    <meta name="theme-color" content="#f5f7fa" />
+    <script is:inline>
+      (() => {
+        const key = 'herden-site-theme';
+        let saved;
+        try { saved = localStorage.getItem(key); } catch {}
+        const systemDark = matchMedia('(prefers-color-scheme: dark)').matches;
+        const theme = saved === 'light' || saved === 'dark'
+          ? saved : (systemDark ? 'dark' : 'light');
+        document.documentElement.dataset.theme = theme;
+        document.querySelector('meta[name="theme-color"]').content =
+          theme === 'dark' ? '#100f0f' : '#f5f7fa';
+        addEventListener('DOMContentLoaded', () => {
+          const button = document.querySelector('[data-theme-toggle]');
+          if (!button) return;
+          const update = () => {
+            const next = document.documentElement.dataset.theme === 'dark' ? 'light' : 'dark';
+            button.textContent = next === 'light' ? 'Light' : 'Dark';
+            button.setAttribute('aria-label', `Switch to ${next} mode`);
+          };
+          update();
+          button.hidden = false;
+          button.addEventListener('click', () => {
+            const next = document.documentElement.dataset.theme === 'dark' ? 'light' : 'dark';
+            document.documentElement.dataset.theme = next;
+            document.querySelector('meta[name="theme-color"]').content =
+              next === 'dark' ? '#100f0f' : '#f5f7fa';
+            try { localStorage.setItem(key, next); } catch {}
+            update();
+          });
+        });
+      })();
+    </script>
     <meta property="og:type" content="website" />
     <meta property="og:site_name" content="Herden" />
     <meta property="og:title" content={title} />

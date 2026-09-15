@@ -21,6 +21,7 @@ const links = [
     </nav>
     <div class="spacer"></div>
     <span class="eyebrow stage">Self-hosted · Apache-2.0</span>
+    <button class="theme-toggle" type="button" data-theme-toggle hidden>Light</button>
     <Button href="https://testflight.apple.com/join/nSsEZBvv" size="sm">TestFlight</Button>
   </div>
 </header>
@@ -80,6 +81,22 @@ const links = [
     flex: 1;
   }
 
+  .theme-toggle {
+    min-width: 56px;
+    min-height: 40px;
+    padding: 0 8px;
+    border: 1px solid var(--border-hairline);
+    border-radius: 7px;
+    background: var(--surface-raised);
+    color: var(--text-primary);
+    font: var(--type-label);
+    cursor: pointer;
+  }
+
+  .theme-toggle:hover { border-color: var(--herden-primary); }
+  .theme-toggle:focus-visible { outline: var(--outline-focus); outline-offset: 2px; }
+  .theme-toggle[hidden] { display: none; }
+
 
   /* Below the point where the four section links stop fitting, the header
    * keeps the brand and the one action that matters. */
@@ -90,8 +107,12 @@ const links = [
     }
   }
 
-  @media (prefers-color-scheme: dark) {
-    .mark-light { display: none; }
-    .mark-dark { display: block; }
+  :global(html[data-theme="dark"]) .mark-light { display: none; }
+  :global(html[data-theme="dark"]) .mark-dark { display: block; }
+
+  @media (max-width: 420px) {
+    .bar { gap: 12px; }
+    .theme-toggle { min-width: 52px; }
   }
+
 </style>

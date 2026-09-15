@@ -15,16 +15,16 @@
 }
 
 :root {
-  /* Paper + Cobalt. These semantic values match the native app. */
-  --herden-canvas: #fffcf0;
-  --herden-surface: #f2f0e5;
-  --herden-raised: #fffef8;
-  --herden-pressed: #e6e4d9;
+  /* Cool grey for the public page and its edited hero captures. */
+  --herden-canvas: #f5f7fa;
+  --herden-surface: #e4e7eb;
+  --herden-raised: #ffffff;
+  --herden-pressed: #cbd2d9;
   --herden-ink: #100f0f;
-  --herden-muted: #575653;
-  --herden-subtle: #6f6e69;
-  --herden-border: #cecdc3;
-  --herden-border-strong: #b7b5ac;
+  --herden-muted: #52606d;
+  --herden-subtle: #616e7c;
+  --herden-border: #cbd2d9;
+  --herden-border-strong: #9aa5b1;
   --herden-primary: #205ea6;
   --herden-primary-hover: #1a4f8c;
   --herden-primary-soft: rgba(32, 94, 166, 0.1);
@@ -33,8 +33,8 @@
   --herden-attention-soft: rgba(188, 82, 21, 0.1);
   --herden-success: #5e6f00;
   --herden-fault: #af3029;
-  --primary-fill-text: #fffcf0;
-  --code-foreground: #f2f0e5;
+  --primary-fill-text: #ffffff;
+  --code-foreground: #e4e7eb;
 
   --font-display: "JetBrains Mono", ui-monospace, "SFMono-Regular", Menlo, monospace;
   --font-sans: "JetBrains Mono", ui-monospace, "SFMono-Regular", Menlo, monospace;
@@ -53,7 +53,7 @@
   --surface-active: var(--herden-pressed);
   --surface-selected: var(--herden-primary-soft);
   --surface-overlay: rgba(16, 15, 15, 0.62);
-  --surface-glass: rgba(255, 252, 240, 0.9);
+  --surface-glass: rgba(245, 247, 250, 0.9);
   --surface-elevated: var(--herden-surface);
 
   --text-primary: var(--herden-ink);
@@ -83,8 +83,10 @@
 
 html {
   scroll-behavior: smooth;
-  color-scheme: light dark;
+  color-scheme: light;
 }
+
+html[data-theme="dark"] { color-scheme: dark; }
 
 body {
   background: var(--surface-canvas);
@@ -151,8 +153,7 @@ summary:focus-visible {
   text-transform: uppercase;
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
+:root[data-theme="dark"] {
     --herden-canvas: #100f0f;
     --herden-surface: #1c1b1a;
     --herden-raised: #282726;
@@ -176,7 +177,6 @@ summary:focus-visible {
     --surface-overlay: rgba(0, 0, 0, 0.7);
     --surface-glass: rgba(16, 15, 15, 0.9);
     --grid-line: rgba(67, 133, 190, 0.055);
-  }
 }
 
 .section-title {
