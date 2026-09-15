@@ -21,6 +21,8 @@ fn light_codex_viewer_restores_contrast_without_changing_shared_cells() {
         frame.cells[1].bg = frame.cells[0].bg;
         frame.cells[1].fg = crate::protocol::color_to_u32(Color::White);
         frame.cells[2].bg = crate::protocol::color_to_u32(Color::Rgb(30, 90, 30));
+        frame.cells[3].bg = frame.cells[0].bg;
+        frame.cells[3].fg = crate::protocol::color_to_u32(Color::Indexed(6));
         frame
     };
     let pane = PaneHit {
@@ -53,7 +55,7 @@ fn light_codex_viewer_restores_contrast_without_changing_shared_cells() {
     };
     let light = Palette::catppuccin_latte();
     let mut rendered = source.clone();
-    adapt_codex_composer_for_light_viewer(
+    adapt_codex_neutral_panels_for_light_viewer(
         &mut rendered,
         &[pane.clone()],
         &[agent.clone()],
@@ -65,15 +67,30 @@ fn light_codex_viewer_restores_contrast_without_changing_shared_cells() {
         crate::protocol::color_to_u32(light.surface0)
     );
     assert_eq!(rendered.cells[0].fg, 0);
-    assert_eq!(rendered.cells[1].bg, source.cells[1].bg);
+    assert_eq!(
+        rendered.cells[1].bg,
+        crate::protocol::color_to_u32(light.surface0)
+    );
+    assert_eq!(
+        rendered.cells[1].fg,
+        crate::protocol::color_to_u32(light.text)
+    );
     assert_eq!(rendered.cells[2].bg, source.cells[2].bg);
+    assert_eq!(
+        rendered.cells[3].bg,
+        crate::protocol::color_to_u32(light.surface0)
+    );
+    assert_eq!(
+        rendered.cells[3].fg,
+        crate::protocol::color_to_u32(Color::Rgb(0, 88, 98))
+    );
     assert_eq!(
         source.cells[0].bg,
         crate::protocol::color_to_u32(Color::Rgb(30, 30, 30))
     );
 
     let mut dark = source.clone();
-    adapt_codex_composer_for_light_viewer(
+    adapt_codex_neutral_panels_for_light_viewer(
         &mut dark,
         &[pane.clone()],
         &[agent.clone()],
@@ -84,7 +101,7 @@ fn light_codex_viewer_restores_contrast_without_changing_shared_cells() {
 
     agent.agent = Some("claude".into());
     let mut other_agent = source.clone();
-    adapt_codex_composer_for_light_viewer(
+    adapt_codex_neutral_panels_for_light_viewer(
         &mut other_agent,
         &[pane],
         &[agent],

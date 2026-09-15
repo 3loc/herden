@@ -67,7 +67,7 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ### Fixed
 
-- Keep Codex's retained dark input panel legible when a light desktop viewer
+- Keep Codex's retained dark input and question panels legible when a light desktop viewer
   connects to an Agent previously used from a dark terminal.
 - Keep the last known Spaces visible but disabled while the app reconnects on
   foreground return, then replace them when the Host's fresh snapshot arrives.

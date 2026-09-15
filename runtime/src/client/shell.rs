@@ -301,10 +301,9 @@ fn blit_pane_surface(target: &mut FrameData, source: &FrameData, area: Rect) {
     target.graphics.clear();
 }
 
-/// Codex paints its composer with a dark neutral RGB background while leaving
-/// the prompt in the terminal's default foreground. A second, light viewer
-/// would otherwise draw dark text on that retained dark panel.
-fn adapt_codex_composer_for_light_viewer(
+/// Codex paints its composer and question choices with a dark neutral RGB
+/// background. Those retained panels need local contrast on a light viewer.
+fn adapt_codex_neutral_panels_for_light_viewer(
     frame: &mut FrameData,
     panes: &[PaneHit],
     agents: &[crate::protocol::ClientShellAgent],
@@ -328,7 +327,7 @@ fn adapt_codex_composer_for_light_viewer(
                 let Some(cell) = frame.cells.get_mut(index) else {
                     continue;
                 };
-                if cell.fg != 0 || cell.bg >> 24 != 2 {
+                if cell.bg >> 24 != 2 {
                     continue;
                 }
                 let red = ((cell.bg >> 16) & 0xff) as u8;
@@ -338,6 +337,16 @@ fn adapt_codex_composer_for_light_viewer(
                 let highest = red.max(green).max(blue);
                 if highest <= 48 && highest - lowest <= 6 {
                     cell.bg = panel;
+                    if cell.fg != 0 {
+                        // Codex marks question headings and selected answers
+                        // with indexed cyan; preserve that distinction with a
+                        // dark teal that remains readable on the light panel.
+                        cell.fg = if cell.fg >> 24 == 1 && matches!(cell.fg & 0xff, 6 | 14) {
+                            crate::protocol::color_to_u32(ratatui::style::Color::Rgb(0, 88, 98))
+                        } else {
+                            crate::protocol::color_to_u32(palette.text)
+                        };
+                    }
                 }
             }
         }
