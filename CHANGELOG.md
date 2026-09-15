@@ -69,7 +69,7 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 - Keep a Space and its shell pane after a managed Agent exits, and open that
   terminal on iPhone when the Agent row disappears. Ctrl-C can now return from
-  Codex to the terminal without losing the Space, ready for a later resume.
+  Codex to the terminal without losing the Space, ready for a later resume. (#5)
 - Keep Codex's retained dark input and question panels legible when a light desktop viewer
   connects to an Agent previously used from a dark terminal.
 - Keep the last known Spaces visible but disabled while the app reconnects on
