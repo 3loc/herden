@@ -67,6 +67,8 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ### Fixed
 
+- Keep Codex's retained dark input panel legible when a light desktop viewer
+  connects to an Agent previously used from a dark terminal.
 - Keep the last known Spaces visible but disabled while the app reconnects on
   foreground return, then replace them when the Host's fresh snapshot arrives.
 - Terminal long-press copy now uses Ghostty's native Select All capture so its

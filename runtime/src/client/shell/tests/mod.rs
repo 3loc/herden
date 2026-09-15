@@ -6,6 +6,94 @@ use crate::protocol::{
 };
 use crossterm::event::MouseEvent;
 
+#[test]
+fn light_codex_viewer_restores_contrast_without_changing_shared_cells() {
+    use crate::terminal_theme::HostAppearance;
+    use ratatui::style::Color;
+
+    let source = {
+        let mut frame = FrameData::from_ratatui_buffer_with_hyperlinks(
+            &Buffer::with_lines(["Ask Codex"]),
+            None,
+            &[],
+        );
+        frame.cells[0].bg = crate::protocol::color_to_u32(Color::Rgb(30, 30, 30));
+        frame.cells[1].bg = frame.cells[0].bg;
+        frame.cells[1].fg = crate::protocol::color_to_u32(Color::White);
+        frame.cells[2].bg = crate::protocol::color_to_u32(Color::Rgb(30, 90, 30));
+        frame
+    };
+    let pane = PaneHit {
+        rect: Rect::new(0, 0, source.width, source.height),
+        inner_rect: Rect::new(0, 0, source.width, source.height),
+        scrollbar_rect: None,
+        scroll: None,
+        pane_id: "pane_1".into(),
+        popup: false,
+        mouse_reporting: false,
+        sgr_pixel_mouse: false,
+        pixel_width: 0,
+        pixel_height: 0,
+    };
+    let mut agent = ClientShellAgent {
+        pane_id: "pane_1".into(),
+        workspace_id: "ws_1".into(),
+        tab_id: "tab_1".into(),
+        name: None,
+        display_agent: Some("codex".into()),
+        agent: Some("codex".into()),
+        title: None,
+        terminal_title: None,
+        terminal_title_stripped: None,
+        agent_status: AgentStatus::Idle,
+        state_change_seq: 0,
+        state_labels: Vec::new(),
+        tokens: Vec::new(),
+        focused: true,
+    };
+    let light = Palette::catppuccin_latte();
+    let mut rendered = source.clone();
+    adapt_codex_composer_for_light_viewer(
+        &mut rendered,
+        &[pane.clone()],
+        &[agent.clone()],
+        Some(HostAppearance::Light),
+        &light,
+    );
+    assert_eq!(
+        rendered.cells[0].bg,
+        crate::protocol::color_to_u32(light.surface0)
+    );
+    assert_eq!(rendered.cells[0].fg, 0);
+    assert_eq!(rendered.cells[1].bg, source.cells[1].bg);
+    assert_eq!(rendered.cells[2].bg, source.cells[2].bg);
+    assert_eq!(
+        source.cells[0].bg,
+        crate::protocol::color_to_u32(Color::Rgb(30, 30, 30))
+    );
+
+    let mut dark = source.clone();
+    adapt_codex_composer_for_light_viewer(
+        &mut dark,
+        &[pane.clone()],
+        &[agent.clone()],
+        Some(HostAppearance::Dark),
+        &Palette::catppuccin(),
+    );
+    assert_eq!(dark, source);
+
+    agent.agent = Some("claude".into());
+    let mut other_agent = source.clone();
+    adapt_codex_composer_for_light_viewer(
+        &mut other_agent,
+        &[pane],
+        &[agent],
+        Some(HostAppearance::Light),
+        &light,
+    );
+    assert_eq!(other_agent, source);
+}
+
 pub(super) fn snapshot() -> ClientShellSnapshot {
     ClientShellSnapshot {
         boot_id: "boot-1".into(),

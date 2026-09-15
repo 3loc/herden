@@ -313,6 +313,13 @@ impl ClientShellState {
             frame.cells[start..start + usize::from(bar.width)].to_vec()
         });
         blit_pane_surface(&mut frame, &surface.frame, layout.pane_surface);
+        adapt_codex_composer_for_light_viewer(
+            &mut frame,
+            &self.hits.panes,
+            &snapshot.agents,
+            self.host_appearance,
+            &self.config.palette,
+        );
         restore_mode_bar(&mut frame, mode_bar, mode_bar_cells.as_deref());
         let mut occlusion = crate::kitty_graphics::surface::Occlusion::default();
         let has_selection = self

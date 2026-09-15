@@ -301,5 +301,48 @@ fn blit_pane_surface(target: &mut FrameData, source: &FrameData, area: Rect) {
     target.graphics.clear();
 }
 
+/// Codex paints its composer with a dark neutral RGB background while leaving
+/// the prompt in the terminal's default foreground. A second, light viewer
+/// would otherwise draw dark text on that retained dark panel.
+fn adapt_codex_composer_for_light_viewer(
+    frame: &mut FrameData,
+    panes: &[PaneHit],
+    agents: &[crate::protocol::ClientShellAgent],
+    appearance: Option<crate::terminal_theme::HostAppearance>,
+    palette: &Palette,
+) {
+    if appearance != Some(crate::terminal_theme::HostAppearance::Light) {
+        return;
+    }
+    let panel = crate::protocol::color_to_u32(palette.surface0);
+    for pane in panes {
+        if !agents
+            .iter()
+            .any(|agent| agent.pane_id == pane.pane_id && agent.agent.as_deref() == Some("codex"))
+        {
+            continue;
+        }
+        for y in pane.inner_rect.y..pane.inner_rect.bottom().min(frame.height) {
+            for x in pane.inner_rect.x..pane.inner_rect.right().min(frame.width) {
+                let index = usize::from(y) * usize::from(frame.width) + usize::from(x);
+                let Some(cell) = frame.cells.get_mut(index) else {
+                    continue;
+                };
+                if cell.fg != 0 || cell.bg >> 24 != 2 {
+                    continue;
+                }
+                let red = ((cell.bg >> 16) & 0xff) as u8;
+                let green = ((cell.bg >> 8) & 0xff) as u8;
+                let blue = (cell.bg & 0xff) as u8;
+                let lowest = red.min(green).min(blue);
+                let highest = red.max(green).max(blue);
+                if highest <= 48 && highest - lowest <= 6 {
+                    cell.bg = panel;
+                }
+            }
+        }
+    }
+}
+
 #[cfg(test)]
 mod tests;
