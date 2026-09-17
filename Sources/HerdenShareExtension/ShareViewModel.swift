@@ -156,6 +156,7 @@ final class ShareViewModel {
             throw error
         }
         await closeConnections()
+        if phase == .sent { done() }
     }
 
     private func closeConnections() async {
