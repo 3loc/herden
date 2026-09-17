@@ -14,15 +14,7 @@ struct ShareRootView: View {
                 case .sending(let progress):
                     progressView(model.transfer?.message ?? "Uploading…", progress: progress)
                 case .sent:
-                    VStack(spacing: 16) {
-                        Image(systemName: "checkmark.circle").font(.largeTitle)
-                        Text("File added — open the Agent to add text.").font(.headline)
-                        if let transfer = model.transfer {
-                            Text("\(transfer.agentName) · \(transfer.host.displayName)")
-                        }
-                        Text("Return has not been pressed.").foregroundStyle(.secondary)
-                        Button("Done") { model.done() }.buttonStyle(.borderedProminent)
-                    }.padding()
+                    Image(systemName: "checkmark.circle").font(.largeTitle)
                 case .failed(let message):
                     ContentUnavailableView {
                         Label("Couldn’t Share", systemImage: "exclamationmark.triangle")
