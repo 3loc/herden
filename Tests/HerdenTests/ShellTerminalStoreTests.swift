@@ -308,6 +308,59 @@ struct ShellTerminalStoreTests {
         #expect(await !transport.hasLiveAttachSession)
     }
 
+    /// The attach owner dictates the Host PTY size, so a backgrounded phone
+    /// must let go: desktop viewers get their geometry back while the app is
+    /// away, and a return — even a quick one — builds a fresh attach.
+    @Test func backgroundReleasesTheAttachAndActivationReattaches() async throws {
+        let transport = ScriptedTransport()
+        let generation = ShellTerminalGenerationSource(1)
+        let runner: TerminalSessionRunner = { request, handler in
+            let readyGeneration = await generation.acquire()
+            await handler.transportDidBecomeReady(readyGeneration)
+            let session = try await transport.attachTerminal(request)
+            try await handler.runEndingSession(session)
+        }
+        let store = makeShellStore(runner: runner)
+
+        let initialGate = ScriptedTransportCallGate()
+        await transport.gateNextAttachSession(using: initialGate)
+        store.viewDidResize(cols: 40, rows: 60)
+        await initialGate.waitForEntry()
+        let initialStatus = observeStatusChanges(of: store)
+        #expect(await transport.emitAttachOutput(Data("initial".utf8)))
+        await initialGate.open()
+        await initialStatus.next()
+        #expect(store.terminalStatus == .live)
+        let initialID = store.terminalID
+
+        store.releaseForBackground()
+        #expect(await eventually { await !transport.hasLiveAttachSession })
+        // Layout while away must not reclaim the PTY.
+        store.viewDidResize(cols: 41, rows: 60)
+        try await Task.sleep(for: .milliseconds(50))
+        #expect(await transport.attachRequests.count == 1)
+
+        // A return inside the grace period still replaces the pipeline.
+        let recovery = observeTerminalChanges(of: store)
+        store.didBecomeActive(afterPossibleSuspension: false)
+        await recovery.next()
+        #expect(store.terminalID != initialID)
+
+        let recoveryGate = ScriptedTransportCallGate()
+        await transport.gateNextAttachSession(using: recoveryGate)
+        store.viewDidResize(cols: 40, rows: 60)
+        await recoveryGate.waitForEntry()
+        #expect(await transport.attachRequests.count == 2)
+        let recoveryStatus = observeStatusChanges(of: store)
+        #expect(await transport.emitAttachOutput(Data("back".utf8)))
+        await recoveryGate.open()
+        await recoveryStatus.next()
+        #expect(store.terminalStatus == .live)
+
+        await store.leave().value
+        #expect(await !transport.hasLiveAttachSession)
+    }
+
     @Test func foregroundRecoveryDoesNotAbsorbANewerTransportGeneration() async throws {
         let transport = ScriptedTransport()
         let generation = ShellTerminalGenerationSource(1)

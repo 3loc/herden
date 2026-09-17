@@ -110,6 +110,18 @@ final class AppActivityCoordinator {
     /// miss.
     private(set) var activationCount: UInt64 = 0
 
+    /// Increments each time the app leaves the foreground, before the grace
+    /// period starts. Terminal screens release their PTY Attach here: the
+    /// attach owner dictates the shared PTY size, so a phone that stays
+    /// attached while out of sight keeps every desktop viewer shrunk to the
+    /// phone's geometry.
+    private(set) var backgroundCount: UInt64 = 0
+
+    /// Whether the app is out of the foreground right now. A quick round trip
+    /// can deliver both counters in one update, so a release must check this
+    /// rather than trust the order SwiftUI runs its change handlers in.
+    private(set) var isBackgrounded = false
+
     /// Whether the most recent absence crossed a boundary where iOS could have
     /// suspended the process. This does not claim that suspension occurred or
     /// that any particular layer failed; it identifies when foreground-only
@@ -162,6 +174,7 @@ final class AppActivityCoordinator {
         graceTask = nil
         releaseBackgroundExecution()
         phase = .active
+        isBackgrounded = false
         // Reported before `activationCount`, which is what observers key off.
         let absenceDuration = leftForegroundAt.map { now() - $0 }
         lastAbsenceMayHaveSuspended = observedSuspensionDuringAbsence
@@ -178,6 +191,8 @@ final class AppActivityCoordinator {
     func didEnterBackground() {
         guard phase == .active, graceTask == nil else { return }
         leftForegroundAt = now()
+        isBackgrounded = true
+        backgroundCount &+= 1
         token = granter.begin { [weak self] in self?.backgroundTimeDidExpire() }
         guard token != nil else {
             // Without background time the process is about to freeze, so a

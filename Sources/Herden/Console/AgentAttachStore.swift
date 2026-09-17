@@ -105,6 +105,10 @@ final class AgentAttachStore {
     /// Joins the independently scheduled readiness projection and terminal
     /// waiter for the exact foreground-recovery pipeline.
     private var activationRecovery = TerminalRecoveryGenerationLatch()
+    /// The PTY Attach was released because the app left the foreground. The
+    /// next activation must build a fresh pipeline, and no size report may
+    /// reattach while the app is out of sight.
+    private(set) var releasedForBackground = false
     #if DEBUG
     /// Created at the possible-suspension activation edge and retained until
     /// the replacement that actually publishes adopts it, or recovery is
@@ -208,8 +212,21 @@ final class AgentAttachStore {
     /// start anything: a departed view still lays out during its exit
     /// transition, before SwiftUI necessarily delivers `onDisappear`.
     func viewDidResize(cols: Int, rows: Int) {
-        guard lifecycleState == .active, isOnStage() else { return }
+        guard lifecycleState == .active, isOnStage(), !releasedForBackground else { return }
         terminal.viewDidResize(cols: cols, rows: rows)
+    }
+
+    /// The app left the foreground. The PTY Attach owns the Host terminal's
+    /// size, so holding it while out of sight keeps desktop viewers at phone
+    /// geometry; release it now and let the Host restore their size. The
+    /// next activation replaces the pipeline.
+    func releaseForBackground() {
+        guard lifecycleState == .active, isOnStage(), !releasedForBackground else { return }
+        releasedForBackground = true
+        enqueueLifecycleTransition { [weak self] in
+            guard let self, self.releasedForBackground else { return }
+            await self.terminal.stop(preservingPendingPaste: true)
+        }
     }
 
     func viewportTextDidChange(_ text: String) {
@@ -288,6 +305,8 @@ final class AgentAttachStore {
     /// links, staging state and a reviewed Paste survive the recovery.
     func didBecomeActive(afterPossibleSuspension: Bool = false) {
         guard lifecycleState == .active, isOnStage() else { return }
+        let afterPossibleSuspension = afterPossibleSuspension || releasedForBackground
+        releasedForBackground = false
         guard !afterPossibleSuspension else {
             #if DEBUG
             if !activationRecovery.isActive {
@@ -623,6 +642,7 @@ final class AgentAttachStore {
         abortPendingForegroundRecoveryTrace()
         #endif
         lifecycleState = .left
+        releasedForBackground = false
         terminalRecoveryOwner = nil
         activationRecoveryOwnsOnStageLifecycle = false
         activationRecovery.clear()
