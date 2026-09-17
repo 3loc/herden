@@ -596,6 +596,10 @@ struct AgentTerminalView: View {
         .onChange(of: activity.activationCount, initial: true) { _, _ in
             handleActivation()
         }
+        .onChange(of: activity.backgroundCount) { _, _ in
+            guard activity.isBackgrounded else { return }
+            attach.releaseForBackground()
+        }
         .onChange(of: console.hostConnectionGenerations[agent.hostID]) { _, generation in
             armDirectKeyboardClaimIfNeeded()
             attach.transportGenerationDidChange(generation)
@@ -1256,7 +1260,8 @@ struct AgentTerminalView: View {
     }
 
     private func handleActivation() {
-        let afterPossibleSuspension = activity.lastAbsenceMayHaveSuspended
+        let afterPossibleSuspension =
+            activity.lastAbsenceMayHaveSuspended || attach.releasedForBackground
         if afterPossibleSuspension {
             armDirectKeyboardClaimIfNeeded()
         }

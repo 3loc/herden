@@ -70,6 +70,26 @@ struct AppActivityCoordinatorTests {
         #expect(!coordinator.lastAbsenceMayHaveSuspended)
     }
 
+    /// Terminal screens release their PTY Attach off this edge, so it fires
+    /// once per departure and the flag reflects where the app is now.
+    @Test func backgroundingIsCountedOncePerDeparture() async throws {
+        let coordinator = AppActivityCoordinator(
+            gracePeriod: .seconds(20), granter: FakeBackgroundExecutionGranter())
+        #expect(coordinator.backgroundCount == 0)
+        #expect(!coordinator.isBackgrounded)
+
+        coordinator.didEnterBackground()
+        coordinator.didEnterBackground()
+        #expect(coordinator.backgroundCount == 1)
+        #expect(coordinator.isBackgrounded)
+
+        coordinator.didBecomeActive()
+        #expect(!coordinator.isBackgrounded)
+        coordinator.didEnterBackground()
+        #expect(coordinator.backgroundCount == 2)
+        coordinator.didBecomeActive()
+    }
+
     /// A foreground return with no backgrounding behind it — the app becoming
     /// active after a Control Center pull-down, say — is not an absence, and
     /// must not cost the Attach terminal a reattach.

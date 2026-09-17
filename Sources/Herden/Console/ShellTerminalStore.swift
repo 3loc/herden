@@ -284,6 +284,7 @@ final class ShellTerminalStore {
     @ObservationIgnored private var isReplacing = false
     @ObservationIgnored private var replacementID: UInt64 = 0
     @ObservationIgnored private var activationRecovery = TerminalRecoveryGenerationLatch()
+    @ObservationIgnored private(set) var releasedForBackground = false
 
     init(
         identity: ShellTerminalIdentity,
@@ -316,7 +317,7 @@ final class ShellTerminalStore {
     var pasteErrorMessage: String? { input.pasteErrorMessage }
 
     func viewDidResize(cols: Int, rows: Int) {
-        guard lifecycleState == .active, isOnStage() else { return }
+        guard lifecycleState == .active, isOnStage(), !releasedForBackground else { return }
         terminal.viewDidResize(cols: cols, rows: rows)
     }
 
@@ -340,8 +341,21 @@ final class ShellTerminalStore {
 
     func retryTerminal() { terminal.retry() }
 
+    /// The app left the foreground: release the PTY Attach so the Host
+    /// restores desktop geometry. The next activation replaces the pipeline.
+    func releaseForBackground() {
+        guard lifecycleState == .active, isOnStage(), !releasedForBackground else { return }
+        releasedForBackground = true
+        enqueueLifecycleTransition { [weak self] in
+            guard let self, self.releasedForBackground else { return }
+            await self.terminal.stop(preservingPendingPaste: true)
+        }
+    }
+
     func didBecomeActive(afterPossibleSuspension: Bool) {
         guard isOnStage() else { return }
+        let afterPossibleSuspension = afterPossibleSuspension || releasedForBackground
+        releasedForBackground = false
         if lifecycleState == .rejoinRequired {
             rejoin()
             return
@@ -511,6 +525,7 @@ final class ShellTerminalStore {
             return lifecycleTask ?? Task {}
         }
         lifecycleState = .left
+        releasedForBackground = false
         replacementID &+= 1
         isReplacing = false
         activationRecovery.clear()
