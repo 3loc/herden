@@ -239,6 +239,10 @@ struct ShellTerminalView: View {
                 store.didBecomeActive(
                     afterPossibleSuspension: activity.lastAbsenceMayHaveSuspended)
             }
+            .onChange(of: activity.backgroundCount) { _, _ in
+                guard activity.isBackgrounded else { return }
+                store.releaseForBackground()
+            }
             .onAppear {
                 isOnStage = true
                 if staging == nil, let stageImage, let stageFile {

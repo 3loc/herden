@@ -67,6 +67,11 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ### Fixed
 
+- Close the share sheet as soon as a shared file reaches the Agent, instead of
+  stopping on a confirmation screen.
+- Stop an iPhone from shrinking a desktop terminal while Herden is in the
+  background. The phone releases its terminal when the app leaves the
+  foreground, so the desktop gets its size back, and reattaches on return.
 - Keep a Space and its shell pane after a managed Agent exits, and open that
   terminal on iPhone when the Agent row disappears. Ctrl-C can now return from
   Codex to the terminal without losing the Space, ready for a later resume. (#5)
