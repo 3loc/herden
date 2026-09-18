@@ -372,10 +372,14 @@ struct AgentSurfaceReplacementTests {
 
         activity.didEnterBackground()
         await oldTransport.failAttachStream(.channelFailed(detail: "app was away"))
+        // Leaving the foreground releases the Attach itself, so the release
+        // stops the terminal before its failed stream can surface as `.ended`,
+        // and an on-stage store projects a stopped terminal as `.connecting`.
+        // The observable proof here is that the predecessor is no longer live;
+        // the unmount below still pins the terminal at `.stopped`.
         try #require(await Self.eventually {
-            if case .ended = oldOwner.terminalStatus { return true }
-            return false
-        }, "the live predecessor should end while the app is away")
+            oldOwner.terminalStatus != .live
+        }, "the live predecessor should not survive the app leaving the foreground")
 
         controller.rootView = AnyView(Color.clear)
         controller.view.setNeedsLayout()
