@@ -58,7 +58,12 @@ with tempfile.TemporaryDirectory(prefix="herden-path-") as temporary:
         ("custom-path", "/bin/bash", {}, [".profile", ".bashrc"], "tools/bin"),
         ("quoted-path", "/bin/bash", {}, [".profile", ".bashrc"], "tools ' $dollar `touch PWNED` $(touch PWNED) [x] \\tools/bin"),
         ("zsh-quoted-path", "/bin/zsh", {}, [".zprofile", ".zshrc"], "tools ' $dollar `touch PWNED` $(touch PWNED) [x] \\tools/bin"),
+        # A user-owned ~/bin already on the Terminal's PATH receives a link, so
+        # the command works immediately; another file there is never replaced.
+        ("linked-home-bin", "/bin/bash", {}, [".profile", ".bashrc"], None),
+        ("link-conflict", "/bin/bash", {}, [".profile", ".bashrc"], None),
     ]
+    ready_now = ("already-in-path", "linked-home-bin")
 
     for name, shell, initial, profiles, custom in cases:
         home = fixture / name
@@ -72,12 +77,26 @@ with tempfile.TemporaryDirectory(prefix="herden-path-") as temporary:
             env["ZDOTDIR"] = str(home / "config/zsh")
         if name == "already-in-path":
             env["PATH"] = f"{install_dir}:{BASE_PATH}"
+        if name in ("linked-home-bin", "link-conflict"):
+            (home / "bin").mkdir()
+            env["PATH"] = f"{home / 'bin'}:{BASE_PATH}"
+        if name == "link-conflict":
+            (home / "bin/herden").write_text("#!/bin/sh\necho someone else\n")
         for relative, content in initial.items():
             (home / relative).write_text(content)
 
         output = run(["/bin/sh", str(ROOT / "install.sh")], env)
         assert "herden pair" in output, output
-        assert "To use Herden in this Terminal now" in output or name == "already-in-path", output
+        if name in ready_now:
+            assert "To use Herden in this Terminal now" not in output, (name, output)
+        else:
+            # The one remaining step closes the summary instead of scrolling past.
+            assert output.index("To use Herden in this Terminal now") > output.index("is ready"), (name, output)
+        if name == "linked-home-bin":
+            link = home / "bin/herden"
+            assert link.is_symlink() and os.readlink(link) == str(install_dir / "herden"), (name, output)
+        if name == "link-conflict":
+            assert (home / "bin/herden").read_text() == "#!/bin/sh\necho someone else\n", name
         before = {relative: (home / relative).read_bytes() for relative in profiles}
         run(["/bin/sh", str(ROOT / "install.sh")], env)
         assert before == {relative: (home / relative).read_bytes() for relative in profiles}, name
@@ -106,12 +125,15 @@ with tempfile.TemporaryDirectory(prefix="herden-path-") as temporary:
 
         # Reproduce the documented copy/paste block, followed immediately by
         # the user's next command in the SAME shell, without sourcing profiles.
+        # A ready Terminal needs no second line; otherwise run the step the
+        # installer printed.
+        step = "" if name in ready_now else f"export PATH={shlex.quote(str(install_dir))}:\"$PATH\"\n"
         command = (
             f"curl -fsSL {shlex.quote((ROOT / 'install.sh').as_uri())} | sh\n"
-            f"export PATH={shlex.quote(str(install_dir))}:\"$PATH\"\n"
+            f"{step}"
             "herden pair"
         )
-        output = run([shell or "/bin/sh", "-c", command], probe_env)
+        output = run([shell or "/bin/sh", "-c", command], env if name in ready_now else probe_env)
         assert output.endswith("pair reached\n"), (name, output)
         assert not (ROOT / "PWNED").exists()
         print(f"PASS {name}: startup, repeat install, immediate pairing")

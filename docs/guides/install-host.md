@@ -66,16 +66,14 @@ profile and `~/.bashrc` for bash, `~/.zprofile` and `~/.zshrc` for zsh (respecti
 `ZDOTDIR`), or `~/.profile` for POSIX shells. Reinstalling does not duplicate
 these entries. Other shells need their own PATH configuration.
 
-Open a new Terminal to load the persisted PATH, then run `herden`. To keep using
-the current Terminal, replace its shell with a fresh login shell first:
-
-```sh
-exec "$SHELL" -l
-```
-
-Then run `herden --version` or `herden pair`. A piped installer cannot change
-its parent shell's live environment; the installer also prints an immediate
-`export PATH=…` alternative when it is needed.
+New Terminals find `herden` through those startup files. A piped installer
+cannot change its parent shell's live environment, but it inherits that shell's
+PATH: when a directory you own is already on it (`~/bin`, `~/.bin`, or
+Homebrew's `/opt/homebrew/bin` or `/usr/local/bin`), the installer links
+`herden` there, so it works in the current Terminal immediately. It never
+replaces another file and never links as root. Otherwise the installer's closing
+summary prints the one `export PATH=…` command that makes the current Terminal
+ready.
 
 The same command upgrades an existing installation. It is idempotent: when the
 installed binary already matches the current release, it is verified and left

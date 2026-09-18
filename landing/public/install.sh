@@ -99,15 +99,54 @@ configure_path() {
         *) warn "automatic PATH setup supports bash, zsh and POSIX shells; configure PATH in your ${SHELL} startup file" ;;
     esac
 
-    # A piped installer cannot export into its parent Terminal. The quick-start
-    # command sets PATH there; standalone callers get the same explicit step.
+    # A piped installer cannot export into its parent Terminal, but it inherits
+    # that Terminal's PATH. Already covered, or a user-owned directory on it can
+    # hold a link, means the command works now; otherwise the closing summary
+    # prints the one command that fixes this Terminal.
+    path_step=""
     case ":${PATH}:" in
-        *":${install_dir}:"*) ;;
-        *)
-            # shellcheck disable=SC2016 # This command is for the parent shell.
-            printf '\nTo use Herden in this Terminal now, run:\n\n  export PATH=%s:"$PATH"\n' "$quoted_install_dir"
-            ;;
+        *":${install_dir}:"*) return ;;
     esac
+    link_into_path && return
+    # shellcheck disable=SC2016 # This command is for the parent shell.
+    path_step=$(printf 'export PATH=%s:"$PATH"' "$quoted_install_dir")
+}
+
+# Link the binary into the first well-known, user-owned directory already on
+# PATH. Never as root, never over another file, and only if lookup then finds it.
+link_into_path() {
+    [ "$(id -u)" != 0 ] || return 1
+    target="${install_dir}/${binary}"
+    old_ifs=$IFS
+    IFS=:
+    set -f
+    # shellcheck disable=SC2086 # Split PATH on colons, without globbing.
+    set -- $PATH
+    set +f
+    IFS=$old_ifs
+    for dir do
+        case "$dir" in
+            "$HOME/bin"|"$HOME/.bin"|/opt/homebrew/bin|/usr/local/bin) ;;
+            *) continue ;;
+        esac
+        if ! { [ -d "$dir" ] && [ -O "$dir" ] && [ -w "$dir" ]; }; then
+            continue
+        fi
+        link="${dir}/${binary}"
+        if [ -L "$link" ] && [ "$(readlink "$link")" = "$target" ]; then
+            :
+        elif [ -e "$link" ] || [ -L "$link" ]; then
+            continue
+        else
+            ln -s "$target" "$link" || continue
+            log "linked ${link} to ${target}"
+        fi
+        if [ "$(command -v "$binary")" = "$link" ]; then
+            return 0
+        fi
+        return 1
+    done
+    return 1
 }
 
 main() {
@@ -232,7 +271,11 @@ main() {
         warn "\"${install_dir}/${binary}\""
     fi
 
-    printf '\nHerden %s is ready.\n\nStart or reattach:\n\n  herden\n\nDisplay a Pairing Code from a shell:\n\n  herden pair\n\nAlready inside Herden? Press Ctrl-B, then i.\n\n' "$host_version"
+    printf '\nHerden %s is ready.\n' "$host_version"
+    if [ -n "$path_step" ]; then
+        printf '\nNew Terminals find it already. To use Herden in this Terminal now, run:\n\n  %s\n' "$path_step"
+    fi
+    printf '\nStart or reattach:\n\n  herden\n\nDisplay a Pairing Code from a shell:\n\n  herden pair\n\nAlready inside Herden? Press Ctrl-B, then i.\n\n'
 }
 
 main "$@"
