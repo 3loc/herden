@@ -219,8 +219,9 @@ struct StartAgentStoreTests {
             "pi", "claude", "codex", "gemini", "cursor", "devin", "agy",
             "cline", "omp", "mastracode", "opencode", "copilot", "kimi",
             "kiro", "droid", "amp", "grok", "hermes", "kilo", "qodercli",
-            "maki", "muse", "qwen",
+            "maki", "muse", "qwen", "letta",
         ])
+        #expect(SupportedAgentKind.letta.displayName == "Letta Code")
         #expect(SupportedAgentKind.muse.displayName == "Muse")
         #expect(SupportedAgentKind.muse.executable == "muse")
         #expect(SupportedAgentKind.qwen.rawValue == "qwen")

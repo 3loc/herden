@@ -26,11 +26,13 @@
                     DemoScreenshotFixture.studioHostID,
                     DemoScreenshotFixture.buildHostID,
                 ])
-            #expect(Set(agents.map(\.agentStatus)) == [.blocked, .working, .done, .idle])
-            #expect(
-                Set(agents.compactMap(\.agent))
-                    == ["claude", "codex", "gemini", "opencode"])
+            #expect(Set(agents.map(\.agentStatus)) == [.blocked, .working, .idle])
+            #expect(Set(agents.compactMap(\.agent)) == ["claude", "codex", "pi"])
             #expect(agents.map(\.paneID).contains("checkout:p3"))
+            // The shell Space the screenshots need is a pane, not an Agent.
+            #expect(
+                profiles[DemoScreenshotFixture.studioHostID]?.snapshot.panes
+                    .map(\.paneID) == ["shell:p1"])
             #expect(hosts.allSatisfy { $0.address.hasSuffix(".demo.invalid") })
         }
 
@@ -40,11 +42,11 @@
             await composition.console.resume()
 
             let deadline = ContinuousClock.now + .seconds(5)
-            while composition.console.agents.count != 5, ContinuousClock.now < deadline {
+            while composition.console.agents.count != 4, ContinuousClock.now < deadline {
                 try await Task.sleep(for: .milliseconds(10))
             }
 
-            #expect(composition.console.agents.count == 5)
+            #expect(composition.console.agents.count == 4)
             #expect(composition.console.agents.first?.agent.status == .blocked)
             #expect(composition.console.agents.first?.hostName == "builder@Build Server")
             #expect(composition.console.hostStatuses.values.allSatisfy { $0 == .connected })
