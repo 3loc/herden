@@ -49,9 +49,12 @@ sudo systemctl enable --now ssh</code></pre>
     and attribution notice. Running the same command again safely verifies or
     upgrades an existing installation.
   </p>
-  <p>Open a new Terminal, or refresh the current one:</p>
-  <pre><code>exec "$SHELL" -l
-herden --version</code></pre>
+  <p>
+    When a directory you own is already on your PATH, such as Homebrew's on a
+    Mac, the installer links <code>herden</code> there and it works in this
+    Terminal straight away. Otherwise it ends with the one command that makes it
+    available here; new Terminals already find it.
+  </p>
 
   <h2>4. Start and pair</h2>
   <p>
