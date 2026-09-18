@@ -63,8 +63,8 @@ targets:
         # build Macs that intentionally have no interactive Apple account.
         PROVISIONING_PROFILE: "$(HERDEN_APP_PROVISIONING_PROFILE_UUID)"
         INFOPLIST_KEY_CFBundleDisplayName: Herden
-        MARKETING_VERSION: "0.1.5"
-        CURRENT_PROJECT_VERSION: "49"
+        MARKETING_VERSION: "0.1.6"
+        CURRENT_PROJECT_VERSION: "50"
         # Scan to Pair (#62) reads the Pairing Code QR from the computer screen.
         INFOPLIST_KEY_NSCameraUsageDescription: "Herden uses the camera to scan the Pairing Code shown on your computer, so you can add that machine without typing anything."
         INFOPLIST_KEY_NSMicrophoneUsageDescription: "Herden uses the microphone for on-device dictation and audio recordings you choose to attach."
@@ -125,8 +125,8 @@ targets:
         PRODUCT_BUNDLE_IDENTIFIER: ltd.3loc.herden.share
         PROVISIONING_PROFILE: "$(HERDEN_SHARE_PROVISIONING_PROFILE_UUID)"
         PRODUCT_NAME: HerdenShareExtension
-        MARKETING_VERSION: "0.1.5"
-        CURRENT_PROJECT_VERSION: "49"
+        MARKETING_VERSION: "0.1.6"
+        CURRENT_PROJECT_VERSION: "50"
         TARGETED_DEVICE_FAMILY: "1"
         APPLICATION_EXTENSION_API_ONLY: YES
         SKIP_INSTALL: YES
