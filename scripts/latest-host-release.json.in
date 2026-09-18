@@ -2,7 +2,7 @@
   "version": "@VERSION@",
   "protocol": 22,
   "endpoint_generation": 1,
-  "notes": "Herden Host @VERSION@ keeps a Space's shell pane open when its managed Agent exits, so the iPhone can switch that Space to its terminal and the user can resume the Agent later. It also keeps Codex's input and question panels legible on light desktop viewers.",
+  "notes": "Herden Host @VERSION@ ships an installer that makes herden work in the installing Terminal: it links the command into a directory you own that is already on your PATH, such as ~/bin or Homebrew's, and otherwise ends its summary with the one PATH command to run. The Host runtime is unchanged from 0.9.12.",
   "assets": {
     "linux-x86_64": "https://herden.app/releases/host-v@VERSION@/herden-linux-x86_64",
     "linux-aarch64": "https://herden.app/releases/host-v@VERSION@/herden-linux-aarch64",
@@ -17,7 +17,7 @@
   },
   "releases": {
     "@VERSION@": {
-      "notes": "Herden Host @VERSION@ keeps a Space's shell pane open when its managed Agent exits, so the iPhone can switch that Space to its terminal and the user can resume the Agent later. It also keeps Codex's input and question panels legible on light desktop viewers."
+      "notes": "Herden Host @VERSION@ ships an installer that makes herden work in the installing Terminal: it links the command into a directory you own that is already on your PATH, such as ~/bin or Homebrew's, and otherwise ends its summary with the one PATH command to run. The Host runtime is unchanged from 0.9.12."
     }
   }
 }
