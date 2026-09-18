@@ -23,8 +23,6 @@ cd "$(dirname "${BASH_SOURCE[0]}")/.."
 CHANGELOG="CHANGELOG.md"
 PROJECT_YML="project.yml"
 XCODEPROJ="Herden.xcodeproj"
-RUNTIME_MANIFEST="runtime/Cargo.toml"
-RUNTIME_LOCK="runtime/Cargo.lock"
 DEFAULT_BRANCH="main"
 REMOTE="origin"
 
@@ -47,8 +45,8 @@ on_exit() {
     case "$stage" in
         mutating)
             printf '\npublish: failed before anything was pushed. Undo the local edits with:\n'
-            printf '  git checkout -- %s %s %s %s %s\n' \
-                "$CHANGELOG" "$PROJECT_YML" "$XCODEPROJ" "$RUNTIME_MANIFEST" "$RUNTIME_LOCK"
+            printf '  git checkout -- %s %s %s\n' \
+                "$CHANGELOG" "$PROJECT_YML" "$XCODEPROJ"
             ;;
         tagged)
             printf '\npublish: %s is already pushed — do NOT re-run publish.\n' "$tag"
@@ -155,7 +153,6 @@ printf '\nPublish %s  (%s)\n\n' "$tag" "$bump_reason"
 row "$CHANGELOG" "[Unreleased] -> [$version] - $today, new empty [Unreleased]"
 row "$PROJECT_YML" "MARKETING_VERSION $current_marketing -> $version ($marketing_lines targets, in lockstep)"
 row "$PROJECT_YML" "CURRENT_PROJECT_VERSION $current_build -> $next_build (App Store Connect rejects reused build numbers)"
-row "$RUNTIME_MANIFEST" "Host runtime version -> $version"
 row "$XCODEPROJ" 'regenerate via `xcodegen generate`'
 echo
 row "build" "make archive  (Release, signed locally)"
@@ -206,14 +203,10 @@ sed -i '' \
     -e "s/^\( *MARKETING_VERSION: \)\".*\"/\1\"$version\"/" \
     -e "s/^\( *CURRENT_PROJECT_VERSION: \)\".*\"/\1\"$next_build\"/" \
     "$PROJECT_YML"
-sed -i '' -e "s/^version = \".*\"/version = \"$version\"/" "$RUNTIME_MANIFEST"
-sed -i '' "/^name = \"herden\"$/,/^\[\[package\]\]$/ s/^version = \".*\"/version = \"$version\"/" "$RUNTIME_LOCK"
 [ "$(grep -c "^ *MARKETING_VERSION: \"$version\"$" "$PROJECT_YML")" = "$marketing_lines" ] \
     || die "MARKETING_VERSION was not rewritten in all $marketing_lines targets"
 [ "$(grep -c "^ *CURRENT_PROJECT_VERSION: \"$next_build\"$" "$PROJECT_YML")" = "$build_lines" ] \
     || die "CURRENT_PROJECT_VERSION was not rewritten in all $build_lines targets"
-[ "$(awk -F'\"' '/^version = / { print $2; exit }' "$RUNTIME_MANIFEST")" = "$version" ] \
-    || die "Host runtime version was not rewritten"
 
 echo "==> Regenerating $XCODEPROJ"
 xcodegen generate
@@ -225,7 +218,7 @@ make upload
 # --- Ship --------------------------------------------------------------------
 
 echo "==> Committing and tagging"
-git add "$CHANGELOG" "$PROJECT_YML" "$XCODEPROJ" "$RUNTIME_MANIFEST" "$RUNTIME_LOCK"
+git add "$CHANGELOG" "$PROJECT_YML" "$XCODEPROJ"
 git commit -m "chore: release $tag"
 
 # Straight to the default branch on purpose: the commit is mechanical, was
