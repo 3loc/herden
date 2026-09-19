@@ -5,7 +5,7 @@ import {
   ImageContainerProperty, ImageRawDataUpdate, TextContainerProperty, waitForEvenAppBridge,
 } from "@evenrealities/even_hub_sdk";
 import { BridgeClient } from "./client";
-import { compactOutputLines, outputWindowSize, renderDetail, renderList } from "./hud";
+import { byAttention, compactOutputLines, outputWindowSize, renderDetail, renderList } from "./hud";
 import { Panel } from "./panel";
 import { parseHiddenSpaces, serialiseHiddenSpaces, visibleSnapshot } from "./selection";
 import { rasterizeTerminalFrame } from "./pixel-font";
@@ -79,9 +79,10 @@ function mergedSnapshot(): Snapshot | null {
     return snapshot ? [{ host, snapshot }] : [];
   });
   if (reports.length === 0) return null;
+  // Ordered by what needs the user: questions at the top, working at the foot.
   const agents = reports.flatMap(({ host, snapshot }) => snapshot.agents.map((agent) => ({
     ...agent, id: `${host.id}:${agent.id}`, hostId: host.id, hostName: host.name, remoteId: agent.id,
-  })));
+  }))).sort(byAttention);
   const wake = reports.flatMap(({ host, snapshot }) => snapshot.wake.map((id) => `${host.id}:${id}`));
   return {
     protocol_version: 1, type: "snapshot", revision: Math.max(...reports.map(({ snapshot }) => snapshot.revision)),

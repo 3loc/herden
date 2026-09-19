@@ -77,6 +77,24 @@ const STATUS_LETTERS: Record<Agent["status"], string> = {
   working: "[W]", idle: "[I]", blocked: "[Q]", failed: "[F]", done: "[D]", unknown: "[?]",
 };
 
+/**
+ * Attention order, top first: a question waits on the user, a working Agent
+ * waits on nothing, so working sinks to the bottom. Ties break by Host then
+ * Space so rows never shuffle between snapshots.
+ */
+const STATUS_ORDER: Agent["status"][] = ["blocked", "failed", "done", "idle", "unknown", "working"];
+
+export function attentionRank(status: Agent["status"]): number {
+  const rank = STATUS_ORDER.indexOf(status);
+  return rank === -1 ? STATUS_ORDER.length : rank;
+}
+
+export function byAttention(left: Agent, right: Agent): number {
+  return attentionRank(left.status) - attentionRank(right.status)
+    || (left.hostName ?? "").localeCompare(right.hostName ?? "")
+    || (left.space || "").localeCompare(right.space || "");
+}
+
 /** One dense Space row: cursor, status, harness, Host, message. */
 export function renderSpaceCard(agent: Agent, selected = false): string {
   const prefix = `${selected ? ">" : " "}${STATUS_LETTERS[agent.status]}[${harnessMark(agent.kind)}][${agent.hostName || "host"}]:`;

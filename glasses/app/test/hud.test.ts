@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
-import { COLS, ROWS, brightnessFor, compactOutputLines, harnessMark, outputWindowSize, renderDetail, renderList, renderSpaceCard, spaceMessage, truncate, windowAround } from "../src/hud.ts";
+import { byAttention, COLS, ROWS, brightnessFor, compactOutputLines, harnessMark, outputWindowSize, renderDetail, renderList, renderSpaceCard, spaceMessage, truncate, windowAround } from "../src/hud.ts";
 import { parseHiddenSpaces, serialiseHiddenSpaces, visibleSnapshot } from "../src/selection.ts";
 import type { Agent, Snapshot } from "../src/protocol.ts";
 import { PIXEL_COLS, PIXEL_ROWS, pixelGlyph } from "../src/pixel-font.ts";
@@ -199,4 +199,21 @@ test("the stored selection is hidden ids, parsed leniently", () => {
   assert.equal(serialiseHiddenSpaces(new Set(["b", "a"])), '["a","b"]');
   // A Space absent from storage is rendered: only hidden ids are persisted.
   assert.equal(visibleSnapshot(roster, parseHiddenSpaces("[]")).agents.length, 2);
+});
+
+test("questions sort above idle, and working sinks to the foot", () => {
+  const agent = (status, space, hostName = "3loc") =>
+    ({ id: space, name: space, kind: "claude", space, status, pinned: false, hostName });
+  const sorted = [
+    agent("working", "busy"), agent("idle", "quiet"), agent("blocked", "asking"),
+    agent("done", "finished"), agent("failed", "broken"), agent("unknown", "mystery"),
+  ].sort(byAttention);
+  assert.deepEqual(sorted.map((a) => a.space), ["asking", "broken", "finished", "quiet", "mystery", "busy"]);
+});
+
+test("a tie breaks by Host then Space, so rows never shuffle", () => {
+  const agent = (space, hostName) =>
+    ({ id: space, name: space, kind: "claude", space, status: "idle", pinned: false, hostName });
+  const sorted = [agent("zeta", "vinux"), agent("alpha", "vinux"), agent("beta", "agneta")].sort(byAttention);
+  assert.deepEqual(sorted.map((a) => `${a.hostName}:${a.space}`), ["agneta:beta", "vinux:alpha", "vinux:zeta"]);
 });
