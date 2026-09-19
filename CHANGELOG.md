@@ -8,7 +8,23 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+### Added
+
+- Added an opt-in, Host-owned private-network HUD endpoint for the Even G2
+  prototype. It serves bounded Agent-status SSE snapshots with 256-bit bearer
+  credentials, deliberate credential retrieval/rotation, a Tailnet IPv4
+  default, and read-only-by-default Send Enter/Interrupt controls; physical G2
+  package, HTTP, background, and wake validation remains pending.
+
 ### Changed
+
+- Render the Even G2 HUD in an embedded Tamzen 7x14 bitmap terminal face. The
+  G2 native text API has no font or size control; the HUD now uses all
+  available lens rows without depending on the phone's fixed proportional font.
+
+- Clean the Even G2 HUD's Agent-output reader before it reaches the lens:
+  remove terminal escapes, redraw residue, decorative ASCII, and coding-tool
+  chrome while keeping readable replies, commands, and logs.
 
 - The Host installer makes `herden` work in the current Terminal when it can:
   it links the command into a directory you own that is already on your PATH,

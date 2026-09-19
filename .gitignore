@@ -31,6 +31,12 @@ relay/.wrangler/
 relay/node_modules/
 *.p8
 
+# Even G2 HUD: plugin bundle and Host-side bridge.
+glasses/app/node_modules/
+glasses/app/dist/
+glasses/bridge/node_modules/
+*.ehpk
+
 # Native Herden Host runtime build output.
 runtime/target/
 runtime/.zig-global-cache/
