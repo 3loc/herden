@@ -1,7 +1,7 @@
 /** Herden HUD — a compact, Space-first view across saved private Hosts. */
 
 import {
-  CreateStartUpPageContainer, RebuildPageContainer, EvenAppBridge, OsEventTypeList,
+  AudioInputSource, CreateStartUpPageContainer, RebuildPageContainer, EvenAppBridge, OsEventTypeList,
   ImageContainerProperty, ImageRawDataUpdate, TextContainerProperty, waitForEvenAppBridge,
 } from "@evenrealities/even_hub_sdk";
 import { BridgeClient } from "./client";
@@ -11,6 +11,15 @@ import type { GestureDebug } from "./hud";
 import { Panel } from "./panel";
 import { parseHiddenSpaces, serialiseHiddenSpaces, visibleSnapshot } from "./selection";
 import { rasterizeTerminalFrame } from "./pixel-font";
+import { encodeWav, toPcmBytes } from "./audio";
+import { describeCommand, parseCommand } from "./commands";
+import type { VoiceCommand } from "./commands";
+import { transcribe } from "./stt";
+import {
+  IDLE_VOICE, captureAudio, renderVoiceStatus, startListening, stopListening,
+  voiceDebugMark, voiceFailed, voiceIsTransient, voiceResolved,
+} from "./voice";
+import type { VoiceState } from "./voice";
 import type { Agent, HostSettings, Snapshot } from "./protocol";
 
 const CONTAINER_ID = 1;
@@ -44,7 +53,13 @@ const state = {
   snapshot: null as Snapshot | null, roster: null as Snapshot | null, hosts: [] as HostSettings[],
   output: [] as string[], outputOffset: 0,
   outputLoading: false, lastText: "", painting: Promise.resolve(),
+  voice: IDLE_VOICE as VoiceState,
 };
+/** PCM frames for the clip currently being spoken; empty outside a press. */
+let capturedPcm: Uint8Array[] = [];
+/** A transient microphone row clears itself, so the lens returns to Spaces. */
+const VOICE_NOTICE_MS = 6_000;
+let voiceNoticeTimer: ReturnType<typeof setTimeout> | undefined;
 /** Projected `${hostId}:${remoteId}` ids the wearer chose to keep off the lens. */
 const hiddenSpaces = new Set<string>();
 const sourceSnapshots = new Map<string, Snapshot>();
@@ -108,9 +123,10 @@ async function paint(): Promise<void> {
     const snapshot = state.snapshot; const agent = state.view === "detail" ? selectedAgent() : null;
     const output = state.outputLoading ? ["reading output…"] : state.output;
     const empty = (state.roster?.agents.length ?? 0) > 0 ? "no Spaces selected" : "no agents";
-    const debug = GESTURE_DEBUG ? renderGestureDebug(gesture) : undefined;
-    const content = agent ? renderDetail(agent, output, state.outputOffset, state.online, state.selected + 1)
-      : snapshot ? renderList(snapshot, state.selected, state.online, empty, debug) : "connecting…";
+    const debug = GESTURE_DEBUG ? renderGestureDebug({ ...gesture, mic: voiceDebugMark(state.voice), transcript: state.voice.transcript }) : undefined;
+    const notice = renderVoiceStatus(state.voice);
+    const content = agent ? renderDetail(agent, output, state.outputOffset, state.online, state.selected + 1, notice)
+      : snapshot ? renderList(snapshot, state.selected, state.online, empty, debug, notice) : [...notice, "connecting…"].join("\n");
     if (content === state.lastText) return;
     await upgrade(content); state.lastText = content;
   });
@@ -161,6 +177,7 @@ function readEnvelope(event: EvenHubEvent): { field: string; eventType?: number;
   if (event.textEvent) return { field: "textEvent", eventType: event.textEvent.eventType, dispatch: true };
   if (event.listEvent) return { field: "listEvent", eventType: event.listEvent.eventType, dispatch: true };
   if (event.menuItemClickEvent) return { field: "menuEvent", eventType: OsEventTypeList.CLICK_EVENT, dispatch: true };
+  // Handled before this point; kept so the field list stays exhaustive.
   if (event.audioEvent) return { field: "audioEvent", dispatch: false };
   const raw = event.jsonData;
   if (raw) return { field: "jsonData", eventType: OsEventTypeList.fromJson(raw.eventType ?? raw.Event_Type ?? raw.type), dispatch: true };
@@ -173,6 +190,16 @@ function surfaceGestureError(error: unknown): void {
 }
 
 function handleHubEvent(event: EvenHubEvent): void {
+  // Microphone frames arrive in their thousands: never repaint per frame, and
+  // never let one bump the gesture diagnostic's event counter.
+  if (event.audioEvent) {
+    const pcm = toPcmBytes((event.audioEvent as { audioPcm?: unknown }).audioPcm);
+    if (pcm.length > 0 && state.voice.phase === "listening") {
+      capturedPcm.push(pcm);
+      state.voice = captureAudio(state.voice, pcm.length);
+    }
+    return;
+  }
   const envelope = readEnvelope(event);
   gesture.count += 1;
   gesture.field = envelope.field;
@@ -190,7 +217,13 @@ async function handleSystemEvent(eventType: OsEventTypeList): Promise<void> {
       if (state.view === "list" && selectedAgent()) await openSelectedOutput();
       break;
     case OsEventTypeList.DOUBLE_CLICK_EVENT:
-      state.view = "list"; state.output = []; state.outputOffset = 0; state.outputLoading = false;
+      showList();
+      break;
+    case OsEventTypeList.LONG_PRESS_EVENT:
+      await beginVoiceCapture();
+      break;
+    case OsEventTypeList.LONG_PRESS_RELEASE_EVENT:
+      await endVoiceCapture();
       break;
     case OsEventTypeList.SCROLL_TOP_EVENT:
       if (state.view === "list") { state.userSelected = true; state.selected = Math.max(0, state.selected - 1); }
@@ -203,6 +236,92 @@ async function handleSystemEvent(eventType: OsEventTypeList): Promise<void> {
     default: return;
   }
   await paint();
+}
+
+function showList(): void {
+  state.view = "list"; state.output = []; state.outputOffset = 0; state.outputLoading = false;
+}
+
+function reason(error: unknown): string {
+  return error instanceof Error ? error.message : String(error);
+}
+
+async function setVoice(next: VoiceState): Promise<void> {
+  state.voice = next;
+  if (voiceNoticeTimer !== undefined) { clearTimeout(voiceNoticeTimer); voiceNoticeTimer = undefined; }
+  // A transcript or a failure is worth a glance, not a permanent row.
+  if (voiceIsTransient(next)) {
+    voiceNoticeTimer = setTimeout(() => { voiceNoticeTimer = undefined; state.voice = IDLE_VOICE; void paint(); }, VOICE_NOTICE_MS);
+  }
+  await paint();
+}
+
+/** Closing must never throw: a stuck-open mic outlives the app. */
+async function closeMic(): Promise<void> {
+  try { await bridge.audioControl(false); } catch { /* already shut, or the Hub is gone */ }
+}
+
+/** Long press: open the glasses mic and start collecting PCM. */
+async function beginVoiceCapture(): Promise<void> {
+  const { state: next, openMic } = startListening(state.voice);
+  if (!openMic) return; // Already listening; a repeated press is not a restart.
+  capturedPcm = [];
+  await setVoice(next);
+  try {
+    if (!await bridge.audioControl(true, AudioInputSource.Glasses)) throw new Error("the glasses mic did not open");
+  } catch (error) {
+    await closeMic();
+    await setVoice(voiceFailed(state.voice, reason(error)));
+  }
+}
+
+/** Long press release: shut the mic, then transcribe whatever was captured. */
+async function endVoiceCapture(): Promise<void> {
+  const { state: next, closeMic: shouldClose, transcribe: shouldTranscribe } = stopListening(state.voice);
+  const chunks = capturedPcm;
+  capturedPcm = [];
+  await setVoice(next);
+  if (shouldClose) await closeMic();
+  if (!shouldTranscribe) return;
+  try {
+    const text = await transcribe(encodeWav(chunks));
+    if (text.length === 0) { await setVoice(voiceFailed(state.voice, "nothing recognised")); return; }
+    const command = parseCommand(text);
+    await setVoice(voiceResolved(state.voice, text, describeCommand(command)));
+    await runVoiceCommand(command);
+  } catch (error) {
+    await setVoice(voiceFailed(state.voice, reason(error)));
+  }
+}
+
+/**
+ * Spoken navigation runs the same transitions as the click gestures, by the
+ * position the wearer can read on the lens. `dictate` deliberately has no Host
+ * path: the HUD endpoint is read-only and `controls_allowed` is false, so the
+ * lens says so and the parsed text is kept visible.
+ */
+async function runVoiceCommand(command: VoiceCommand): Promise<void> {
+  switch (command.type) {
+    case "open": {
+      const agents = state.snapshot?.agents ?? [];
+      const index = command.position - 1;
+      if (index < 0 || index >= agents.length) {
+        await setVoice(voiceFailed(state.voice, `no Space ${command.position} on the lens`));
+        return;
+      }
+      state.userSelected = true;
+      state.selected = index;
+      await openSelectedOutput();
+      return;
+    }
+    case "back":
+      showList();
+      await paint();
+      return;
+    case "dictate":
+    case "unknown":
+      return; // Both already read back to the wearer on the lens.
+  }
 }
 
 async function openSelectedOutput(): Promise<void> {

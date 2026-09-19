@@ -116,20 +116,24 @@ export function renderSpaceCard(agent: Agent, selected = false, position = 1): s
  * The lens is one dense list: 5[W][Cdx][3loc]:last message. `debug` is the
  * temporary gesture diagnostic and always occupies the final row.
  */
-export function renderList(snapshot: Snapshot, selected: number, online: boolean, empty = "no agents", debug?: string): string {
+export function renderList(snapshot: Snapshot, selected: number, online: boolean, empty = "no agents", debug?: string, notice: string[] = []): string {
   const tail = debug ? [truncate(debug)] : [];
-  if (snapshot.agents.length === 0) return frame([online ? empty : "Host offline", ...tail]);
-  const visible = windowAround(snapshot.agents, selected, ROWS - (online ? 0 : 1) - tail.length);
+  const head = notice.map((line) => truncate(line));
+  if (snapshot.agents.length === 0) return frame([...head, online ? empty : "Host offline", ...tail]);
+  const visible = windowAround(snapshot.agents, selected, ROWS - (online ? 0 : 1) - tail.length - head.length);
   const rows = visible.items.map((agent, index) => renderSpaceCard(agent, visible.start + index === selected, visible.start + index + 1));
-  return frame([...(online ? [] : ["Host offline"]), ...rows, ...tail]);
+  return frame([...head, ...(online ? [] : ["Host offline"]), ...rows, ...tail]);
 }
 
 /** The selected Space's terminal text, using only the G2 navigation gestures. */
-export function renderDetail(agent: Agent, output: string[], offset: number, online: boolean, position = 1): string {
+export function renderDetail(agent: Agent, output: string[], offset: number, online: boolean, position = 1, notice: string[] = []): string {
+  const head = notice.map((line) => truncate(line));
+  const rows = Math.max(1, OUTPUT_ROWS - head.length);
   const start = Math.max(0, Math.min(offset, Math.max(0, output.length - OUTPUT_ROWS)));
-  const visible = output.slice(start, start + OUTPUT_ROWS).map((line) => truncate(line));
+  const visible = output.slice(start, start + rows).map((line) => truncate(line));
   const range = output.length === 0 ? "reading output" : `${start + 1}-${start + visible.length}/${output.length}`;
   return frame([
+    ...head,
     truncate(`${positionMark(position).trim()}[${harnessMark(agent.kind)}][${agent.hostName || "host"}]:${spaceMessage(agent)}`),
     ...visible,
     `${MARKS[agent.status]} ${agent.status}  ${range}${online ? "" : " offline"}`,
@@ -160,12 +164,19 @@ export type GestureDebug = {
   field: string;
   eventType?: number;
   error?: string;
+  /** Microphone phase and last transcript: the only window into mic hardware. */
+  mic?: string;
+  transcript?: string;
 };
 
 export function renderGestureDebug(gesture: GestureDebug): string {
-  if (gesture.error) return truncate(`ev#${gesture.count} ${gesture.field} err ${gesture.error}`);
-  if (gesture.count === 0) return truncate(`ev#${gesture.count} none yet`);
-  return truncate(`ev#${gesture.count} ${gesture.field} type=${gesture.eventType ?? "?"}`);
+  const mic = [
+    gesture.mic ? ` mic=${gesture.mic}` : "",
+    gesture.transcript ? ` "${gesture.transcript}"` : "",
+  ].join("");
+  if (gesture.error) return truncate(`ev#${gesture.count} ${gesture.field} err ${gesture.error}${mic}`);
+  if (gesture.count === 0) return truncate(`ev#${gesture.count} none yet${mic}`);
+  return truncate(`ev#${gesture.count} ${gesture.field} type=${gesture.eventType ?? "?"}${mic}`);
 }
 
 /** Brightness follows urgency: full for anything demanding a decision. */

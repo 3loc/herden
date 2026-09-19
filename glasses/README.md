@@ -36,11 +36,21 @@ make glasses-stop
 it does not accumulate invisible simulator windows. Override the desktop host
 with `GLASSES_DEV_HOST=<ssh-host>` when needed.
 
-The HUD uses only the G2 navigation path: `up`/`down` select a Space, `click`
-opens it, and `double_click` returns to the list. The vendor simulator's own
-debug strip is fixed and shows its complete event catalogue; `glasses-input`
-exposes only the four gestures the HUD binds, and long-press/menu inputs are
+The HUD uses the G2 navigation path: `up`/`down` select a Space, `click`
+opens it, and `double_click` returns to the list. A long press is push to
+talk: it opens the glasses microphone, the release transcribes the clip and
+the lens shows both the transcript and what it resolved to. The vendor
+simulator's own debug strip is fixed and shows its complete event catalogue;
+`glasses-input` exposes only the navigation gestures, and menu inputs are
 ignored by the application.
+
+Spoken commands: `open <n>` / `open space <n>` / bare `<n>` opens the Space at
+that visible row (digits or `one`..`twenty`), `go back` / `back` / `close`
+returns to the list, and `dictate <text>` parses but reports that the
+read-only HUD endpoint has no Host write path yet. Transcription is posted as
+WAV to a configurable base URL, `/stt` relative to the app origin by default
+(the development server proxies it) and `VITE_HERDEN_HUD_STT` otherwise. The
+glasses PCM format is an assumption — see `PCM_FORMAT` in `app/src/audio.ts`.
 
 The HUD has its own compact Tamzen 7×14 bitmap terminal face. Even's native text API
 does not expose a font family, font size, or line height, so four image tiles
