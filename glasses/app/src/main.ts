@@ -59,6 +59,10 @@ const gesture: GestureDebug = { count: 0, field: "none" };
  * state to the development server every few seconds. Remove with the flag.
  */
 const BEACON_URL = import.meta.env.VITE_HERDEN_HUD_BEACON ?? "/debug";
+/** Bumped by hand so telemetry proves which build a device is running. */
+const BUILD_MARK = "cmd-trace-1";
+/** What the last transcript parsed to, and what happened when it ran. */
+const lastCommand = { heard: "", parsed: "", outcome: "" };
 const BEACON_MS = 3_000;
 
 function beacon(): void {
@@ -68,6 +72,8 @@ function beacon(): void {
     prerollBytes: listen.prerollBytes, utteranceBytes: listen.utteranceBytes,
     utteranceOpen: listen.open, tilt: tilt.last, delta: Number(tilt.delta.toFixed(3)),
     imuSamples: tilt.samples, wakeProven: tilt.proven === true,
+    build: BUILD_MARK, view: state.view, selected: state.selected,
+    heard: lastCommand.heard, parsed: lastCommand.parsed, outcome: lastCommand.outcome,
     events: gesture.count, lastField: gesture.field, lastType: gesture.eventType,
     error: gesture.error, transcript: state.voice.transcript,
     spaces: state.snapshot?.agents.length ?? 0,
@@ -464,6 +470,9 @@ async function handleUtterance(frames: Uint8Array[]): Promise<void> {
     const text = await transcribe(encodeWav(frames));
     if (text.length === 0) { await setVoice(voiceFailed(state.voice, "nothing recognised")); return; }
     const command = parseCommand(text);
+    lastCommand.heard = text;
+    lastCommand.parsed = command.type === "open" ? `open ${command.position}` : command.type;
+    lastCommand.outcome = "running";
     noteWearerActivity();
     await setVoice(voiceResolved(state.voice, text, describeCommand(command)));
     await runVoiceCommand(command);
@@ -484,12 +493,15 @@ async function runVoiceCommand(command: VoiceCommand): Promise<void> {
       const agents = state.snapshot?.agents ?? [];
       const index = command.position - 1;
       if (index < 0 || index >= agents.length) {
+        lastCommand.outcome = `no Space ${command.position} of ${agents.length}`;
         await setVoice(voiceFailed(state.voice, `no Space ${command.position} on the lens`));
         return;
       }
       state.userSelected = true;
       state.selected = index;
+      lastCommand.outcome = `opening ${command.position}`;
       await openSelectedOutput();
+      lastCommand.outcome = `opened ${command.position} view=${state.view}`;
       return;
     }
     case "back":
