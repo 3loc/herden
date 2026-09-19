@@ -90,6 +90,8 @@ export const TILT_DEFAULTS: TiltOptions = {
 };
 
 export interface TiltState {
+  /** Set once a raise has actually crossed `wakeDelta` on this hardware. */
+  readonly proven?: boolean;
   /** Resting orientation on `axis`; `null` until the first sample seeds it. */
   readonly baseline: number | null;
   /** Latest pitch relative to that baseline, already signed. */
@@ -125,7 +127,7 @@ export function observeTilt(
   const value = last[axis];
   const samples = state.samples + 1;
   if (state.baseline === null) {
-    return { state: { baseline: value, delta: 0, armed: false, samples, last }, wake: false };
+    return { state: { baseline: value, delta: 0, armed: false, samples, last, proven: state.proven }, wake: false };
   }
   const delta = (value - state.baseline) * sign;
   const settled = delta <= releaseDelta;
@@ -134,7 +136,7 @@ export function observeTilt(
   const wake = armed && samples > warmup && delta >= wakeDelta;
   if (wake) armed = false;
   const baseline = settled ? state.baseline + alpha * (value - state.baseline) : state.baseline;
-  return { state: { baseline, delta, armed, samples, last }, wake };
+  return { state: { baseline, delta, armed, samples, last, proven: state.proven || wake }, wake };
 }
 
 /** The IMU half of the diagnostic row: the raw triple and the pitch delta. */
@@ -192,11 +194,26 @@ export function dueForSleep(
   now: number,
   idleMs: number = IDLE_SLEEP_MS,
   sessionMs: number = AWAKE_SESSION_MAX_MS,
+  canWake: boolean = true,
 ): SleepReason | null {
   if (state.phase !== "awake") return null;
+  // Never take away the lens until something is known to bring it back. The
+  // tilt thresholds are guesses until calibrated on real hardware, and a dark
+  // lens that cannot wake itself is indistinguishable from a dead app.
+  if (!canWake) return null;
   if (now - state.since >= sessionMs) return "session-cap";
   if (now - state.activity >= idleMs) return "idle";
   return null;
+}
+
+/**
+ * Whether the tilt gesture has been *observed* to cross the wake threshold at
+ * least once. Until it has, idle sleep stays disabled: long press is then the
+ * only way back, and requiring a gesture to undo an automatic action is the
+ * kind of trap that reads as a broken app.
+ */
+export function wakeProven(state: TiltState): boolean {
+  return state.proven === true;
 }
 
 /** Statuses that are waiting on the wearer rather than on a machine. */

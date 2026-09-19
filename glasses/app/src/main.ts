@@ -22,7 +22,7 @@ import {
 import type { VoiceState } from "./voice";
 import {
   ATTENTION_TICK_MS, IMU_REPORT_PACE_MS, RESTING_TILT, attentionWorthy, dueForSleep,
-  initialAttention, noteActivity, observeTilt, renderTiltDebug, sleepAttention, wakeAttention,
+  initialAttention, noteActivity, observeTilt, renderTiltDebug, sleepAttention, wakeAttention, wakeProven,
 } from "./attention";
 import type { AttentionState, ImuSample, TiltState } from "./attention";
 import { EMPTY_LISTEN, containsSpeech, feedFrame } from "./listen";
@@ -346,7 +346,7 @@ async function wakeUp(): Promise<void> {
 }
 
 async function attentionTick(): Promise<void> {
-  if (dueForSleep(state.attention, Date.now())) await goToSleep();
+  if (dueForSleep(state.attention, Date.now(), undefined, undefined, wakeProven(tilt))) await goToSleep();
 }
 
 /**

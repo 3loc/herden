@@ -7,6 +7,8 @@ import {
   voiceDebugMark, voiceFailed, voiceIsTransient, voiceResolved,
 } from "../src/voice.ts";
 import { COLS, renderGestureDebug, renderList } from "../src/hud.ts";
+import { RESTING_TILT, dueForSleep, initialAttention, observeTilt, wakeProven } from "../src/attention.ts";
+
 import type { Agent, Snapshot } from "../src/protocol.ts";
 
 const text = (bytes: Uint8Array, at: number, length: number): string =>
@@ -229,4 +231,23 @@ test("the spoken forms of ending a session all reach sleep", () => {
   // The existing grammar is untouched by the new verbs.
   assert.deepEqual(parseCommand("open two"), { type: "open", position: 2 });
   assert.deepEqual(parseCommand("back"), { type: "back" });
+});
+
+test("a lens never sleeps until a tilt wake has actually been seen", () => {
+  const awake = initialAttention(0);
+  // 60 s of nothing, but the tilt gesture has never fired on this hardware.
+  assert.equal(dueForSleep(awake, 60_000, 15_000, 180_000, false), null);
+  assert.equal(dueForSleep(awake, 60_000, 15_000, 180_000, true), "idle");
+});
+
+test("observing a raise marks the wake gesture as proven", () => {
+  let tilt = RESTING_TILT;
+  assert.equal(wakeProven(tilt), false);
+  for (const y of [0, 0, 0, 0, 0]) tilt = observeTilt(tilt, { y }).state;
+  assert.equal(wakeProven(tilt), false);
+  tilt = observeTilt(tilt, { y: 1 }).state;
+  assert.equal(wakeProven(tilt), true);
+  // It stays proven once the head settles again.
+  tilt = observeTilt(tilt, { y: 0 }).state;
+  assert.equal(wakeProven(tilt), true);
 });
