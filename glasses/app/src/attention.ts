@@ -37,15 +37,22 @@ export const PITCH_AXIS: "x" | "y" | "z" = "y";
 /** `1` if pitching the head UP makes `PITCH_AXIS` rise; `-1` if it falls. */
 export const PITCH_SIGN = 1;
 
-/** Pitch above the resting baseline that counts as "looking up". */
-export const WAKE_PITCH_DELTA = 0.25;
+/**
+ * Pitch above the resting baseline that counts as "looking up".
+ *
+ * Measured on Ted's G2 (2026-09-19): the axis reads about -0.14 looking
+ * straight ahead and +0.10 or more at the HeadUp position, so the real swing
+ * is ~0.24. Fire at roughly two thirds of that, which clears normal head
+ * bob while still triggering before the gesture is fully complete.
+ */
+export const WAKE_PITCH_DELTA = 0.15;
 
 /**
  * The head has to settle back below this before another wake can fire. The
  * gap between the two thresholds is the hysteresis band: without it a head
  * hovering on the threshold would toggle the lens every sample.
  */
-export const RELEASE_PITCH_DELTA = 0.12;
+export const RELEASE_PITCH_DELTA = 0.07;
 
 /** How fast the resting baseline follows a settled head (EMA weight). */
 export const BASELINE_ALPHA = 0.08;
