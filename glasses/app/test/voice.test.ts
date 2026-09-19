@@ -218,3 +218,15 @@ test("the diagnostic row also reports the mic state and last transcript", () => 
   );
   assert.ok(renderGestureDebug({ count: 4, field: "sysEvent", mic: "result", transcript: "x".repeat(200) }).length <= COLS);
 });
+
+test("the spoken forms of ending a session all reach sleep", () => {
+  for (const said of ["sleep", "go to sleep", "Sleep.", "stop", "stop listening", "stop listen", "please sleep"]) {
+    assert.deepEqual(parseCommand(said), { type: "sleep" }, said);
+  }
+  assert.equal(describeCommand({ type: "sleep" }), "sleep");
+  // Waking is the tilt and the long press; it is never spoken at a dark lens.
+  assert.deepEqual(parseCommand("wake"), { type: "unknown", transcript: "wake" });
+  // The existing grammar is untouched by the new verbs.
+  assert.deepEqual(parseCommand("open two"), { type: "open", position: 2 });
+  assert.deepEqual(parseCommand("back"), { type: "back" });
+});

@@ -1,8 +1,8 @@
 /** Herden HUD — a compact, Space-first view across saved private Hosts. */
 
 import {
-  AudioInputSource, CreateStartUpPageContainer, RebuildPageContainer, EvenAppBridge, OsEventTypeList,
-  ImageContainerProperty, ImageRawDataUpdate, TextContainerProperty, waitForEvenAppBridge,
+  AudioInputSource, CreateStartUpPageContainer, RebuildPageContainer, EvenAppBridge, ImuReportPace,
+  OsEventTypeList, ImageContainerProperty, ImageRawDataUpdate, TextContainerProperty, waitForEvenAppBridge,
 } from "@evenrealities/even_hub_sdk";
 import { BridgeClient } from "./client";
 import type { EvenHubEvent } from "@evenrealities/even_hub_sdk";
@@ -16,10 +16,17 @@ import { describeCommand, parseCommand } from "./commands";
 import type { VoiceCommand } from "./commands";
 import { transcribe } from "./stt";
 import {
-  IDLE_VOICE, captureAudio, renderVoiceStatus, startListening, stopListening,
-  voiceDebugMark, voiceFailed, voiceIsTransient, voiceResolved,
+  IDLE_VOICE, captureAudio, renderVoiceStatus, startListening,
+  voiceDebugMark, voiceFailed, voiceIsTransient, voiceResolved, voiceTranscribing,
 } from "./voice";
 import type { VoiceState } from "./voice";
+import {
+  ATTENTION_TICK_MS, IMU_REPORT_PACE_MS, RESTING_TILT, attentionWorthy, dueForSleep,
+  initialAttention, noteActivity, observeTilt, renderTiltDebug, sleepAttention, wakeAttention,
+} from "./attention";
+import type { AttentionState, ImuSample, TiltState } from "./attention";
+import { EMPTY_LISTEN, containsSpeech, feedFrame } from "./listen";
+import type { ListenBuffer } from "./listen";
 import type { Agent, HostSettings, Snapshot } from "./protocol";
 
 const CONTAINER_ID = 1;
@@ -54,9 +61,19 @@ const state = {
   output: [] as string[], outputOffset: 0,
   outputLoading: false, lastText: "", painting: Promise.resolve(),
   voice: IDLE_VOICE as VoiceState,
+  attention: initialAttention(Date.now()) as AttentionState,
 };
-/** PCM frames for the clip currently being spoken; empty outside a press. */
-let capturedPcm: Uint8Array[] = [];
+/** Continuous capture for the current lit session; reset whenever it ends. */
+let listen: ListenBuffer = EMPTY_LISTEN;
+/** True between a successful `audioControl(true)` and its matching close. */
+let micOpen = false;
+/** Finished utterances are transcribed one at a time, in the order spoken. */
+let utterances: Promise<void> = Promise.resolve();
+/** Rolling head orientation; survives sleep, since it is what ends sleep. */
+let tilt: TiltState = RESTING_TILT;
+/** IMU reports arrive ~3/s. Repaint the diagnostic at most this often. */
+const IMU_DEBUG_PAINT_MS = 1_000;
+let lastImuPaint = 0;
 /** A transient microphone row clears itself, so the lens returns to Spaces. */
 const VOICE_NOTICE_MS = 6_000;
 let voiceNoticeTimer: ReturnType<typeof setTimeout> | undefined;
@@ -120,10 +137,11 @@ function mergedSnapshot(): Snapshot | null {
 
 async function paint(): Promise<void> {
   state.painting = state.painting.catch(() => {}).then(async () => {
+    if (state.attention.phase === "asleep") return; // `blankLens` owns a dark lens.
     const snapshot = state.snapshot; const agent = state.view === "detail" ? selectedAgent() : null;
     const output = state.outputLoading ? ["reading output…"] : state.output;
     const empty = (state.roster?.agents.length ?? 0) > 0 ? "no Spaces selected" : "no agents";
-    const debug = GESTURE_DEBUG ? renderGestureDebug({ ...gesture, mic: voiceDebugMark(state.voice), transcript: state.voice.transcript }) : undefined;
+    const debug = GESTURE_DEBUG ? renderGestureDebug({ ...gesture, imu: renderTiltDebug(tilt), mic: voiceDebugMark(state.voice), transcript: state.voice.transcript }) : undefined;
     const notice = renderVoiceStatus(state.voice);
     const content = agent ? renderDetail(agent, output, state.outputOffset, state.online, state.selected + 1, notice)
       : snapshot ? renderList(snapshot, state.selected, state.online, empty, debug, notice) : [...notice, "connecting…"].join("\n");
@@ -135,8 +153,12 @@ async function paint(): Promise<void> {
 
 function refreshProjection(): void {
   const previousId = selectedAgent()?.id;
+  const previous = state.snapshot;
   state.roster = mergedSnapshot();
   state.snapshot = state.roster ? visibleSnapshot(state.roster, hiddenSpaces) : null;
+  // News keeps a lit lens lit; it never lights a dark one. Waking the wearer
+  // for a status change is the Dashboard's job, not this HUD's.
+  if (attentionWorthy(previous, state.snapshot)) noteWearerActivity();
   state.online = onlineHosts.size > 0;
   const moved = state.snapshot?.agents.findIndex((agent) => agent.id === previousId) ?? -1;
   state.selected = state.userSelected && moved >= 0 ? moved : 0;
@@ -194,10 +216,17 @@ function handleHubEvent(event: EvenHubEvent): void {
   // never let one bump the gesture diagnostic's event counter.
   if (event.audioEvent) {
     const pcm = toPcmBytes((event.audioEvent as { audioPcm?: unknown }).audioPcm);
-    if (pcm.length > 0 && state.voice.phase === "listening") {
-      capturedPcm.push(pcm);
-      state.voice = captureAudio(state.voice, pcm.length);
-    }
+    if (pcm.length === 0 || !micOpen) return;
+    const heard = feedFrame(listen, pcm);
+    listen = heard.buffer;
+    state.voice = captureAudio(state.voice, pcm.length);
+    const utterance = heard.utterance;
+    if (utterance) utterances = utterances.catch(() => {}).then(() => handleUtterance(utterance));
+    return;
+  }
+  // IMU reports also arrive several times a second, and are not gestures.
+  if (event.sysEvent?.eventType === OsEventTypeList.IMU_DATA_REPORT) {
+    void handleImu(event.sysEvent.imuData ?? {}).catch(surfaceGestureError);
     return;
   }
   const envelope = readEnvelope(event);
@@ -212,6 +241,24 @@ function handleHubEvent(event: EvenHubEvent): void {
 }
 
 async function handleSystemEvent(eventType: OsEventTypeList): Promise<void> {
+  // An IMU report reaching here arrived in an envelope `handleHubEvent` did
+  // not expect. It is not a gesture: it must never defer sleep or wake the
+  // lens, or the HUD would stay lit forever on its own sample stream.
+  if (eventType === OsEventTypeList.IMU_DATA_REPORT) return;
+  // Losing the foreground shuts the microphone whatever state we are in.
+  if (eventType === OsEventTypeList.FOREGROUND_EXIT_EVENT
+    || eventType === OsEventTypeList.ABNORMAL_EXIT_EVENT
+    || eventType === OsEventTypeList.SYSTEM_EXIT_EVENT) {
+    await goToSleep();
+    return;
+  }
+  // Nothing is readable while the lens is dark, so the first gesture only
+  // brings it back. The release half of a press is not a second gesture.
+  if (state.attention.phase === "asleep") {
+    if (eventType !== OsEventTypeList.LONG_PRESS_RELEASE_EVENT) await wakeUp();
+    return;
+  }
+  noteWearerActivity();
   switch (eventType) {
     case OsEventTypeList.CLICK_EVENT:
       if (state.view === "list" && selectedAgent()) await openSelectedOutput();
@@ -219,12 +266,15 @@ async function handleSystemEvent(eventType: OsEventTypeList): Promise<void> {
     case OsEventTypeList.DOUBLE_CLICK_EVENT:
       showList();
       break;
+    // Long press is the manual override, and the only gesture proven to
+    // arrive on this hardware: awake it sleeps, asleep it wakes (above).
     case OsEventTypeList.LONG_PRESS_EVENT:
-      await beginVoiceCapture();
-      break;
+      await goToSleep();
+      return;
     case OsEventTypeList.LONG_PRESS_RELEASE_EVENT:
-      await endVoiceCapture();
-      break;
+      return;
+    case OsEventTypeList.FOREGROUND_ENTER_EVENT:
+      return; // Already lit; the asleep branch above is the one that matters.
     case OsEventTypeList.SCROLL_TOP_EVENT:
       if (state.view === "list") { state.userSelected = true; state.selected = Math.max(0, state.selected - 1); }
       else state.outputOffset = Math.max(0, state.outputOffset - 1);
@@ -246,47 +296,146 @@ function reason(error: unknown): string {
   return error instanceof Error ? error.message : String(error);
 }
 
+function noteWearerActivity(): void {
+  state.attention = noteActivity(state.attention, Date.now());
+}
+
+/**
+ * A dark lens is an empty frame, not a dimmed one. The HUD's visible surface
+ * is four image containers — the only text container is the transparent " "
+ * gesture target — and the firmware's 0..4 text brightness does not apply to
+ * image data, so dropping brightness would darken nothing. An empty frame is
+ * the only thing that actually blanks this lens.
+ *
+ * The exception is the hardware diagnostic: the wake gesture happens while
+ * the lens is dark, so its IMU numbers have to be readable there or the
+ * thresholds in `attention.ts` cannot be calibrated at all.
+ */
+async function blankLens(): Promise<void> {
+  state.painting = state.painting.catch(() => {}).then(async () => {
+    const content = GESTURE_DEBUG
+      ? renderGestureDebug({ ...gesture, imu: renderTiltDebug(tilt), mic: "asleep" })
+      : "";
+    if (content === state.lastText) return;
+    await upgrade(content);
+    state.lastText = content;
+  });
+  await state.painting;
+}
+
+/**
+ * The lens goes dark and the microphone shuts, together and in that order.
+ * The app stays resident — never `shutDownPageContainer` — because it is the
+ * only thing left that can wake itself on a tilt.
+ */
+async function goToSleep(): Promise<void> {
+  const { state: next, changed } = sleepAttention(state.attention, Date.now());
+  state.attention = next;
+  if (!changed) return;
+  await stopMic();
+  await blankLens();
+}
+
+/** Redraw first, then start listening: the lens must not lag the gesture. */
+async function wakeUp(): Promise<void> {
+  const { state: next, changed } = wakeAttention(state.attention, Date.now());
+  state.attention = next;
+  if (!changed) return;
+  await paint();
+  await startMic();
+}
+
+async function attentionTick(): Promise<void> {
+  if (dueForSleep(state.attention, Date.now())) await goToSleep();
+}
+
+/**
+ * Head pitch relative to a rolling resting baseline. The IMU stays on while
+ * the lens is dark: it is the only thing that can end sleep.
+ */
+async function handleImu(sample: ImuSample): Promise<void> {
+  const observed = observeTilt(tilt, sample);
+  tilt = observed.state;
+  if (observed.wake && state.attention.phase === "asleep") { await wakeUp(); return; }
+  if (!GESTURE_DEBUG) return;
+  const now = Date.now();
+  if (now - lastImuPaint < IMU_DEBUG_PAINT_MS) return;
+  lastImuPaint = now;
+  await (state.attention.phase === "asleep" ? blankLens() : paint());
+}
+
+/** `ImuReportPace` is the report period in milliseconds on the wire. */
+async function enableTilt(): Promise<void> {
+  try {
+    if (!await bridge.imuControl(true, IMU_REPORT_PACE_MS as ImuReportPace)) {
+      gesture.error = "imu reporting refused";
+    }
+  } catch (error) {
+    gesture.error = `imu: ${reason(error)}`;
+  }
+}
+
 async function setVoice(next: VoiceState): Promise<void> {
   state.voice = next;
   if (voiceNoticeTimer !== undefined) { clearTimeout(voiceNoticeTimer); voiceNoticeTimer = undefined; }
-  // A transcript or a failure is worth a glance, not a permanent row.
+  // A transcript or a failure is worth a glance, not a permanent row. The
+  // microphone is still open behind it, so the row it clears back to is the
+  // listening row: [MIC] must never be absent while the mic is live.
   if (voiceIsTransient(next)) {
-    voiceNoticeTimer = setTimeout(() => { voiceNoticeTimer = undefined; state.voice = IDLE_VOICE; void paint(); }, VOICE_NOTICE_MS);
+    voiceNoticeTimer = setTimeout(() => {
+      voiceNoticeTimer = undefined;
+      state.voice = micOpen ? { phase: "listening", captured: state.voice.captured } : IDLE_VOICE;
+      void paint();
+    }, VOICE_NOTICE_MS);
   }
   await paint();
 }
 
-/** Closing must never throw: a stuck-open mic outlives the app. */
-async function closeMic(): Promise<void> {
+/**
+ * Closing must never throw and must leave no way back in: a stuck-open mic
+ * outlives the app. Every sleep, every foreground exit and every error path
+ * goes through here.
+ */
+async function stopMic(): Promise<void> {
+  micOpen = false;
+  listen = EMPTY_LISTEN;
+  if (voiceNoticeTimer !== undefined) { clearTimeout(voiceNoticeTimer); voiceNoticeTimer = undefined; }
+  state.voice = IDLE_VOICE;
   try { await bridge.audioControl(false); } catch { /* already shut, or the Hub is gone */ }
 }
 
-/** Long press: open the glasses mic and start collecting PCM. */
-async function beginVoiceCapture(): Promise<void> {
-  const { state: next, openMic } = startListening(state.voice);
-  if (!openMic) return; // Already listening; a repeated press is not a restart.
-  capturedPcm = [];
-  await setVoice(next);
+/**
+ * Open the glasses mic for the whole lit session. Continuous capture is the
+ * fix for the lost first syllable: `audioControl(true)` takes time to take
+ * effect, so the microphone must already be open — and a pre-roll buffer
+ * already filling — before the wearer starts to speak.
+ */
+async function startMic(): Promise<void> {
+  if (micOpen) return;
+  listen = EMPTY_LISTEN;
+  micOpen = true;
+  await setVoice(startListening(IDLE_VOICE).state);
   try {
     if (!await bridge.audioControl(true, AudioInputSource.Glasses)) throw new Error("the glasses mic did not open");
   } catch (error) {
-    await closeMic();
+    await stopMic();
     await setVoice(voiceFailed(state.voice, reason(error)));
   }
 }
 
-/** Long press release: shut the mic, then transcribe whatever was captured. */
-async function endVoiceCapture(): Promise<void> {
-  const { state: next, closeMic: shouldClose, transcribe: shouldTranscribe } = stopListening(state.voice);
-  const chunks = capturedPcm;
-  capturedPcm = [];
-  await setVoice(next);
-  if (shouldClose) await closeMic();
-  if (!shouldTranscribe) return;
+/**
+ * One endpointed utterance: transcribe it and run it while capture continues.
+ * A segment with no speech in it is never sent — parakeet hallucinates words
+ * onto silence.
+ */
+async function handleUtterance(frames: Uint8Array[]): Promise<void> {
+  if (!containsSpeech(frames)) return;
+  await setVoice(voiceTranscribing(state.voice));
   try {
-    const text = await transcribe(encodeWav(chunks));
+    const text = await transcribe(encodeWav(frames));
     if (text.length === 0) { await setVoice(voiceFailed(state.voice, "nothing recognised")); return; }
     const command = parseCommand(text);
+    noteWearerActivity();
     await setVoice(voiceResolved(state.voice, text, describeCommand(command)));
     await runVoiceCommand(command);
   } catch (error) {
@@ -317,6 +466,9 @@ async function runVoiceCommand(command: VoiceCommand): Promise<void> {
     case "back":
       showList();
       await paint();
+      return;
+    case "sleep":
+      await goToSleep();
       return;
     case "dictate":
     case "unknown":
@@ -396,6 +548,9 @@ async function main(): Promise<void> {
   });
   connect(hosts);
   bridge.onEvenHubEvent(handleHubEvent);
+  await enableTilt();
+  setInterval(() => { void attentionTick(); }, ATTENTION_TICK_MS);
+  await startMic();
   bridge.onDeviceStatusChanged((status) => { if (status.isWearing === false) for (const client of clients.values()) client.disconnect(); else if (status.isConnected()) for (const client of clients.values()) if (!client.online) client.connect(); });
 }
 

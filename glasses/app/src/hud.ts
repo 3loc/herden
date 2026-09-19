@@ -167,10 +167,19 @@ export type GestureDebug = {
   /** Microphone phase and last transcript: the only window into mic hardware. */
   mic?: string;
   transcript?: string;
+  /**
+   * The live IMU triple and computed pitch delta. The G2's IMU frame, units
+   * and sign are undocumented, so this row is how the wake thresholds in
+   * `attention.ts` get calibrated: read real numbers off the lens, resting
+   * and with the head raised, and set the constants from them. It precedes
+   * the transcript because the transcript is also shown in the notice row.
+   */
+  imu?: string;
 };
 
 export function renderGestureDebug(gesture: GestureDebug): string {
   const mic = [
+    gesture.imu ? ` ${gesture.imu}` : "",
     gesture.mic ? ` mic=${gesture.mic}` : "",
     gesture.transcript ? ` "${gesture.transcript}"` : "",
   ].join("");

@@ -52,6 +52,14 @@ export function stopListening(state: VoiceState): { state: VoiceState; closeMic:
   return { state: { phase: "transcribing", captured: state.captured }, closeMic: true, transcribe: true };
 }
 
+/**
+ * A finished utterance goes to the transcriber while the microphone stays
+ * open: continuous capture never stops to think.
+ */
+export function voiceTranscribing(state: VoiceState): VoiceState {
+  return { phase: "transcribing", captured: state.captured };
+}
+
 export function voiceResolved(state: VoiceState, transcript: string, outcome: string): VoiceState {
   return { phase: "result", captured: state.captured, transcript, outcome };
 }

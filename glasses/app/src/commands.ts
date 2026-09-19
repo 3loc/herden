@@ -10,6 +10,8 @@ export type VoiceCommand =
   /** `position` is the 1-based row number as rendered on the lens. */
   | { type: "open"; position: number }
   | { type: "back" }
+  /** Blank the lens and shut the microphone; the spoken twin of a long press. */
+  | { type: "sleep" }
   | { type: "dictate"; text: string }
   | { type: "unknown"; transcript: string };
 
@@ -64,6 +66,11 @@ export function parseCommand(transcript: string): VoiceCommand {
   if (tokens.length <= 2 && (first === "back" || first === "close" || (first === "go" && second === "back"))) {
     return { type: "back" };
   }
+  // "sleep", "go to sleep", "stop", "stop listening": end the lit session.
+  if (tokens.length <= 3 && tokens[tokens.length - 1] === "sleep") return { type: "sleep" };
+  if (first === "stop" && (tokens.length === 1 || second === "listening" || second === "listen")) {
+    return { type: "sleep" };
+  }
   if (first === "open") {
     const rest = second === "space" || second === "row" || second === "number" ? third : second;
     const position = numberFrom(rest, true);
@@ -88,6 +95,7 @@ export function describeCommand(command: VoiceCommand): string {
   switch (command.type) {
     case "open": return `open ${command.position}`;
     case "back": return "back";
+    case "sleep": return "sleep";
     // The HUD endpoint is read-only by design: `controls_allowed` is false and
     // no Host write path exists yet. Say so, with the text that was heard.
     case "dictate": return `dictation needs Host support: "${command.text}"`;
