@@ -53,6 +53,28 @@ const DEVELOPMENT_PROXY_HOSTS: HostSettings[] = (() => {
  */
 const GESTURE_DEBUG = true;
 const gesture: GestureDebug = { count: 0, field: "none" };
+/**
+ * Temporary hardware telemetry. Reading diagnostics off a 64-column lens is
+ * slow and error prone, so while GESTURE_DEBUG is on the app posts its own
+ * state to the development server every few seconds. Remove with the flag.
+ */
+const BEACON_URL = import.meta.env.VITE_HERDEN_HUD_BEACON ?? "/debug";
+const BEACON_MS = 3_000;
+
+function beacon(): void {
+  const body = JSON.stringify({
+    mic: micOpen, voice: state.voice.phase, attention: state.attention.phase,
+    audioFrames: audioStats.frames, audioBytes: audioStats.bytes,
+    prerollBytes: listen.prerollBytes, utteranceBytes: listen.utteranceBytes,
+    utteranceOpen: listen.open, tilt: tilt.last, delta: Number(tilt.delta.toFixed(3)),
+    imuSamples: tilt.samples, wakeProven: tilt.proven === true,
+    events: gesture.count, lastField: gesture.field, lastType: gesture.eventType,
+    error: gesture.error, transcript: state.voice.transcript,
+    spaces: state.snapshot?.agents.length ?? 0,
+  });
+  void fetch(BEACON_URL, { method: "POST", body, headers: { "content-type": "application/json" } }).catch(() => {});
+}
+
 /** Proof of life for the microphone path: frames delivered and bytes held. */
 const audioStats = { frames: 0, bytes: 0 };
 function renderAudioDebug(): string {
@@ -557,6 +579,7 @@ async function main(): Promise<void> {
   bridge.onEvenHubEvent(handleHubEvent);
   await enableTilt();
   setInterval(() => { void attentionTick(); }, ATTENTION_TICK_MS);
+  if (GESTURE_DEBUG) setInterval(beacon, BEACON_MS);
   await startMic();
   bridge.onDeviceStatusChanged((status) => { if (status.isWearing === false) for (const client of clients.values()) client.disconnect(); else if (status.isConnected()) for (const client of clients.values()) if (!client.online) client.connect(); });
 }

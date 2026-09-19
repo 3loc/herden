@@ -8,6 +8,7 @@ import {
 } from "../src/voice.ts";
 import { COLS, renderGestureDebug, renderList } from "../src/hud.ts";
 import { RESTING_TILT, dueForSleep, initialAttention, observeTilt, wakeProven } from "../src/attention.ts";
+import { multipartBody, multipartContentType, transcribe } from "../src/stt.ts";
 
 import type { Agent, Snapshot } from "../src/protocol.ts";
 
@@ -250,4 +251,29 @@ test("observing a raise marks the wake gesture as proven", () => {
   // It stays proven once the head settles again.
   tilt = observeTilt(tilt, { y: 0 }).state;
   assert.equal(wakeProven(tilt), true);
+});
+
+test("the multipart body is assembled by hand, with the WAV intact", () => {
+  const wav = new Uint8Array([0x52, 0x49, 0x46, 0x46, 1, 2, 3, 4]);
+  const body = Buffer.from(multipartBody(wav, { language: "en" }, "BOUND"));
+  const text = body.toString("latin1");
+  assert.match(text, /^--BOUND\r\nContent-Disposition: form-data; name="file"; filename="command.wav"\r\nContent-Type: audio\/wav\r\n\r\n/);
+  assert.ok(body.includes(Buffer.from(wav)), "the clip bytes survive verbatim");
+  assert.match(text, /\r\n--BOUND\r\nContent-Disposition: form-data; name="language"\r\n\r\nen/);
+  assert.ok(text.endsWith("\r\n--BOUND--\r\n"));
+  assert.equal(multipartContentType("BOUND"), "multipart/form-data; boundary=BOUND");
+});
+
+test("a transcription that never answers fails instead of wedging the queue", async () => {
+  const hang = new Promise<Response>(() => {});
+  const original = globalThis.fetch;
+  globalThis.fetch = (() => hang) as typeof fetch;
+  try {
+    await assert.rejects(
+      transcribe(new Uint8Array([1, 2, 3]), { timeoutMs: 20 }),
+      /timed out/,
+    );
+  } finally {
+    globalThis.fetch = original;
+  }
 });
