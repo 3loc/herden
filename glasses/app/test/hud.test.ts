@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
-import { COLS, ROWS, brightnessFor, compactOutputLines, outputWindowSize, renderDetail, renderList, renderSpaceCard, truncate, windowAround } from "../src/hud.ts";
+import { COLS, ROWS, brightnessFor, compactOutputLines, harnessMark, outputWindowSize, renderDetail, renderList, renderSpaceCard, spaceMessage, truncate, windowAround } from "../src/hud.ts";
+import { parseHiddenSpaces, serialiseHiddenSpaces, visibleSnapshot } from "../src/selection.ts";
 import type { Agent, Snapshot } from "../src/protocol.ts";
 import { PIXEL_COLS, PIXEL_ROWS, pixelGlyph } from "../src/pixel-font.ts";
 import fixture from "../../protocol/hud-v1.json" with { type: "json" };
@@ -55,29 +56,74 @@ test("over-long text is ellipsised rather than wrapped", () => {
   assert.equal(truncate("abc", 4), "abc");
 });
 
-test("the list marks the selected Space and its status", () => {
+test("the list marks the selected row with the cursor column", () => {
   const view = renderList(
     snapshot([agent({ name: "one", space: "Build", status: "blocked" }), agent({ id: "b", name: "two", space: "Glasses" })]),
     1,
     true,
   );
   const lines = view.split("\n");
-  assert.match(lines[0]!, /^ host:agent:Build:blocked$/);
-  assert.match(lines[1]!, /^>host:agent:Glasses:working$/);
+  assert.equal(lines[0]!, "    [Zsh][host]:one");
+  assert.equal(lines[1]!, ">[W][Zsh][host]:two");
 });
 
-test("Space cards omit the agent and branch-derived display names", () => {
-  const card = renderSpaceCard(agent({ name: "feature/glasses", space: "Glasses support" }), true);
-  assert.match(card, /Glasses support/);
-  assert.doesNotMatch(card, /feature\/glasses/);
+test("the lens row is cursor, work flash, harness, Host, message", () => {
+  assert.equal(
+    renderSpaceCard(agent({ kind: "claude", hostName: "3loc", name: "Herden right space file sharing", space: "herden" }), true, 0),
+    ">[W][C][3loc]:Herden right space file sharing",
+  );
+  assert.equal(
+    renderSpaceCard(agent({ kind: "codex", hostName: "3loc", name: "fleet", space: "fleet", status: "idle" }), false, 0),
+    "    [Cdx][3loc]:fleet",
+  );
 });
 
-test("the lens keeps one dense host:agent:space:state list", () => {
-  const view = renderList(snapshot([
-    agent({ id: "a", space: "fleet", hostName: "3loc", kind: "codex", status: "done" }),
-    agent({ id: "b", space: "deploy", hostName: "fansvine", kind: "claude" }),
-  ]), 0, true);
-  assert.match(view, />3loc:codex:fleet:done\n fansvine:claude:deploy:working/);
+test("only a working Space flashes, and only on alternate snapshots", () => {
+  const working = agent({ kind: "codex", hostName: "3loc", status: "working" });
+  assert.match(renderSpaceCard(working, false, 0), /^ \[W\]\[Cdx\]/);
+  assert.match(renderSpaceCard(working, false, 1), /^ {4}\[Cdx\]/);
+  assert.match(renderSpaceCard(working, false, 2), /^ \[W\]\[Cdx\]/);
+  // Columns never jump: the blank phase is exactly three spaces wide.
+  assert.equal(renderSpaceCard(working, false, 0).length, renderSpaceCard(working, false, 1).length);
+  for (const status of ["idle", "blocked", "failed", "done", "unknown"] as const) {
+    const row = renderSpaceCard(agent({ kind: "codex", status }), false, 0);
+    assert.doesNotMatch(row, /\[W\]/, status);
+    assert.match(row, /^ {4}\[Cdx\]/, status);
+  }
+});
+
+test("snapshot arrivals drive the flash, so the frame text alternates", () => {
+  const roster = snapshot([agent({ kind: "codex", hostName: "3loc" })]);
+  assert.notEqual(renderList(roster, 0, true, 0), renderList(roster, 0, true, 1));
+  assert.equal(renderList(roster, 0, true, 0), renderList(roster, 0, true, 2));
+  const quiet = snapshot([agent({ kind: "codex", hostName: "3loc", status: "idle" })]);
+  assert.equal(renderList(quiet, 0, true, 0), renderList(quiet, 0, true, 1));
+});
+
+test("harness marks follow Herden's own vocabulary", () => {
+  assert.equal(harnessMark("codex"), "Cdx");
+  assert.equal(harnessMark("claude"), "C");
+  assert.equal(harnessMark("pi"), "Pi");
+  assert.equal(harnessMark("zsh"), "Zsh");
+  assert.equal(harnessMark("bash"), "Bash");
+  assert.equal(harnessMark("fish"), "Fish");
+  // A pane with no interactive Agent is the wearer's shell.
+  assert.equal(harnessMark(undefined), "Zsh");
+  assert.equal(harnessMark("agent"), "Zsh");
+  assert.equal(harnessMark("GEMINI"), "Gem");
+});
+
+test("the message is the Host's terminal title, falling back to the Space", () => {
+  assert.equal(spaceMessage(agent({ name: "Herden right space file sharing", space: "herden" })), "Herden right space file sharing");
+  assert.equal(spaceMessage(agent({ name: "herden", space: "herden" })), "herden");
+  assert.equal(spaceMessage(agent({ name: "", space: "" })), "Unnamed Space");
+});
+
+test("a long message is truncated, never the brackets", () => {
+  const row = renderSpaceCard(agent({ kind: "codex", hostName: "3loc", name: "x".repeat(200), space: "herden" }), true, 0);
+  assert.equal(row.length, COLS);
+  assert.ok(row.startsWith(">[W][Cdx][3loc]:"), row);
+  assert.ok(row.endsWith("…"), row);
 });
 
 test("an offline stream is visible rather than silently stale", () => {
@@ -91,8 +137,8 @@ test("an empty roster says so instead of rendering blank", () => {
 
 test("detail shows the selected Space's scrollable output and one back gesture", () => {
   const output = Array.from({ length: outputWindowSize() + 3 }, (_, index) => `line ${index + 1}`);
-  const detail = renderDetail(agent({ hostName: "fansvine", kind: "pi", space: "Deploy", status: "blocked" }), output, 3, true);
-  assert.match(detail, /^fansvine:pi:Deploy/m);
+  const detail = renderDetail(agent({ hostName: "fansvine", kind: "pi", name: "Deploy", space: "Deploy", status: "blocked" }), output, 3, true);
+  assert.match(detail, /^\[Pi\]\[fansvine\]:Deploy/m);
   assert.match(detail, /line 4/);
   assert.match(detail, new RegExp(`line ${output.length}`));
   assert.match(detail, new RegExp(`4-${output.length}/${output.length}`));
@@ -117,5 +163,43 @@ test("brightness goes full only when a decision is pending", () => {
 
 test("the shared v1 fixture remains renderable", () => {
   const frame = renderList(fixture as Snapshot, 0, true);
-  assert.match(frame, /runtime/);
+  // The fixture's title differs from its Space, so the title is the message.
+  assert.equal(frame, ">   [Zsh][host]:host-release");
+});
+
+const roster = snapshot([
+  agent({ id: "3loc:w1:pA", space: "herden", hostName: "3loc", kind: "codex" }),
+  agent({ id: "3loc:w2:pB", space: "fleet", hostName: "3loc", kind: "claude", status: "idle" }),
+]);
+
+test("hidden Spaces leave the lens list and the wake, not the roster", () => {
+  const projected = visibleSnapshot({ ...roster, wake: ["3loc:w1:pA", "3loc:w2:pB"] }, new Set(["3loc:w1:pA"]));
+  assert.deepEqual(projected.agents.map((a) => a.id), ["3loc:w2:pB"]);
+  assert.deepEqual(projected.wake, ["3loc:w2:pB"]);
+  assert.equal(projected.summary, "1 Space");
+  // The panel keeps rendering every Space the Hosts reported.
+  assert.equal(roster.agents.length, 2);
+  assert.doesNotMatch(renderList(projected, 0, true, 0), /herden/);
+});
+
+test("an unknown hidden id is tolerated rather than dropping a Space", () => {
+  assert.deepEqual(visibleSnapshot(roster, new Set(["gone:w9:pZ"])).agents.length, 2);
+});
+
+test("hiding every Space says so instead of rendering an empty frame", () => {
+  const nothing = visibleSnapshot(roster, new Set(["3loc:w1:pA", "3loc:w2:pB"]));
+  assert.equal(nothing.agents.length, 0);
+  const frame = renderList(nothing, 0, true, 0, "no Spaces selected");
+  assert.equal(frame, "no Spaces selected");
+});
+
+test("the stored selection is hidden ids, parsed leniently", () => {
+  assert.deepEqual([...parseHiddenSpaces('["3loc:w1:pA"]')], ["3loc:w1:pA"]);
+  assert.deepEqual([...parseHiddenSpaces(null)], []);
+  assert.deepEqual([...parseHiddenSpaces("not json")], []);
+  assert.deepEqual([...parseHiddenSpaces('{"a":1}')], []);
+  assert.deepEqual([...parseHiddenSpaces('["ok", 7, "", null]')], ["ok"]);
+  assert.equal(serialiseHiddenSpaces(new Set(["b", "a"])), '["a","b"]');
+  // A Space absent from storage is rendered: only hidden ids are persisted.
+  assert.equal(visibleSnapshot(roster, parseHiddenSpaces("[]")).agents.length, 2);
 });

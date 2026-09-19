@@ -7,13 +7,14 @@ import {
 import { BridgeClient } from "./client";
 import { compactOutputLines, outputWindowSize, renderDetail, renderList } from "./hud";
 import { Panel } from "./panel";
+import { parseHiddenSpaces, serialiseHiddenSpaces, visibleSnapshot } from "./selection";
 import { rasterizeTerminalFrame } from "./pixel-font";
 import type { Agent, HostSettings, Snapshot } from "./protocol";
 
 const CONTAINER_ID = 1;
 const CANVAS = { width: 576, height: 288 };
 const IMAGE = { width: 288, height: 144 };
-const STORAGE_KEYS = { hosts: "herden.hosts", baseUrl: "herden.baseUrl", token: "herden.token" };
+const STORAGE_KEYS = { hosts: "herden.hosts", baseUrl: "herden.baseUrl", token: "herden.token", hiddenSpaces: "herden.hiddenSpaces" };
 // Explicit and development-only: never load saved Hosts or contact a real
 // endpoint while making public screenshots.
 const DEMO = import.meta.env.DEV && new URLSearchParams(location.search).get("demo") === "1";
@@ -29,9 +30,12 @@ const DEVELOPMENT_PROXY_HOSTS: HostSettings[] = (() => {
 type View = "list" | "detail";
 const state = {
   view: "list" as View, selected: 0, userSelected: false, online: false,
-  snapshot: null as Snapshot | null, hosts: [] as HostSettings[], output: [] as string[], outputOffset: 0,
+  snapshot: null as Snapshot | null, roster: null as Snapshot | null, hosts: [] as HostSettings[],
+  output: [] as string[], outputOffset: 0, phase: 0,
   outputLoading: false, lastText: "", painting: Promise.resolve(),
 };
+/** Projected `${hostId}:${remoteId}` ids the wearer chose to keep off the lens. */
+const hiddenSpaces = new Set<string>();
 const sourceSnapshots = new Map<string, Snapshot>();
 const onlineHosts = new Set<string>();
 const clients = new Map<string, BridgeClient>();
@@ -91,7 +95,9 @@ async function paint(): Promise<void> {
   state.painting = state.painting.catch(() => {}).then(async () => {
     const snapshot = state.snapshot; const agent = state.view === "detail" ? selectedAgent() : null;
     const output = state.outputLoading ? ["reading output…"] : state.output;
-    const content = agent ? renderDetail(agent, output, state.outputOffset, state.online) : snapshot ? renderList(snapshot, state.selected, state.online) : "connecting…";
+    const empty = (state.roster?.agents.length ?? 0) > 0 ? "no Spaces selected" : "no agents";
+    const content = agent ? renderDetail(agent, output, state.outputOffset, state.online)
+      : snapshot ? renderList(snapshot, state.selected, state.online, state.phase, empty) : "connecting…";
     if (content === state.lastText) return;
     await upgrade(content); state.lastText = content;
   });
@@ -99,12 +105,23 @@ async function paint(): Promise<void> {
 }
 
 function refreshProjection(): void {
-  const previousId = selectedAgent()?.id; state.snapshot = mergedSnapshot(); state.online = onlineHosts.size > 0;
+  const previousId = selectedAgent()?.id;
+  state.roster = mergedSnapshot();
+  state.snapshot = state.roster ? visibleSnapshot(state.roster, hiddenSpaces) : null;
+  state.online = onlineHosts.size > 0;
   const moved = state.snapshot?.agents.findIndex((agent) => agent.id === previousId) ?? -1;
   state.selected = state.userSelected && moved >= 0 ? moved : 0;
-  if (panel && state.snapshot) panel.render(state.snapshot, state.hosts, onlineHosts);
+  // The panel keeps showing every Space, including the hidden ones.
+  if (panel && state.roster) panel.render(state.roster, state.hosts, onlineHosts, hiddenSpaces);
   else panel?.setHosts(state.hosts, onlineHosts);
   void paint();
+}
+
+/** A checkbox in the panel takes effect on the lens without a reconnect. */
+async function setSpaceVisible(id: string, visible: boolean): Promise<void> {
+  if (visible) hiddenSpaces.delete(id); else hiddenSpaces.add(id);
+  refreshProjection();
+  await bridge.setLocalStorage(STORAGE_KEYS.hiddenSpaces, serialiseHiddenSpaces(hiddenSpaces));
 }
 
 function connect(hosts: HostSettings[]): void {
@@ -113,7 +130,8 @@ function connect(hosts: HostSettings[]): void {
   for (const host of hosts) {
     const client = new BridgeClient({
       baseUrl: host.baseUrl, token: host.token,
-      onSnapshot: (snapshot) => { sourceSnapshots.set(host.id, snapshot); refreshProjection(); },
+      // Snapshots arrive roughly once a second; they are the flash clock.
+      onSnapshot: (snapshot) => { sourceSnapshots.set(host.id, snapshot); state.phase += 1; refreshProjection(); },
       onConnectionChange: (online) => { if (online) onlineHosts.add(host.id); else onlineHosts.delete(host.id); refreshProjection(); },
       onCommandError: (message) => panel?.setConnection(state.online, ` · ${message}`),
     });
@@ -207,7 +225,11 @@ async function main(): Promise<void> {
     return;
   }
   const hosts = await loadHosts();
-  panel = new Panel(document.getElementById("app")!, { hosts, onSaveHosts: (next) => { void saveHosts(next); } });
+  for (const id of parseHiddenSpaces(await bridge.getLocalStorage(STORAGE_KEYS.hiddenSpaces))) hiddenSpaces.add(id);
+  panel = new Panel(document.getElementById("app")!, {
+    hosts, onSaveHosts: (next) => { void saveHosts(next); },
+    onToggleSpace: (id, visible) => { void setSpaceVisible(id, visible); },
+  });
   connect(hosts);
   bridge.onEvenHubEvent((event) => { const input = event.sysEvent ?? event.textEvent; if (input) void handleSystemEvent(input.eventType ?? OsEventTypeList.CLICK_EVENT); });
   bridge.onDeviceStatusChanged((status) => { if (status.isWearing === false) for (const client of clients.values()) client.disconnect(); else if (status.isConnected()) for (const client of clients.values()) if (!client.online) client.connect(); });
