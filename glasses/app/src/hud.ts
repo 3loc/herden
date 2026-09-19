@@ -70,26 +70,24 @@ export function spaceMessage(agent: Agent): string {
 }
 
 /**
- * One dense Space row: cursor, flashing work mark, harness, Host, message.
- *
- * `phase` counts snapshot arrivals (roughly one a second). Every redraw is an
- * image pushed over BLE, so the flash rides those arrivals instead of a timer.
- * A non-working row spends three spaces so no column ever jumps.
+ * One three-character status bracket per row, so no column ever jumps.
+ * `[Q]` is a question: the Agent is waiting on the wearer.
  */
-export function renderSpaceCard(agent: Agent, selected = false, phase = 0): string {
-  const cursor = selected ? ">" : " ";
-  const work = agent.status === "working" && phase % 2 === 0 ? "[W]" : "   ";
-  const prefix = `${cursor}${work}[${harnessMark(agent.kind)}][${agent.hostName || "host"}]:`;
+const STATUS_LETTERS: Record<Agent["status"], string> = {
+  working: "[W]", idle: "[I]", blocked: "[Q]", failed: "[F]", done: "[D]", unknown: "[?]",
+};
+
+/** One dense Space row: cursor, status, harness, Host, message. */
+export function renderSpaceCard(agent: Agent, selected = false): string {
+  const prefix = `${selected ? ">" : " "}${STATUS_LETTERS[agent.status]}[${harnessMark(agent.kind)}][${agent.hostName || "host"}]:`;
   return `${prefix}${truncate(spaceMessage(agent), Math.max(1, COLS - prefix.length))}`;
 }
 
 /** The lens is one dense list: [W][Cdx][3loc]:last message. */
-export function renderList(
-  snapshot: Snapshot, selected: number, online: boolean, phase = 0, empty = "no agents",
-): string {
+export function renderList(snapshot: Snapshot, selected: number, online: boolean, empty = "no agents"): string {
   if (snapshot.agents.length === 0) return frame([online ? empty : "Host offline"]);
   const visible = windowAround(snapshot.agents, selected, online ? ROWS : ROWS - 1);
-  const rows = visible.items.map((agent, index) => renderSpaceCard(agent, visible.start + index === selected, phase));
+  const rows = visible.items.map((agent, index) => renderSpaceCard(agent, visible.start + index === selected));
   return frame(online ? rows : ["Host offline", ...rows]);
 }
 

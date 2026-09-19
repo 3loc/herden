@@ -31,7 +31,7 @@ type View = "list" | "detail";
 const state = {
   view: "list" as View, selected: 0, userSelected: false, online: false,
   snapshot: null as Snapshot | null, roster: null as Snapshot | null, hosts: [] as HostSettings[],
-  output: [] as string[], outputOffset: 0, phase: 0,
+  output: [] as string[], outputOffset: 0,
   outputLoading: false, lastText: "", painting: Promise.resolve(),
 };
 /** Projected `${hostId}:${remoteId}` ids the wearer chose to keep off the lens. */
@@ -97,7 +97,7 @@ async function paint(): Promise<void> {
     const output = state.outputLoading ? ["reading output…"] : state.output;
     const empty = (state.roster?.agents.length ?? 0) > 0 ? "no Spaces selected" : "no agents";
     const content = agent ? renderDetail(agent, output, state.outputOffset, state.online)
-      : snapshot ? renderList(snapshot, state.selected, state.online, state.phase, empty) : "connecting…";
+      : snapshot ? renderList(snapshot, state.selected, state.online, empty) : "connecting…";
     if (content === state.lastText) return;
     await upgrade(content); state.lastText = content;
   });
@@ -130,8 +130,7 @@ function connect(hosts: HostSettings[]): void {
   for (const host of hosts) {
     const client = new BridgeClient({
       baseUrl: host.baseUrl, token: host.token,
-      // Snapshots arrive roughly once a second; they are the flash clock.
-      onSnapshot: (snapshot) => { sourceSnapshots.set(host.id, snapshot); state.phase += 1; refreshProjection(); },
+      onSnapshot: (snapshot) => { sourceSnapshots.set(host.id, snapshot); refreshProjection(); },
       onConnectionChange: (online) => { if (online) onlineHosts.add(host.id); else onlineHosts.delete(host.id); refreshProjection(); },
       onCommandError: (message) => panel?.setConnection(state.online, ` · ${message}`),
     });
