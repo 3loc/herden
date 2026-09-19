@@ -95,27 +95,42 @@ export function byAttention(left: Agent, right: Agent): number {
     || (left.space || "").localeCompare(right.space || "");
 }
 
-/** One dense Space row: cursor, status, harness, Host, message. */
-export function renderSpaceCard(agent: Agent, selected = false): string {
-  const prefix = `${selected ? ">" : " "}${STATUS_LETTERS[agent.status]}[${harnessMark(agent.kind)}][${agent.hostName || "host"}]:`;
+/**
+ * The spoken handle for a row. It is the 1-based position in the list the
+ * wearer can see, never a Host id: "open five" has to mean the fifth row.
+ * Two columns keep every bracket aligned past row nine.
+ */
+export const POSITION_WIDTH = 2;
+
+export function positionMark(position: number): string {
+  return String(position).slice(-POSITION_WIDTH).padStart(POSITION_WIDTH, " ");
+}
+
+/** One dense Space row: cursor, number, status, harness, Host, message. */
+export function renderSpaceCard(agent: Agent, selected = false, position = 1): string {
+  const prefix = `${selected ? ">" : " "}${positionMark(position)}${STATUS_LETTERS[agent.status]}[${harnessMark(agent.kind)}][${agent.hostName || "host"}]:`;
   return `${prefix}${truncate(spaceMessage(agent), Math.max(1, COLS - prefix.length))}`;
 }
 
-/** The lens is one dense list: [W][Cdx][3loc]:last message. */
-export function renderList(snapshot: Snapshot, selected: number, online: boolean, empty = "no agents"): string {
-  if (snapshot.agents.length === 0) return frame([online ? empty : "Host offline"]);
-  const visible = windowAround(snapshot.agents, selected, online ? ROWS : ROWS - 1);
-  const rows = visible.items.map((agent, index) => renderSpaceCard(agent, visible.start + index === selected));
-  return frame(online ? rows : ["Host offline", ...rows]);
+/**
+ * The lens is one dense list: 5[W][Cdx][3loc]:last message. `debug` is the
+ * temporary gesture diagnostic and always occupies the final row.
+ */
+export function renderList(snapshot: Snapshot, selected: number, online: boolean, empty = "no agents", debug?: string): string {
+  const tail = debug ? [truncate(debug)] : [];
+  if (snapshot.agents.length === 0) return frame([online ? empty : "Host offline", ...tail]);
+  const visible = windowAround(snapshot.agents, selected, ROWS - (online ? 0 : 1) - tail.length);
+  const rows = visible.items.map((agent, index) => renderSpaceCard(agent, visible.start + index === selected, visible.start + index + 1));
+  return frame([...(online ? [] : ["Host offline"]), ...rows, ...tail]);
 }
 
 /** The selected Space's terminal text, using only the G2 navigation gestures. */
-export function renderDetail(agent: Agent, output: string[], offset: number, online: boolean): string {
+export function renderDetail(agent: Agent, output: string[], offset: number, online: boolean, position = 1): string {
   const start = Math.max(0, Math.min(offset, Math.max(0, output.length - OUTPUT_ROWS)));
   const visible = output.slice(start, start + OUTPUT_ROWS).map((line) => truncate(line));
   const range = output.length === 0 ? "reading output" : `${start + 1}-${start + visible.length}/${output.length}`;
   return frame([
-    truncate(`[${harnessMark(agent.kind)}][${agent.hostName || "host"}]:${spaceMessage(agent)}`),
+    truncate(`${positionMark(position).trim()}[${harnessMark(agent.kind)}][${agent.hostName || "host"}]:${spaceMessage(agent)}`),
     ...visible,
     `${MARKS[agent.status]} ${agent.status}  ${range}${online ? "" : " offline"}`,
     "double tap: back",
@@ -133,6 +148,24 @@ export function windowAround<T>(
   if (items.length <= size) return { start: 0, items };
   const start = Math.max(0, Math.min(selected - Math.floor(size / 2), items.length - size));
   return { start, items: items.slice(start, start + size) };
+}
+
+/**
+ * Temporary hardware diagnostic for the click issue: the last Even Hub event,
+ * as one lens row. `field` names the envelope field it arrived in, so a click
+ * that never reaches `sysEvent`/`textEvent` is visible on the glasses.
+ */
+export type GestureDebug = {
+  count: number;
+  field: string;
+  eventType?: number;
+  error?: string;
+};
+
+export function renderGestureDebug(gesture: GestureDebug): string {
+  if (gesture.error) return truncate(`ev#${gesture.count} ${gesture.field} err ${gesture.error}`);
+  if (gesture.count === 0) return truncate(`ev#${gesture.count} none yet`);
+  return truncate(`ev#${gesture.count} ${gesture.field} type=${gesture.eventType ?? "?"}`);
 }
 
 /** Brightness follows urgency: full for anything demanding a decision. */

@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
-import { byAttention, COLS, ROWS, brightnessFor, compactOutputLines, harnessMark, outputWindowSize, renderDetail, renderList, renderSpaceCard, spaceMessage, truncate, windowAround } from "../src/hud.ts";
+import { byAttention, COLS, ROWS, brightnessFor, compactOutputLines, harnessMark, outputWindowSize, positionMark, renderDetail, renderGestureDebug, renderList, renderSpaceCard, spaceMessage, truncate, windowAround } from "../src/hud.ts";
 import { parseHiddenSpaces, serialiseHiddenSpaces, visibleSnapshot } from "../src/selection.ts";
 import type { Agent, Snapshot } from "../src/protocol.ts";
 import { PIXEL_COLS, PIXEL_ROWS, pixelGlyph } from "../src/pixel-font.ts";
@@ -63,19 +63,41 @@ test("the list marks the selected row with the cursor column", () => {
     true,
   );
   const lines = view.split("\n");
-  assert.equal(lines[0]!, " [Q][Zsh][host]:one");
-  assert.equal(lines[1]!, ">[W][Zsh][host]:two");
+  assert.equal(lines[0]!, "  1[Q][Zsh][host]:one");
+  assert.equal(lines[1]!, "> 2[W][Zsh][host]:two");
 });
 
-test("the lens row is cursor, status, harness, Host, message", () => {
+test("the lens row is cursor, number, status, harness, Host, message", () => {
   assert.equal(
-    renderSpaceCard(agent({ kind: "claude", hostName: "3loc", name: "Herden right space file sharing", space: "herden" }), true),
-    ">[W][C][3loc]:Herden right space file sharing",
+    renderSpaceCard(agent({ kind: "claude", hostName: "3loc", name: "Herden right space file sharing", space: "herden" }), true, 5),
+    "> 5[W][C][3loc]:Herden right space file sharing",
   );
   assert.equal(
     renderSpaceCard(agent({ kind: "codex", hostName: "3loc", name: "fleet", space: "fleet", status: "idle" }), false),
-    " [I][Cdx][3loc]:fleet",
+    "  1[I][Cdx][3loc]:fleet",
   );
+});
+
+test("the spoken row number is the visible position, two columns wide", () => {
+  assert.equal(positionMark(5), " 5");
+  assert.equal(positionMark(12), "12");
+  const twelve = renderSpaceCard(agent({ kind: "codex", hostName: "agneta", name: "fleet", space: "fleet", status: "idle" }), false, 12);
+  assert.equal(twelve, " 12[I][Cdx][agneta]:fleet");
+  // Past nine the brackets stay in the same columns as row one.
+  assert.equal(twelve.indexOf("["), renderSpaceCard(agent({ status: "idle" }), false, 1).indexOf("["));
+});
+
+test("the list numbers rows by their visible position, not by Host id", () => {
+  const many = Array.from({ length: 30 }, (_, index) =>
+    agent({ id: `w${index}:pA`, name: `space-${index}`, status: "idle" }));
+  const lines = renderList(snapshot(many), 20, true).split("\n");
+  const numbers = lines.map((line) => Number(line.slice(1, 3).trim()));
+  // The window scrolled, so the visible numbers run on from wherever it starts.
+  assert.deepEqual(numbers, numbers.map((_, index) => numbers[0]! + index));
+  assert.ok(numbers[0]! > 1, `expected a scrolled window: ${numbers[0]}`);
+  // The cursor sits on the row whose number is the selection's position.
+  const cursor = lines.findIndex((line) => line.startsWith(">"));
+  assert.equal(numbers[cursor], 21);
 });
 
 test("every status renders one three-character bracket", () => {
@@ -83,8 +105,8 @@ test("every status renders one three-character bracket", () => {
     working: "[W]", idle: "[I]", blocked: "[Q]", failed: "[F]", done: "[D]", unknown: "[?]",
   };
   for (const [status, letter] of Object.entries(letters) as [Agent["status"], string][]) {
-    const row = renderSpaceCard(agent({ kind: "codex", hostName: "3loc", status }), false);
-    assert.ok(row.startsWith(` ${letter}[Cdx][3loc]:`), `${status}: ${row}`);
+    const row = renderSpaceCard(agent({ kind: "codex", hostName: "3loc", status }), false, 7);
+    assert.ok(row.startsWith(`  7${letter}[Cdx][3loc]:`), `${status}: ${row}`);
   }
   // Nothing jumps: every row's brackets occupy the same columns.
   const widths = new Set(Object.keys(letters).map((status) =>
@@ -116,11 +138,13 @@ test("the message is the Host's terminal title, falling back to the Space", () =
   assert.equal(spaceMessage(agent({ name: "", space: "" })), "Unnamed Space");
 });
 
-test("a long message is truncated, never the brackets", () => {
-  const row = renderSpaceCard(agent({ kind: "codex", hostName: "3loc", name: "x".repeat(200), space: "herden" }), true);
-  assert.equal(row.length, COLS);
-  assert.ok(row.startsWith(">[W][Cdx][3loc]:"), row);
-  assert.ok(row.endsWith("…"), row);
+test("a long message is truncated, never the brackets or the number", () => {
+  for (const position of [5, 12]) {
+    const row = renderSpaceCard(agent({ kind: "codex", hostName: "3loc", name: "x".repeat(200), space: "herden" }), true, position);
+    assert.equal(row.length, COLS);
+    assert.ok(row.startsWith(`>${positionMark(position)}[W][Cdx][3loc]:`), row);
+    assert.ok(row.endsWith("…"), row);
+  }
 });
 
 test("an offline stream is visible rather than silently stale", () => {
@@ -134,8 +158,9 @@ test("an empty roster says so instead of rendering blank", () => {
 
 test("detail shows the selected Space's scrollable output and one back gesture", () => {
   const output = Array.from({ length: outputWindowSize() + 3 }, (_, index) => `line ${index + 1}`);
-  const detail = renderDetail(agent({ hostName: "fansvine", kind: "pi", name: "Deploy", space: "Deploy", status: "blocked" }), output, 3, true);
-  assert.match(detail, /^\[Pi\]\[fansvine\]:Deploy/m);
+  const detail = renderDetail(agent({ hostName: "fansvine", kind: "pi", name: "Deploy", space: "Deploy", status: "blocked" }), output, 3, true, 5);
+  // The open Space keeps the number the wearer would have spoken.
+  assert.match(detail, /^5\[Pi\]\[fansvine\]:Deploy/m);
   assert.match(detail, /line 4/);
   assert.match(detail, new RegExp(`line ${output.length}`));
   assert.match(detail, new RegExp(`4-${output.length}/${output.length}`));
@@ -161,7 +186,7 @@ test("brightness goes full only when a decision is pending", () => {
 test("the shared v1 fixture remains renderable", () => {
   const frame = renderList(fixture as Snapshot, 0, true);
   // The fixture's title differs from its Space, so the title is the message.
-  assert.equal(frame, ">[Q][Zsh][host]:host-release");
+  assert.equal(frame, "> 1[Q][Zsh][host]:host-release");
 });
 
 const roster = snapshot([
@@ -216,4 +241,39 @@ test("a tie breaks by Host then Space, so rows never shuffle", () => {
     ({ id: space, name: space, kind: "claude", space, status: "idle", pinned: false, hostName });
   const sorted = [agent("zeta", "vinux"), agent("alpha", "vinux"), agent("beta", "agneta")].sort(byAttention);
   assert.deepEqual(sorted.map((a) => `${a.hostName}:${a.space}`), ["agneta:beta", "vinux:alpha", "vinux:zeta"]);
+});
+
+test("the temporary gesture diagnostic is the last lens row", () => {
+  const roster = snapshot([agent({ kind: "codex", hostName: "3loc" })]);
+  const debugged = renderList(roster, 0, true, "no agents", renderGestureDebug({ count: 7, field: "sysEvent", eventType: 1 }));
+  const lines = debugged.split("\n");
+  assert.equal(lines.at(-1), "ev#7 sysEvent type=1");
+  assert.ok(lines.length <= ROWS);
+  for (const line of lines) assert.ok(line.length <= COLS, line);
+  // The flag is off: no diagnostic argument, no diagnostic row.
+  assert.equal(renderList(roster, 0, true), "> 1[W][Cdx][3loc]:auth");
+});
+
+test("the diagnostic states what arrived, including nothing and a failure", () => {
+  assert.equal(renderGestureDebug({ count: 0, field: "none" }), "ev#0 none yet");
+  assert.equal(renderGestureDebug({ count: 3, field: "listEvent", eventType: 0 }), "ev#3 listEvent type=0");
+  assert.equal(renderGestureDebug({ count: 4, field: "audioEvent" }), "ev#4 audioEvent type=?");
+  assert.equal(renderGestureDebug({ count: 5, field: "sysEvent", eventType: 0, error: "read failed" }), "ev#5 sysEvent err read failed");
+  assert.equal(renderGestureDebug({ count: 6, field: "sysEvent", error: "x".repeat(200) }).length, COLS);
+});
+
+test("the diagnostic row never displaces the selected Space", () => {
+  const many = Array.from({ length: 30 }, (_, index) => agent({ id: `w${index}`, name: `space-${index}`, status: "idle" }));
+  const lines = renderList(snapshot(many), 29, false, "no agents", "ev#1 sysEvent type=0").split("\n");
+  assert.equal(lines.length, ROWS);
+  assert.equal(lines[0], "Host offline");
+  assert.equal(lines.at(-1), "ev#1 sysEvent type=0");
+  assert.ok(lines.some((line) => line.startsWith(">30[I]")), lines.join("|"));
+});
+
+test("an unreadable Space surfaces its failure as one detail line", () => {
+  const detail = renderDetail(agent({ hostName: "3loc", kind: "claude" }), compactOutputLines("read output failed: 503"), 0, true, 2);
+  const lines = detail.split("\n");
+  assert.equal(lines[1], "read output failed: 503");
+  for (const line of lines) assert.ok(line.length <= COLS, line);
 });

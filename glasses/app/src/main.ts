@@ -5,7 +5,9 @@ import {
   ImageContainerProperty, ImageRawDataUpdate, TextContainerProperty, waitForEvenAppBridge,
 } from "@evenrealities/even_hub_sdk";
 import { BridgeClient } from "./client";
-import { byAttention, compactOutputLines, outputWindowSize, renderDetail, renderList } from "./hud";
+import type { EvenHubEvent } from "@evenrealities/even_hub_sdk";
+import { byAttention, compactOutputLines, outputWindowSize, renderDetail, renderGestureDebug, renderList } from "./hud";
+import type { GestureDebug } from "./hud";
 import { Panel } from "./panel";
 import { parseHiddenSpaces, serialiseHiddenSpaces, visibleSnapshot } from "./selection";
 import { rasterizeTerminalFrame } from "./pixel-font";
@@ -26,6 +28,15 @@ const DEVELOPMENT_PROXY_HOSTS: HostSettings[] = (() => {
   } catch { /* fall back to the single local development proxy */ }
   return [{ id: "development-3loc", name: "3loc", baseUrl: "http://localhost:5173/hud", token: "development-proxy" }];
 })();
+
+/**
+ * Temporary hardware diagnostic: clicking a Space on real G2 hardware does
+ * nothing while the same request works over curl, so the lens shows which
+ * envelope field each Even Hub event actually arrives in. Set to false and the
+ * extra lens row disappears; delete this constant and `gesture` to remove it.
+ */
+const GESTURE_DEBUG = true;
+const gesture: GestureDebug = { count: 0, field: "none" };
 
 type View = "list" | "detail";
 const state = {
@@ -97,8 +108,9 @@ async function paint(): Promise<void> {
     const snapshot = state.snapshot; const agent = state.view === "detail" ? selectedAgent() : null;
     const output = state.outputLoading ? ["reading output…"] : state.output;
     const empty = (state.roster?.agents.length ?? 0) > 0 ? "no Spaces selected" : "no agents";
-    const content = agent ? renderDetail(agent, output, state.outputOffset, state.online)
-      : snapshot ? renderList(snapshot, state.selected, state.online, empty) : "connecting…";
+    const debug = GESTURE_DEBUG ? renderGestureDebug(gesture) : undefined;
+    const content = agent ? renderDetail(agent, output, state.outputOffset, state.online, state.selected + 1)
+      : snapshot ? renderList(snapshot, state.selected, state.online, empty, debug) : "connecting…";
     if (content === state.lastText) return;
     await upgrade(content); state.lastText = content;
   });
@@ -140,6 +152,38 @@ function connect(hosts: HostSettings[]): void {
   refreshProjection();
 }
 
+/**
+ * Every field `EvenHubEvent` declares, so a click arriving in an envelope the
+ * handler never read is visible on the lens instead of being dropped.
+ */
+function readEnvelope(event: EvenHubEvent): { field: string; eventType?: number; dispatch: boolean } {
+  if (event.sysEvent) return { field: "sysEvent", eventType: event.sysEvent.eventType, dispatch: true };
+  if (event.textEvent) return { field: "textEvent", eventType: event.textEvent.eventType, dispatch: true };
+  if (event.listEvent) return { field: "listEvent", eventType: event.listEvent.eventType, dispatch: true };
+  if (event.menuItemClickEvent) return { field: "menuEvent", eventType: OsEventTypeList.CLICK_EVENT, dispatch: true };
+  if (event.audioEvent) return { field: "audioEvent", dispatch: false };
+  const raw = event.jsonData;
+  if (raw) return { field: "jsonData", eventType: OsEventTypeList.fromJson(raw.eventType ?? raw.Event_Type ?? raw.type), dispatch: true };
+  return { field: "empty", dispatch: false };
+}
+
+function surfaceGestureError(error: unknown): void {
+  gesture.error = error instanceof Error ? error.message : String(error);
+  void paint();
+}
+
+function handleHubEvent(event: EvenHubEvent): void {
+  const envelope = readEnvelope(event);
+  gesture.count += 1;
+  gesture.field = envelope.field;
+  gesture.eventType = envelope.eventType;
+  gesture.error = undefined;
+  const handled = envelope.dispatch
+    ? handleSystemEvent(envelope.eventType ?? OsEventTypeList.CLICK_EVENT)
+    : Promise.resolve();
+  void handled.then(() => paint(), surfaceGestureError);
+}
+
 async function handleSystemEvent(eventType: OsEventTypeList): Promise<void> {
   switch (eventType) {
     case OsEventTypeList.CLICK_EVENT:
@@ -179,7 +223,8 @@ async function openSelectedOutput(): Promise<void> {
     state.outputOffset = Math.max(0, state.output.length - outputWindowSize());
   } catch (error) {
     if (state.view !== "detail" || selectedAgent()?.id !== agent.id) return;
-    state.output = [error instanceof Error ? error.message : "Output is unavailable."];
+    // A Host error message can carry newlines; keep it to readable lens rows.
+    state.output = compactOutputLines(error instanceof Error ? error.message : "Output is unavailable.");
   } finally {
     state.outputLoading = false;
     await paint();
@@ -220,7 +265,7 @@ async function main(): Promise<void> {
       root.textContent = "Herden · offline demo. Generic sample Spaces. Scroll to select, click to read, double click to return.";
       root.style.cssText = "padding:24px;font:15px/1.6 system-ui;color:#416d00;background:#f8faf4";
     }
-    bridge.onEvenHubEvent((event) => { const input = event.sysEvent ?? event.textEvent; if (input) void handleSystemEvent(input.eventType ?? OsEventTypeList.CLICK_EVENT); });
+    bridge.onEvenHubEvent(handleHubEvent);
     await paint();
     return;
   }
@@ -231,7 +276,7 @@ async function main(): Promise<void> {
     onToggleSpace: (id, visible) => { void setSpaceVisible(id, visible); },
   });
   connect(hosts);
-  bridge.onEvenHubEvent((event) => { const input = event.sysEvent ?? event.textEvent; if (input) void handleSystemEvent(input.eventType ?? OsEventTypeList.CLICK_EVENT); });
+  bridge.onEvenHubEvent(handleHubEvent);
   bridge.onDeviceStatusChanged((status) => { if (status.isWearing === false) for (const client of clients.values()) client.disconnect(); else if (status.isConnected()) for (const client of clients.values()) if (!client.online) client.connect(); });
 }
 
