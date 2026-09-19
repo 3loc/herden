@@ -96,9 +96,24 @@ export const TILT_DEFAULTS: TiltOptions = {
   releaseDelta: RELEASE_PITCH_DELTA, alpha: BASELINE_ALPHA, warmup: BASELINE_WARMUP_SAMPLES,
 };
 
+/**
+ * Samples the head may sit above the release threshold before the baseline
+ * gives up and adopts the current pose as rest.
+ *
+ * Freezing the baseline while raised stops a held tilt from erasing the
+ * gesture, but on real hardware (2026-09-19) it also stranded the wearer: the
+ * baseline had settled at an old pose, every later sample read as "still
+ * raised", so the detector never re-armed and the dark lens could not be woken
+ * by tilting at all. If the head has been "raised" this long, it is not a
+ * gesture — it is the new resting position.
+ */
+export const UNSETTLED_REARM_SAMPLES = 25;
+
 export interface TiltState {
   /** Set once a raise has actually crossed `wakeDelta` on this hardware. */
   readonly proven?: boolean;
+  /** Consecutive samples spent above the release threshold. */
+  readonly unsettled?: number;
   /** Resting orientation on `axis`; `null` until the first sample seeds it. */
   readonly baseline: number | null;
   /** Latest pitch relative to that baseline, already signed. */
@@ -138,12 +153,20 @@ export function observeTilt(
   }
   const delta = (value - state.baseline) * sign;
   const settled = delta <= releaseDelta;
+  const unsettled = settled ? 0 : (state.unsettled ?? 0) + 1;
+  if (unsettled >= UNSETTLED_REARM_SAMPLES) {
+    // Adopt this pose as rest and re-arm, so a stale baseline self-heals.
+    return {
+      state: { baseline: value, delta: 0, armed: true, samples, last, proven: state.proven, unsettled: 0 },
+      wake: false,
+    };
+  }
   // Arming is the low half of the hysteresis band; firing is the high half.
   let armed = state.armed || settled;
   const wake = armed && samples > warmup && delta >= wakeDelta;
   if (wake) armed = false;
   const baseline = settled ? state.baseline + alpha * (value - state.baseline) : state.baseline;
-  return { state: { baseline, delta, armed, samples, last, proven: state.proven || wake }, wake };
+  return { state: { baseline, delta, armed, samples, last, proven: state.proven || wake, unsettled }, wake };
 }
 
 /** The IMU half of the diagnostic row: the raw triple and the pitch delta. */

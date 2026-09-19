@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import { test } from "node:test";
 import {
   AWAKE_SESSION_MAX_MS, IDLE_SLEEP_MS, IMU_REPORT_PACE_MS, PITCH_AXIS, RELEASE_PITCH_DELTA,
-  RESTING_TILT, WAKE_PITCH_DELTA, attentionWorthy, dueForSleep, initialAttention, noteActivity,
+  RESTING_TILT, UNSETTLED_REARM_SAMPLES, WAKE_PITCH_DELTA, attentionWorthy, dueForSleep, initialAttention, noteActivity,
   observeTilt, renderTiltDebug, sleepAttention, wakeAttention,
 } from "../src/attention.ts";
 import type { ImuSample, TiltState } from "../src/attention.ts";
@@ -104,15 +104,25 @@ test("hysteresis: the head must settle below the release band to wake again", ()
   assert.deepEqual(pitches(settle).wakes, [6, 8]);
 });
 
-test("a held tilt never becomes the new resting orientation", () => {
+test("a brief hold keeps the gesture; a long one becomes the new rest", () => {
   const raised = WAKE_PITCH_DELTA * 3;
-  // Thirty seconds of reading at 300 ms a sample, head held up throughout.
-  const held = [...Array.from({ length: 6 }, () => 0), ...Array.from({ length: 100 }, () => raised)];
-  const { state, wakes } = pitches(held);
-  assert.deepEqual(wakes, [6]);
-  assert.ok(Math.abs(state.baseline ?? 99) < RELEASE_PITCH_DELTA, String(state.baseline));
-  // So lowering and raising again still wakes.
-  assert.deepEqual(pitches([0, raised], state).wakes, [1]);
+  // A few seconds of reading with the head up: the baseline must not move,
+  // or looking back down and up again would stop waking the lens.
+  const brief = [...Array.from({ length: 6 }, () => 0), ...Array.from({ length: 10 }, () => raised)];
+  const held = pitches(brief);
+  assert.deepEqual(held.wakes, [6]);
+  assert.ok(Math.abs(held.state.baseline ?? 99) < RELEASE_PITCH_DELTA, String(held.state.baseline));
+  assert.deepEqual(pitches([0, raised], held.state).wakes, [1]);
+
+  // Sitting "raised" indefinitely is not a gesture, it is a new posture. The
+  // baseline has to adopt it, or a stale baseline strands the wearer with a
+  // dark lens that no tilt can wake — observed on hardware 2026-09-19.
+  const forever = [...Array.from({ length: 6 }, () => 0), ...Array.from({ length: 100 }, () => raised)];
+  const settled = pitches(forever);
+  assert.deepEqual(settled.wakes, [6]);
+  assert.ok(Math.abs(settled.state.delta) < RELEASE_PITCH_DELTA, String(settled.state.delta));
+  assert.equal(settled.state.armed, true);
+  assert.deepEqual(pitches([raised * 2], settled.state).wakes, [0]);
 });
 
 test("the baseline follows a slow drift, which therefore never wakes the lens", () => {
@@ -172,4 +182,17 @@ test("only a change that wants the wearer keeps the lens lit", () => {
   assert.equal(attentionWorthy(idle, null), false);
   assert.equal(attentionWorthy(null, snapshot([])), false);
   assert.equal(attentionWorthy(null, idle), true);
+});
+
+test("a stale baseline self-heals instead of stranding the wearer", () => {
+  let tilt = RESTING_TILT;
+  // Baseline settles low, then the head sits raised for good: the old
+  // behaviour froze the baseline and could never re-arm.
+  for (let i = 0; i < 5; i++) tilt = observeTilt(tilt, { y: -0.14 }).state;
+  for (let i = 0; i < UNSETTLED_REARM_SAMPLES + 1; i++) tilt = observeTilt(tilt, { y: 0.12 }).state;
+  assert.equal(tilt.armed, true, "re-armed once the pose is clearly the new rest");
+  assert.ok(Math.abs(tilt.delta) < 0.05, "the raised pose became the baseline");
+  // And a genuine raise from there still wakes.
+  const raised = observeTilt(tilt, { y: 0.4 });
+  assert.equal(raised.wake, true);
 });
