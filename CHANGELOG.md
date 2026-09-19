@@ -15,6 +15,12 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
   credentials, deliberate credential retrieval/rotation, a Tailnet IPv4
   default, and read-only-by-default Send Enter/Interrupt controls; physical G2
   package, HTTP, background, and wake validation remains pending.
+- Added a dictated `send_text` action to the Even G2 HUD command endpoint, so a
+  spoken phrase can be typed into an Agent's prompt. It stays behind the same
+  `--controls` opt-in, inserts without pressing Enter unless the caller asks
+  for it, caps a phrase at 512 characters, and refuses control characters
+  outright so a transcript can never carry a newline or escape sequence into a
+  live terminal.
 
 ### Changed
 

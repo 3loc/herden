@@ -612,6 +612,124 @@ struct Command {
     action: String,
     #[serde(rename = "agentId")]
     agent_id: String,
+    #[serde(default)]
+    text: Option<String>,
+    #[serde(default)]
+    submit: Option<bool>,
+}
+
+/// One validated `pane.send_input` parameter object, plus the key that
+/// suppresses an immediate resend of the same intent.
+struct PlannedCommand {
+    agent_id: String,
+    params: serde_json::Value,
+    rate_key: String,
+}
+
+/// A refusal carries the HTTP status and the exact JSON body written back, so
+/// every rejection path stays one shape regardless of which check tripped.
+type Refusal = (u16, &'static str);
+
+/// A dictated phrase, not a script. Long enough for a spoken sentence or a
+/// short command line, short enough that a mis-transcribed stream cannot fill
+/// an Agent's prompt. Counted in characters, not bytes, so non-Latin
+/// dictation is not silently penalised.
+const MAX_COMMAND_TEXT_CHARS: usize = 512;
+
+/// Dictation must reach the PTY as literal characters and nothing else.
+///
+/// `\n` and `\r` are the dangerous case and are **rejected, not converted**:
+/// the PTY reads either as Enter, so a single embedded newline would submit a
+/// line even though `submit` defaults to false, and everything after it would
+/// run as a further command. Rewriting them to spaces would silently change
+/// what the speaker said, which is worse than refusing. Every other control
+/// character is rejected for the same reason — ESC opens an escape sequence,
+/// and TUIs read tab as completion rather than as text. Ordinary spaces are
+/// the only whitespace that survives.
+fn validate_command_text(raw: &str) -> Result<String, Refusal> {
+    let text = raw.trim();
+    if text.is_empty() {
+        return Err((400, r#"{"error":"text is required"}"#));
+    }
+    if text.chars().count() > MAX_COMMAND_TEXT_CHARS {
+        return Err((400, r#"{"error":"text is too long"}"#));
+    }
+    if text.chars().any(char::is_control) {
+        return Err((400, r#"{"error":"text contains control characters"}"#));
+    }
+    Ok(text.to_string())
+}
+
+fn plan_command(body: &[u8]) -> Result<PlannedCommand, Refusal> {
+    let command: Command =
+        serde_json::from_slice(body).map_err(|_| (400, r#"{"error":"invalid command"}"#))?;
+    match command.action.as_str() {
+        "send_enter" | "interrupt" => {
+            let keys = if command.action == "send_enter" {
+                "enter"
+            } else {
+                "ctrl+c"
+            };
+            Ok(PlannedCommand {
+                rate_key: format!("{}:{}", command.action, command.agent_id),
+                params: serde_json::json!({"pane_id": command.agent_id, "keys": [keys]}),
+                agent_id: command.agent_id,
+            })
+        }
+        "send_text" => {
+            let text = validate_command_text(command.text.as_deref().unwrap_or(""))?;
+            // `submit` defaults to false so dictation inserts without firing a
+            // command. When it is true the text and Enter travel in one
+            // `pane.send_input` call, which the Host applies atomically; two
+            // calls could interleave with another writer's input.
+            let submit = command.submit.unwrap_or(false);
+            let params = if submit {
+                serde_json::json!({"pane_id": command.agent_id, "text": text, "keys": ["enter"]})
+            } else {
+                serde_json::json!({"pane_id": command.agent_id, "text": text})
+            };
+            Ok(PlannedCommand {
+                // Distinct phrases are distinct intents; only a repeat of the
+                // same phrase with the same submit choice is a duplicate.
+                rate_key: format!("send_text:{}:{submit}:{text}", command.agent_id),
+                params,
+                agent_id: command.agent_id,
+            })
+        }
+        _ => Err((400, r#"{"error":"unsupported command"}"#)),
+    }
+}
+
+/// Every decision the command endpoint makes before it touches the network.
+fn command_outcome(
+    settings: &Settings,
+    state: &Arc<Mutex<Projection>>,
+    body: &[u8],
+    agent_exists: impl FnOnce(&str) -> bool,
+) -> Result<serde_json::Value, Refusal> {
+    if !settings.controls {
+        return Err((403, r#"{"error":"controls are disabled"}"#));
+    }
+    let command = plan_command(body)?;
+    if let Ok(mut projection) = state.lock() {
+        projection
+            .recent_commands
+            .retain(|_, sent| sent.elapsed() < Duration::from_secs(5));
+        if projection
+            .recent_commands
+            .get(&command.rate_key)
+            .is_some_and(|sent| sent.elapsed() < Duration::from_millis(750))
+        {
+            return Err((409, r#"{"error":"duplicate command ignored"}"#));
+        }
+        projection
+            .recent_commands
+            .insert(command.rate_key, Instant::now());
+    }
+    if !agent_exists(&command.agent_id) {
+        return Err((404, r#"{"error":"agent no longer exists"}"#));
+    }
+    Ok(command.params)
 }
 
 fn command_response(
@@ -620,75 +738,20 @@ fn command_response(
     state: &Arc<Mutex<Projection>>,
     body: &[u8],
 ) -> io::Result<()> {
-    if !settings.controls {
-        return write_response(
-            stream,
-            403,
-            "application/json",
-            br#"{"error":"controls are disabled"}"#,
-            &[],
-        );
-    }
-    let command: Command = match serde_json::from_slice(body) {
-        Ok(command) => command,
-        Err(_) => {
-            return write_response(
-                stream,
-                400,
-                "application/json",
-                br#"{"error":"invalid command"}"#,
-                &[],
-            )
+    let params = match command_outcome(settings, state, body, |agent_id| {
+        list_agents()
+            .ok()
+            .is_some_and(|agents| agents.iter().any(|agent| agent.id == agent_id))
+    }) {
+        Ok(params) => params,
+        Err((status, body)) => {
+            return write_response(stream, status, "application/json", body.as_bytes(), &[])
         }
     };
-    let keys = match command.action.as_str() {
-        "send_enter" => vec!["enter"],
-        "interrupt" => vec!["ctrl+c"],
-        _ => {
-            return write_response(
-                stream,
-                400,
-                "application/json",
-                br#"{"error":"unsupported command"}"#,
-                &[],
-            )
-        }
-    };
-    let command_key = format!("{}:{}", command.action, command.agent_id);
-    if let Ok(mut projection) = state.lock() {
-        projection
-            .recent_commands
-            .retain(|_, sent| sent.elapsed() < Duration::from_secs(5));
-        if projection
-            .recent_commands
-            .get(&command_key)
-            .is_some_and(|sent| sent.elapsed() < Duration::from_millis(750))
-        {
-            return write_response(
-                stream,
-                409,
-                "application/json",
-                br#"{"error":"duplicate command ignored"}"#,
-                &[],
-            );
-        }
-        projection
-            .recent_commands
-            .insert(command_key, Instant::now());
-    }
-    let exists = list_agents()
-        .ok()
-        .is_some_and(|agents| agents.iter().any(|agent| agent.id == command.agent_id));
-    if !exists {
-        return write_response(
-            stream,
-            404,
-            "application/json",
-            br#"{"error":"agent no longer exists"}"#,
-            &[],
-        );
-    }
-    let request: Request = serde_json::from_value(serde_json::json!({"id":"glasses:command","method":"pane.send_input","params":{"pane_id":command.agent_id,"keys":keys}})).map_err(io::Error::other)?;
+    let request: Request = serde_json::from_value(
+        serde_json::json!({"id":"glasses:command","method":"pane.send_input","params":params}),
+    )
+    .map_err(io::Error::other)?;
     match ApiClient::local().request_value_with_timeout(&request, Duration::from_secs(2)) {
         Ok(value) if value.get("error").is_none() => write_response(
             stream,
@@ -1331,6 +1394,185 @@ mod tests {
             normalise_output("GET /health -> 200 (12ms)\nif (ready) { deploy(); }\n"),
             "GET /health -> 200 (12ms)\nif (ready) { deploy(); }"
         );
+    }
+
+    fn controls_settings(controls: bool) -> Settings {
+        Settings {
+            enabled: true,
+            bind: "100.64.0.2".into(),
+            port: DEFAULT_PORT,
+            controls,
+        }
+    }
+
+    fn controls_state(controls: bool) -> Arc<Mutex<Projection>> {
+        Arc::new(Mutex::new(Projection::offline(controls)))
+    }
+
+    fn post_command(
+        settings: &Settings,
+        state: &Arc<Mutex<Projection>>,
+        body: &str,
+    ) -> Result<serde_json::Value, Refusal> {
+        command_outcome(settings, state, body.as_bytes(), |_| true)
+    }
+
+    #[test]
+    fn dictated_text_is_inserted_without_submitting_by_default() {
+        let params = post_command(
+            &controls_settings(true),
+            &controls_state(true),
+            r#"{"action":"send_text","agentId":"w1:pT","text":"run the tests"}"#,
+        )
+        .unwrap();
+        assert_eq!(params["pane_id"], "w1:pT");
+        assert_eq!(params["text"], "run the tests");
+        assert!(params.get("keys").is_none());
+    }
+
+    #[test]
+    fn submitted_text_types_and_presses_enter_in_one_request() {
+        let params = post_command(
+            &controls_settings(true),
+            &controls_state(true),
+            r#"{"action":"send_text","agentId":"w1:pT","text":"  run the tests  ","submit":true}"#,
+        )
+        .unwrap();
+        assert_eq!(params["text"], "run the tests");
+        assert_eq!(params["keys"], serde_json::json!(["enter"]));
+    }
+
+    #[test]
+    fn empty_or_whitespace_dictation_is_refused() {
+        for body in [
+            r#"{"action":"send_text","agentId":"w1:pT","text":""}"#,
+            r#"{"action":"send_text","agentId":"w1:pT","text":"   "}"#,
+            r#"{"action":"send_text","agentId":"w1:pT"}"#,
+        ] {
+            let (status, message) =
+                post_command(&controls_settings(true), &controls_state(true), body).unwrap_err();
+            assert_eq!(status, 400);
+            assert!(message.contains("text is required"));
+        }
+    }
+
+    #[test]
+    fn dictated_text_is_bounded_at_the_documented_limit() {
+        let settings = controls_settings(true);
+        let longest = "a".repeat(MAX_COMMAND_TEXT_CHARS);
+        assert!(post_command(
+            &settings,
+            &controls_state(true),
+            &format!(r#"{{"action":"send_text","agentId":"w1:pT","text":"{longest}"}}"#),
+        )
+        .is_ok());
+        let overlong = "a".repeat(MAX_COMMAND_TEXT_CHARS + 1);
+        let (status, message) = post_command(
+            &settings,
+            &controls_state(true),
+            &format!(r#"{{"action":"send_text","agentId":"w1:pT","text":"{overlong}"}}"#),
+        )
+        .unwrap_err();
+        assert_eq!(status, 400);
+        assert!(message.contains("too long"));
+    }
+
+    #[test]
+    fn dictation_never_carries_newlines_or_escapes_into_the_pty() {
+        for text in [
+            r"deploy\nrm -rf /",
+            r"deploy\rrm -rf /",
+            r"deploy\u001b[31m",
+            r"deploy\tnow",
+        ] {
+            let (status, message) = post_command(
+                &controls_settings(true),
+                &controls_state(true),
+                &format!(r#"{{"action":"send_text","agentId":"w1:pT","text":"{text}"}}"#),
+            )
+            .unwrap_err();
+            assert_eq!(status, 400);
+            assert!(message.contains("control characters"), "accepted {text}");
+        }
+    }
+
+    #[test]
+    fn dictation_is_refused_while_controls_are_disabled() {
+        let (status, message) = post_command(
+            &controls_settings(false),
+            &controls_state(false),
+            r#"{"action":"send_text","agentId":"w1:pT","text":"run the tests"}"#,
+        )
+        .unwrap_err();
+        assert_eq!(status, 403);
+        assert!(message.contains("controls are disabled"));
+    }
+
+    #[test]
+    fn dictation_to_a_vanished_agent_is_refused() {
+        let (status, message) = command_outcome(
+            &controls_settings(true),
+            &controls_state(true),
+            br#"{"action":"send_text","agentId":"w1:gone","text":"run the tests"}"#,
+            |_| false,
+        )
+        .unwrap_err();
+        assert_eq!(status, 404);
+        assert!(message.contains("no longer exists"));
+    }
+
+    #[test]
+    fn the_same_phrase_twice_is_a_duplicate_but_a_new_phrase_is_not() {
+        let settings = controls_settings(true);
+        let state = controls_state(true);
+        let first = r#"{"action":"send_text","agentId":"w1:pT","text":"run the tests"}"#;
+        assert!(post_command(&settings, &state, first).is_ok());
+        let (status, message) = post_command(&settings, &state, first).unwrap_err();
+        assert_eq!(status, 409);
+        assert!(message.contains("duplicate"));
+        assert!(post_command(
+            &settings,
+            &state,
+            r#"{"action":"send_text","agentId":"w1:pT","text":"stop the tests"}"#,
+        )
+        .is_ok());
+        assert!(post_command(
+            &settings,
+            &state,
+            r#"{"action":"send_text","agentId":"w1:pT","text":"run the tests","submit":true}"#,
+        )
+        .is_ok());
+    }
+
+    #[test]
+    fn the_existing_key_actions_keep_their_payloads() {
+        let settings = controls_settings(true);
+        let state = controls_state(true);
+        assert_eq!(
+            post_command(
+                &settings,
+                &state,
+                r#"{"action":"send_enter","agentId":"w1:pT"}"#
+            )
+            .unwrap(),
+            serde_json::json!({"pane_id":"w1:pT","keys":["enter"]})
+        );
+        assert_eq!(
+            post_command(
+                &settings,
+                &state,
+                r#"{"action":"interrupt","agentId":"w1:pT"}"#
+            )
+            .unwrap(),
+            serde_json::json!({"pane_id":"w1:pT","keys":["ctrl+c"]})
+        );
+        let (status, _) = post_command(
+            &settings,
+            &state,
+            r#"{"action":"reboot","agentId":"w1:pT"}"#,
+        )
+        .unwrap_err();
+        assert_eq!(status, 400);
     }
 
     #[test]

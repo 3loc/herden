@@ -144,7 +144,7 @@ fn glasses_command() -> Command {
                 .about("Start the HUD endpoint on a private-network address")
                 .arg(option("bind", "ADDRESS").help("Explicit private LAN or Tailnet address"))
                 .arg(option("port", "PORT").help("Listener port (default: 8791)"))
-                .arg(flag("controls").help("Allow Send Enter and Interrupt"))
+                .arg(flag("controls").help("Allow Send Enter, Interrupt and dictated text"))
                 .arg(flag("read-only").help("Disable all HUD controls"))
                 .arg(flag("reconfigure").help("Allow a bind or port change")),
         )
