@@ -24,7 +24,7 @@ import { PCM_FORMAT } from "./audio.ts";
 export const PREROLL_MS = 600;
 
 /** Silence that ends an utterance. Long enough to think mid-sentence. */
-export const SILENCE_END_MS = 3_000;
+export const SILENCE_END_MS = 1_200;
 
 /** One utterance can never grow past this, however the endpointer behaves. */
 export const UTTERANCE_MAX_MS = 15_000;

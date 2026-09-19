@@ -175,11 +175,18 @@ export type GestureDebug = {
    * the transcript because the transcript is also shown in the notice row.
    */
   imu?: string;
+  /**
+   * Captured-audio counters: frames seen and kilobytes buffered. Without this
+   * a silent microphone and a microphone whose frames never reach the app
+   * look identical on the lens.
+   */
+  audio?: string;
 };
 
 export function renderGestureDebug(gesture: GestureDebug): string {
   const mic = [
     gesture.imu ? ` ${gesture.imu}` : "",
+    gesture.audio ? ` ${gesture.audio}` : "",
     gesture.mic ? ` mic=${gesture.mic}` : "",
     gesture.transcript ? ` "${gesture.transcript}"` : "",
   ].join("");

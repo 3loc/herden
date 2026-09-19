@@ -53,6 +53,11 @@ const DEVELOPMENT_PROXY_HOSTS: HostSettings[] = (() => {
  */
 const GESTURE_DEBUG = true;
 const gesture: GestureDebug = { count: 0, field: "none" };
+/** Proof of life for the microphone path: frames delivered and bytes held. */
+const audioStats = { frames: 0, bytes: 0 };
+function renderAudioDebug(): string {
+  return `aud=${audioStats.frames}f/${(audioStats.bytes / 1024).toFixed(0)}k`;
+}
 
 type View = "list" | "detail";
 const state = {
@@ -141,7 +146,7 @@ async function paint(): Promise<void> {
     const snapshot = state.snapshot; const agent = state.view === "detail" ? selectedAgent() : null;
     const output = state.outputLoading ? ["reading output…"] : state.output;
     const empty = (state.roster?.agents.length ?? 0) > 0 ? "no Spaces selected" : "no agents";
-    const debug = GESTURE_DEBUG ? renderGestureDebug({ ...gesture, imu: renderTiltDebug(tilt), mic: voiceDebugMark(state.voice), transcript: state.voice.transcript }) : undefined;
+    const debug = GESTURE_DEBUG ? renderGestureDebug({ ...gesture, imu: renderTiltDebug(tilt), audio: renderAudioDebug(), mic: voiceDebugMark(state.voice), transcript: state.voice.transcript }) : undefined;
     const notice = renderVoiceStatus(state.voice);
     const content = agent ? renderDetail(agent, output, state.outputOffset, state.online, state.selected + 1, notice)
       : snapshot ? renderList(snapshot, state.selected, state.online, empty, debug, notice) : [...notice, "connecting…"].join("\n");
@@ -216,6 +221,8 @@ function handleHubEvent(event: EvenHubEvent): void {
   // never let one bump the gesture diagnostic's event counter.
   if (event.audioEvent) {
     const pcm = toPcmBytes((event.audioEvent as { audioPcm?: unknown }).audioPcm);
+    audioStats.frames += 1;
+    audioStats.bytes += pcm.length;
     if (pcm.length === 0 || !micOpen) return;
     const heard = feedFrame(listen, pcm);
     listen = heard.buffer;
@@ -314,7 +321,7 @@ function noteWearerActivity(): void {
 async function blankLens(): Promise<void> {
   state.painting = state.painting.catch(() => {}).then(async () => {
     const content = GESTURE_DEBUG
-      ? renderGestureDebug({ ...gesture, imu: renderTiltDebug(tilt), mic: "asleep" })
+      ? renderGestureDebug({ ...gesture, imu: renderTiltDebug(tilt), audio: renderAudioDebug(), mic: "asleep" })
       : "";
     if (content === state.lastText) return;
     await upgrade(content);
