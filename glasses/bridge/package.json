@@ -1,0 +1,14 @@
+{
+  "name": "herden-glasses-bridge",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Host-side bridge serving Herden agent state to the Even G2 HUD",
+  "type": "module",
+  "bin": { "herden-glasses-bridge": "src/index.mjs" },
+  "scripts": {
+    "start": "node src/index.mjs",
+    "test": "node --test"
+  },
+  "engines": { "node": ">=22" },
+  "license": "MIT"
+}

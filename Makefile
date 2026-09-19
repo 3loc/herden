@@ -9,6 +9,8 @@ ARCHIVE := build/Herden.xcarchive
 APP_ID  := ltd.3loc.herden
 SIM     ?= iPhone 17
 IOS_WATCH_DEBOUNCE ?= 1s
+GLASSES_DEV_HOST ?= agneta
+GLASSES_INPUT ?= click
 
 # Stable caches survive task worktrees and Studio staging directories. Xcode's
 # default DerivedData key includes the checkout path, which previously created
@@ -40,7 +42,7 @@ IOS_SIGNING_ARGS ?=
 help: ## Show available targets
 	@awk -F':.*## ' '/^[a-z-]+:.*## / { printf "  make %-20s %s\n", $$1, $$2 }' $(MAKEFILE_LIST)
 
-.PHONY: host-build host-install host-check host-test host-test-one host-perf host-release host-release-asset host-release-assemble
+.PHONY: host-build host-install host-check host-test host-test-one host-perf host-release host-release-asset host-release-assemble glasses-test glasses-build glasses-agneta glasses-mbair glasses-open glasses-refresh glasses-status glasses-screenshot glasses-input glasses-stop
 
 # Pinned Zig 0.15.2 cannot link its build runner against Xcode 26's macOS SDK.
 # On macOS, route only the SDK-path lookup through the compatible CLT 15.4 SDK.
@@ -80,6 +82,36 @@ host-release-assemble: ## Assemble Host release metadata (HOST_VERSION=... OUT_D
 	@test -n "$(HOST_VERSION)" || { echo "HOST_VERSION is required" >&2; exit 2; }
 	@test -n "$(OUT_DIR)" || { echo "OUT_DIR is required" >&2; exit 2; }
 	sh scripts/assemble-host-release.sh "$(HOST_VERSION)" "$(OUT_DIR)"
+
+glasses-test: ## Run the Even G2 HUD renderer tests
+	cd glasses/app && npm test
+
+glasses-build: ## Install locked HUD development dependencies and build the Even assets
+	cd glasses/app && npm ci && npm run build
+
+glasses-agneta: ## Run the current HUD simulator on Agneta
+	GLASSES_DEV_HOST=agneta scripts/glasses-dev-agneta.sh open
+
+glasses-mbair: ## Run the current HUD simulator on mbair
+	GLASSES_DEV_HOST=mbair scripts/glasses-dev-mbair.sh open
+
+glasses-open: ## Refresh the single Agneta HUD simulator window and verify both Host proxies
+	GLASSES_DEV_HOST="$(GLASSES_DEV_HOST)" scripts/glasses-dev-agneta.sh open
+
+glasses-refresh: ## Alias for glasses-open after HUD source or Host changes
+	GLASSES_DEV_HOST="$(GLASSES_DEV_HOST)" scripts/glasses-dev-agneta.sh refresh
+
+glasses-status: ## Show the tracked Agneta HUD tunnel, Vite, and simulator processes
+	GLASSES_DEV_HOST="$(GLASSES_DEV_HOST)" scripts/glasses-dev-agneta.sh status
+
+glasses-screenshot: ## Save the current Agneta HUD simulator view to /vm-share/screenshots
+	GLASSES_DEV_HOST="$(GLASSES_DEV_HOST)" scripts/glasses-dev-agneta.sh screenshot
+
+glasses-input: ## Send a glasses-only simulator input (GLASSES_INPUT=up|down|click|double_click)
+	GLASSES_DEV_HOST="$(GLASSES_DEV_HOST)" scripts/glasses-dev-agneta.sh input "$(GLASSES_INPUT)"
+
+glasses-stop: ## Stop only the tracked Agneta HUD Vite and simulator processes
+	GLASSES_DEV_HOST="$(GLASSES_DEV_HOST)" scripts/glasses-dev-agneta.sh stop
 
 ssh-artifacts: ## Rebuild the pinned HerdenSSH XCFrameworks
 	Packages/HerdenSSH/Scripts/build-native.sh
