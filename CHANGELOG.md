@@ -10,6 +10,9 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ### Added
 
+- Added a generic private gateway and reproducible Even Hub package workflow
+  for an installed G2 beta. Deployment-specific Hosts and the exact HTTPS
+  origin are injected only at build time; Host credentials remain server-side.
 - Added an opt-in, Host-owned private-network HUD endpoint for the Even G2
   prototype. It serves bounded Agent-status SSE snapshots with 256-bit bearer
   credentials, deliberate credential retrieval/rotation, a Tailnet IPv4

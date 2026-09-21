@@ -11,6 +11,10 @@
       "name": "network",
       "desc": "Reads Herden agent status from your own Host over your private network.",
       "whitelist": []
+    },
+    {
+      "name": "g2-microphone",
+      "desc": "Listens for hands-free navigation and dictation while the Herden display is awake."
     }
   ],
   "supported_languages": ["en"]

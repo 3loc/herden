@@ -4,9 +4,11 @@
 the G2 receives display updates through the vendor SDK. It is not a native
 Herden iOS feature and does not own Bluetooth.
 
-`bridge/` remains a development fixture for protocol and renderer work. It is
-not a supported customer runtime. The supported direction is the managed Rust
-endpoint in the Herden Host, configured with `herden glasses`.
+`bridge/` remains a compatibility fixture for Hosts that predate the managed
+Rust endpoint. New Hosts use `herden glasses`. `gateway/` is the optional,
+dependency-free reverse proxy for a private installed build: it keeps Host
+credentials server-side and presents several Hosts plus transcription through
+one HTTPS origin.
 
 For the current QR prototype's wake, voice, paging, dictation, and close
 instructions, see [Using the glasses](../docs/guides/glasses.md#using-the-current-qr-prototype).
@@ -21,11 +23,11 @@ in `app/test/` exercise the model and service boundaries with fake SDK and
 Host connections, as well as endpointing and ordered command delivery. STT
 and Host requests share the bounded WebView operation helper in `deadline.ts`.
 
-The app source has no maintainer endpoint, token, DNS record, TLS route, or
-infrastructure dependency. Its network whitelist is deliberately empty until
-the actual packaged iPhone permission semantics are observed on a paired G2.
-Do not add a wildcard or a private deployment origin as a substitute for that
-evidence.
+The app source has no maintainer endpoint, token, DNS record, or TLS route.
+`app.json` deliberately keeps an empty network whitelist. A private build uses
+environment variables to seed its Hosts and generates a build-only manifest
+containing one exact HTTPS origin. Do not commit that generated manifest or
+replace the whitelist with a wildcard.
 
 
 ## Developer commands
@@ -78,8 +80,6 @@ voice results, Host changes, navigation, wake, and sleep do. Rendering is
 last-frame-wins and bounded, so a missing SDK callback cannot block STT or
 permanently wedge later text updates.
 
-For renderer work that does not need hardware:
-
 For public captures, start the development simulator with the URL
 `http://localhost:5173/?demo=1`. This uses the real text renderer with generic
 offline Spaces and sample output. It does not load saved Hosts, access tokens,
@@ -107,6 +107,7 @@ herden glasses token show | sed -n '$p' > ~/.config/herden/glasses-simulator-tok
 chmod 600 ~/.config/herden/glasses-simulator-token
 HERDEN_HUD_PROXY_TARGET=http://192.168.1.20:8791 \
 HERDEN_HUD_PROXY_TOKEN_FILE=~/.config/herden/glasses-simulator-token \
+HERDEN_HUD_STT_TARGET=http://192.168.1.30:8022 \
 VITE_HERDEN_HUD_PROXY=1 npm run dev -- --host 127.0.0.1
 npm run sim
 ```
@@ -115,4 +116,31 @@ With `VITE_HERDEN_HUD_PROXY=1`, the simulator starts connected through the
 local proxy. The real credential stays in the Vite process and is never
 included in the web bundle, panel, or production configuration. The proxy
 exists only in Vite; it does not change production CORS or Even network
-permissions.
+permissions. `HERDEN_HUD_STT_TARGET` keeps the development app's relative
+`/stt` upload on the same origin while forwarding it to the operator's
+transcription service; no transcription address is compiled into the app.
+
+## Private installed build
+
+An installed Even Hub build must use an HTTPS origin permitted by its generated
+manifest. Keep the deployment-specific Host list out of Git and inject it only
+while building:
+
+```sh
+cd glasses/app
+VITE_HERDEN_HUD_BOOTSTRAP_HOSTS='[...]' \
+VITE_HERDEN_HUD_STT='https://gateway.example/stt' \
+HERDEN_HUD_ALLOWED_ORIGIN='https://gateway.example' \
+npm run pack:private
+```
+
+This produces `herden-hud.ehpk`. `private-manifest.mjs` rejects HTTP and emits
+exactly one allowed origin. The bootstrap token may be a non-secret placeholder
+when a trusted private gateway strips it and injects the real per-Host bearer
+credential. Never compile a real Host token into the package.
+
+The gateway listens on loopback and requires an identity header from its local
+trusted TLS proxy. It removes client token query parameters, supplies the real
+Host credentials from protected files, and proxies transcription without
+storing audio. Its deployment, certificates, DNS, and service units belong in
+private operator configuration, not this public repository.

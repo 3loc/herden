@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
 import { OsEventTypeList } from "@evenrealities/even_hub_sdk";
-import { isHubOverlayEvent, isTerminalHubExit } from "../src/hub-event-policy.ts";
+import { doubleClickAction, isHubOverlayEvent, isTerminalHubExit } from "../src/hub-event-policy.ts";
 
 test("contextual-menu foreground events do not terminate a voice session", () => {
   for (const event of [OsEventTypeList.FOREGROUND_ENTER_EVENT, OsEventTypeList.FOREGROUND_EXIT_EVENT]) {
@@ -16,4 +16,9 @@ test("actual exit events close the voice session", () => {
     assert.equal(isHubOverlayEvent(event), false);
   }
   assert.equal(isTerminalHubExit(OsEventTypeList.IMU_DATA_REPORT), false);
+});
+
+test("double click goes back inside a Space and opens the system exit dialog at root", () => {
+  assert.equal(doubleClickAction("detail"), "back");
+  assert.equal(doubleClickAction("list"), "exit");
 });

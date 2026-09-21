@@ -1,0 +1,11 @@
+{
+  "name": "herden-glasses-gateway",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Private multi-Host and transcription gateway for an installed Herden HUD",
+  "type": "module",
+  "bin": { "herden-glasses-gateway": "src/index.mjs" },
+  "scripts": { "start": "node src/index.mjs", "test": "node --test" },
+  "engines": { "node": ">=22" },
+  "license": "MIT"
+}

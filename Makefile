@@ -83,6 +83,7 @@ host-release-assemble: ## Assemble Host release metadata (HOST_VERSION=... OUT_D
 
 glasses-test: ## Run the Even G2 HUD renderer tests
 	cd glasses/app && npm test
+	cd glasses/gateway && npm test
 
 glasses-build: ## Install locked HUD development dependencies and build the Even assets
 	cd glasses/app && npm ci && npm run build

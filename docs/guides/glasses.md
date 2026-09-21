@@ -1,24 +1,25 @@
-# Even G2 HUD (hardware gate pending)
+# Even G2 HUD
 
 Herden has an optional Host-owned HUD endpoint for Even Realities G2 glasses.
 It runs inside the existing Herden Host process and gives the phone-side Even
 app a small Agent-status view. The Even app owns the Bluetooth link to the
 glasses; Herden does not communicate with the glasses directly.
 
-The feature is disabled by default. It has no Herden cloud, notification relay,
-Node runtime, reverse proxy, DNS record, certificate, or service-unit
-requirement. It uses private-network HTTP between your phone and Host. A
-Tailnet is preferred when available. A LAN address is also supported, but LAN
-HTTP is not encrypted.
+The feature is disabled by default. Direct use has no Herden cloud or
+notification-relay requirement: it uses private-network HTTP between your
+phone and Host. A private installed build may instead use the optional
+self-hosted gateway in `glasses/gateway/` to combine several Hosts and
+transcription behind one exact HTTPS origin while keeping every Host token on
+the server. A Tailnet is preferred between the gateway and Hosts.
 
-## Using the current QR prototype
+## Using the HUD
 
-This is a development sideload, not an Even Hub release. Keep the development
-server running, display its current QR code on a computer, and scan it with the
-Even app on the phone paired to your G2. The phone must be able to reach the
-Herden Host and the configured transcription service. A new QR session may be
-needed after the development server or its address changes. Packaged app setup
-and locked-phone operation have not passed the physical-device gate below.
+For development, run the Vite server and scan its current QR code with the Even
+app on the phone paired to your G2. A private Even Hub beta can instead be
+installed once and opened from the Hub without rescanning; its build injects
+one operator-controlled HTTPS gateway origin. The phone must be able to reach
+the chosen Host route and transcription service. Long-duration locked-phone,
+recovery, and battery behaviour remain physical acceptance items below.
 
 The glasses path is separate from iOS's SSH path. An iPhone can connect to a
 Host over SSH while the glasses still report that Host as offline: the glasses
@@ -161,11 +162,11 @@ Even Hub exposes no font family, font size, or line height, so Herden gains
 density by removing decorative chrome. Of ten measured firmware rows, one
 names the Space, eight show Agent output, and the final row anchors microphone
 state and output position. Opened Spaces start at the newest output and follow
-it unless the wearer scrolls back. Native text preserves every Unicode glyph the
-firmware supplies and avoids the four image transfers that previously
+it unless the wearer scrolls back. Native text preserves every Unicode glyph
+the firmware supplies and avoids the four image transfers that previously
 desynchronised the two displays. IMU and audio samples never repaint the lens;
-only meaningful voice results, Host changes, and UI transitions do. Physical G2
-legibility and glyph coverage still require hardware acceptance.
+only meaningful voice results, Host changes, and UI transitions do. Glyph
+coverage varies with the firmware font.
 
 On first enable, Herden prints the new bearer credential once so that you can
 configure the phone-side client. `herden glasses status` never displays it.
@@ -183,16 +184,17 @@ separately from configuration with private filesystem permissions.
 
 ## Current evidence boundary
 
-This code is not yet a finished G2 product workflow. No physical G2 evidence
-has been recorded for packaged iPhone HTTP/SSE, the production network
-whitelist, package format/install route, locked-phone background operation,
-or display wake. `herden glasses package --output …` therefore fails
-intentionally instead of assembling an unverified package. The prototype's
-maintainer-specific DNS, TLS, and systemd instructions are not product setup
-instructions and must not be used for a release.
+On 21 September 2026, a private `.ehpk` built with SDK 0.0.15 was uploaded to
+Even Hub, assigned to a beta tester, installed, and opened on a paired G2. Its
+exact-origin HTTPS gateway delivered live multi-Host SSE and transcription.
+This proves the private package/install route, but it is not a public-store
+release and does not prove arbitrary user networks. `herden glasses package
+--output …` still fails intentionally; private packaging is the explicit
+`npm run pack:private` operator workflow documented in `glasses/README.md`.
 
-Before this guide can describe installation as available, run and record the
-physical-device milestone in `docs/research/even-g2-hardware-evidence.md`:
-versions, Tailnet and LAN HTTP fetch/SSE/auth tests, whitelist and install
-semantics, a 30-minute locked-phone transition trial, wear/BLE/network
-recovery, wake behaviour, and a one-hour idle battery comparison.
+Before claiming general availability, finish the remaining physical-device
+milestone in `docs/research/even-g2-hardware-evidence.md`: direct Tailnet and
+LAN behaviour, a 30-minute locked-phone transition trial, wear/BLE/network
+recovery, repeatable wake behaviour, dictated-write capture, and a one-hour
+idle battery comparison. Maintainer-specific DNS, TLS, and service units stay
+in private operator configuration.

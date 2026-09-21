@@ -10,3 +10,8 @@ export function isHubOverlayEvent(eventType: OsEventTypeList): boolean {
   return eventType === OsEventTypeList.FOREGROUND_ENTER_EVENT
     || eventType === OsEventTypeList.FOREGROUND_EXIT_EVENT;
 }
+
+/** Even review requires root double-click to use the system exit dialog. */
+export function doubleClickAction(view: "list" | "detail"): "exit" | "back" {
+  return view === "list" ? "exit" : "back";
+}

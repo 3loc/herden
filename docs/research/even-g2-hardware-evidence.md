@@ -1,6 +1,6 @@
 # Even G2 physical-device evidence
 
-Status: **pending physical hardware validation**.
+Status: **private package path verified; extended physical validation pending**.
 
 No result is recorded here until it is observed on a paired Even Realities G2
 and an installed iPhone Even app. Simulator and CLI results do not satisfy this
@@ -10,16 +10,31 @@ gate.
 | --- | --- | --- |
 | Tailnet HTTP, SSE, authenticated read-only request | iOS/Even/SDK/firmware versions, exact host URL, steps and observation | Pending |
 | Explicit LAN HTTP, SSE, authenticated request | Same, including ATS, local-network and WebView policy | Pending |
-| Whitelist and install semantics | Omitted/empty/wildcard/IP/port/exact-origin behaviour; package/sideload requirements | Pending |
+| Whitelist and install semantics | Omitted/empty/wildcard/IP/port/exact-origin behaviour; package/sideload requirements | Exact HTTPS origin, `.ehpk` upload, beta assignment, install and launch verified 2026-09-21 with SDK 0.0.15; other whitelist forms remain untested |
 | Locked phone lifecycle | At least 30 minutes with known Agent transitions, near the end of trial | Pending |
 | Wear, BLE and network recovery | Disconnect/reconnect and Wi-Fi/cellular observations | Pending |
 | Glance/wake | Documented SDK/firmware call and physical observation | Pending |
 | Dictated write path (`POST /command` `send_text`) | From the packaged Even app on a worn G2: the spoken phrase's transcript, the exact request body, and a `pane.read` showing the text sitting unexecuted in the Agent's prompt with `submit: false` | Pending — Host side verified over Tailnet HTTP only |
 | Idle battery | One-hour baseline comparison, brightness, network, wear state and update count | Pending |
 
-Until all required rows have observed evidence, do not state that HTTP works in
-the packaged Even app, that the HUD remains available in the background, that
-an Agent transition wakes the lens, or that a reusable `.ehpk` can be built.
+The private beta proves that a reusable `.ehpk` can use its exact HTTPS origin.
+Until the other required rows have observed evidence, do not claim direct
+Tailnet/LAN support for packaged apps, reliable background availability, or
+repeatable wake and recovery behaviour.
+
+## Private beta observation — 2026-09-21
+
+- Built with Even Hub SDK 0.0.15 and a generated manifest containing one exact
+  HTTPS origin; no Host credential or maintainer hostname was committed.
+- Uploaded to Even Hub, assigned to the designated beta tester, installed, and
+  opened on a paired G2. A prior test invitation had expired; changing the
+  uploaded version to Beta restored tester access.
+- The installed app received four Host SSE streams and sent audio to the
+  transcription route through the same gateway origin. The gateway injects
+  protected per-Host credentials and does not persist audio.
+- The wearer confirmed that the installed beta works. The full 30-minute
+  locked-phone, recovery, dictated-write capture, repeatable wake, and battery
+  sequence was not recorded and remains pending.
 
 ## QR-sideload observations — 2026-09-19
 

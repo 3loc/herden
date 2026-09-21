@@ -25,6 +25,7 @@ for (const extra of JSON.parse(process.env.HERDEN_HUD_PROXY_EXTRA ?? "[]") as Ex
 }
 
 const primary = protectedProxy(process.env.HERDEN_HUD_PROXY_TARGET, process.env.HERDEN_HUD_PROXY_TOKEN_FILE);
+const transcription = protectedProxy(process.env.HERDEN_HUD_STT_TARGET, undefined, "/stt");
 
 export default defineConfig({
   base: "./",
@@ -37,7 +38,11 @@ export default defineConfig({
     // Development-only localhost proxy. It holds credentials in 0600 files;
     // the simulator receives only non-secret localhost placeholders. More
     // specific paths must precede "/hud", which would otherwise match them.
-    proxy: { ...extras, ...(primary ? { "/hud": primary } : {}) },
+    proxy: {
+      ...extras,
+      ...(transcription ? { "/stt": transcription } : {}),
+      ...(primary ? { "/hud": primary } : {}),
+    },
   },
   build: { target: "es2022", assetsInlineLimit: 0 },
 });

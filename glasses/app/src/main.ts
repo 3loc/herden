@@ -2,7 +2,7 @@
 
 import { EvenAppBridge, ImuReportPace, OsEventTypeList, waitForEvenAppBridge } from "@evenrealities/even_hub_sdk";
 import { HostService } from "./host-service";
-import { isHubOverlayEvent, isTerminalHubExit } from "./hub-event-policy";
+import { doubleClickAction, isHubOverlayEvent, isTerminalHubExit } from "./hub-event-policy";
 import { HardwareTrace } from "./hardware-trace";
 import type { EvenHubEvent } from "@evenrealities/even_hub_sdk";
 import { compactOutputLines, renderDetail, renderList, wrapOutputRows } from "./hud";
@@ -37,12 +37,19 @@ const STORAGE_KEYS = { hosts: "herden.hosts", baseUrl: "herden.baseUrl", token: 
 // Explicit and development-only: never load saved Hosts or contact a real
 // endpoint while making public screenshots.
 const DEMO = import.meta.env.DEV && new URLSearchParams(location.search).get("demo") === "1";
+function configuredHosts(raw: string | undefined): HostSettings[] {
+  try {
+    const hosts = JSON.parse(raw ?? "[]") as HostSettings[];
+    if (Array.isArray(hosts) && hosts.every((host) => host.id && host.name && host.baseUrl && host.token)) return hosts;
+  } catch { /* Invalid deployment input must not prevent the setup panel loading. */ }
+  return [];
+}
+
+const BOOTSTRAP_HOSTS = configuredHosts(import.meta.env.VITE_HERDEN_HUD_BOOTSTRAP_HOSTS);
 const DEVELOPMENT_PROXY_HOSTS: HostSettings[] = (() => {
   if (!import.meta.env.DEV || import.meta.env.VITE_HERDEN_HUD_PROXY !== "1") return [];
-  try {
-    const hosts = JSON.parse(import.meta.env.VITE_HERDEN_HUD_PROXY_HOSTS ?? "[]") as HostSettings[];
-    if (hosts.length > 0) return hosts;
-  } catch { /* fall back to the single local development proxy */ }
+  const hosts = configuredHosts(import.meta.env.VITE_HERDEN_HUD_PROXY_HOSTS);
+  if (hosts.length > 0) return hosts;
   return [{ id: "development-host", name: "Development Host", baseUrl: "http://localhost:5173/hud", token: "development-proxy" }];
 })();
 
@@ -50,7 +57,7 @@ const DEVELOPMENT_PROXY_HOSTS: HostSettings[] = (() => {
  * Temporary remote hardware telemetry. Never render this high-rate state on
  * the lens: IMU and audio diagnostics previously flooded the display SDK.
  */
-const DEVELOPMENT_TELEMETRY = true;
+const DEVELOPMENT_TELEMETRY = import.meta.env.DEV;
 const gesture: GestureDebug = { count: 0, field: "none" };
 /**
  * Temporary hardware telemetry. Reading diagnostics off a 64-column lens is
@@ -240,6 +247,11 @@ async function handleSystemEvent(eventType: OsEventTypeList): Promise<void> {
       if (state.view === "list" && selectedAgent()) { await openSelectedOutput(); return; }
       return;
     case OsEventTypeList.DOUBLE_CLICK_EVENT:
+      if (doubleClickAction(state.view) === "exit") {
+        await stopMic();
+        await bridge.shutDownPageContainer(1);
+        return;
+      }
       showList();
       paint();
       return;
@@ -521,6 +533,7 @@ async function loadHosts(): Promise<HostSettings[]> {
     if (Array.isArray(hosts) && hosts.every((host) => host.id && host.name && host.baseUrl && host.token)) return hosts;
   } catch { /* migrate the original single-Host settings below */ }
   if (baseUrl && token) return [{ id: "migrated-host", name: "Herden Host", baseUrl, token }];
+  if (BOOTSTRAP_HOSTS.length > 0) return BOOTSTRAP_HOSTS;
   return [];
 }
 
