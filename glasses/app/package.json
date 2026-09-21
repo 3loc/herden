@@ -1,0 +1,28 @@
+{
+  "name": "herden-glasses-app",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Even Hub plugin showing Herden agent state on the Even G2",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "tsc --noEmit && vite build",
+    "preview": "vite preview",
+    "sim": "node ./node_modules/@evenrealities/evenhub-simulator/bin/index.js http://localhost:5173",
+    "sim:demo": "node ./node_modules/@evenrealities/evenhub-simulator/bin/index.js 'http://localhost:5173/?demo=1'",
+    "qr": "evenhub qr --url",
+    "pack": "evenhub pack app.json dist -o herden-hud.ehpk",
+    "test": "node --test"
+  },
+  "license": "MIT",
+  "dependencies": {
+    "@evenrealities/even_hub_sdk": "^0.0.15",
+    "@evenrealities/pretext": "0.1.4"
+  },
+  "devDependencies": {
+    "@evenrealities/evenhub-cli": "^0.1.14",
+    "@evenrealities/evenhub-simulator": "^0.9.5",
+    "typescript": "^5.9.3",
+    "vite": "^8.3.0"
+  }
+}

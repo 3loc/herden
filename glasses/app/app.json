@@ -1,0 +1,17 @@
+{
+  "package_id": "ltd.herden.hud",
+  "edition": "202601",
+  "name": "Herden HUD",
+  "version": "0.1.0",
+  "min_app_version": "2.2.10",
+  "min_sdk_version": "0.0.15",
+  "entrypoint": "index.html",
+  "permissions": [
+    {
+      "name": "network",
+      "desc": "Reads Herden agent status from your own Host over your private network.",
+      "whitelist": []
+    }
+  ],
+  "supported_languages": ["en"]
+}

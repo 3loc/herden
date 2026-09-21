@@ -40,7 +40,7 @@ IOS_SIGNING_ARGS ?=
 help: ## Show available targets
 	@awk -F':.*## ' '/^[a-z-]+:.*## / { printf "  make %-20s %s\n", $$1, $$2 }' $(MAKEFILE_LIST)
 
-.PHONY: host-build host-install host-check host-test host-test-one host-perf host-release host-release-asset host-release-assemble
+.PHONY: host-build host-install host-check host-test host-test-one host-perf host-release host-release-asset host-release-assemble glasses-test glasses-build
 
 # Pinned Zig 0.15.2 cannot link its build runner against Xcode 26's macOS SDK.
 # On macOS, route only the SDK-path lookup through the compatible CLT 15.4 SDK.
@@ -80,6 +80,12 @@ host-release-assemble: ## Assemble Host release metadata (HOST_VERSION=... OUT_D
 	@test -n "$(HOST_VERSION)" || { echo "HOST_VERSION is required" >&2; exit 2; }
 	@test -n "$(OUT_DIR)" || { echo "OUT_DIR is required" >&2; exit 2; }
 	sh scripts/assemble-host-release.sh "$(HOST_VERSION)" "$(OUT_DIR)"
+
+glasses-test: ## Run the Even G2 HUD renderer tests
+	cd glasses/app && npm test
+
+glasses-build: ## Install locked HUD development dependencies and build the Even assets
+	cd glasses/app && npm ci && npm run build
 
 ssh-artifacts: ## Rebuild the pinned HerdenSSH XCFrameworks
 	Packages/HerdenSSH/Scripts/build-native.sh

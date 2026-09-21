@@ -8,7 +8,64 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+### Added
+
+- Added an opt-in, Host-owned private-network HUD endpoint for the Even G2
+  prototype. It serves bounded Agent-status SSE snapshots with 256-bit bearer
+  credentials, deliberate credential retrieval/rotation, a Tailnet IPv4
+  default, and read-only-by-default Send Enter/Interrupt controls; physical G2
+  package, HTTP, background, and wake validation remains pending.
+- Added a dictated `send_text` action to the Even G2 HUD command endpoint, so a
+  spoken phrase can be typed into an Agent's prompt. It stays behind the same
+  `--controls` opt-in, inserts without pressing Enter unless the caller asks
+  for it, caps a phrase at 512 characters, and refuses control characters
+  outright so a transcript can never carry a newline or escape sequence into a
+  live terminal.
+
+- The glasses now recognize `go to <number>`, `go back`, `dictate <text>`,
+  and `close`. `Close` stops recording and darkens the display until the next
+  head-up tilt.
+  The explicit dictation voice command submits with Return when the phrase ends;
+  the Host API's `send_text` default remains non-submitting.
+- Added `page up` and `page down` voice navigation for both the Space list and
+  open terminal output. A Space now opens on the newest physical display rows,
+  with text wrapped using the G2 firmware font metrics; capped Host reads keep
+  their newest lines instead of their oldest.
+
 ### Changed
+
+- Fixed the glasses wake detector after a worn-device trace showed it remaining
+  disarmed for seven minutes: resting IMU Y was about +0.03, while the former
+  absolute gate required Y below -0.05. Wake now uses a relative head-up rise
+  from the current resting pose. A marked up/right/left/down capture then proved
+  that head-up is positive X, not Y; the detector now reads X with a +0.18
+  relative margin and is regression-tested against the captured directions.
+  Hub contextual-menu foreground events no longer
+  shut down an active microphone session. Physical confirmation is still pending.
+- The glasses voice endpointer now accepts quiet commands above a noisy worn-device
+  microphone floor without treating initial ambient frames as a command. The
+  microphone remains open for the next command and still closes each phrase
+  after 1.2 seconds of silence.
+- STT and Host reads/sends now have deadlines covering both the response and
+  body; sleeping cancels an in-flight transcription. A refused mic-off is
+  retried once and reported. Invalid startup-page results no longer trigger a
+  blind rebuild that could disturb the display.
+- Wake the Even G2 HUD only when measured pitch moves from a level pose to a
+  head-up pose. Foreground, touch, and invalid IMU events cannot wake a dark
+  lens. QR development sessions no longer hot-reload the phone app while it is
+  being worn; rescan to load new source.
+- Render the Even G2 HUD through one edge-to-edge native text container with
+  zero padding and compact one-line chrome. This restores the firmware Unicode
+  glyph set and removes full-screen image transfers. A bottom status line now
+  shows microphone state and output position, Space rows use readable Agent
+  names and plain WORK, QUESTION, DONE, and IDLE status labels without
+  brackets or faux text columns. Opened Spaces follow their newest output. IMU/audio samples
+  never repaint the lens, while meaningful voice and Host changes do. A timed-out
+  display write cannot block voice processing or permanently wedge later updates.
+
+- Clean the Even G2 HUD's Agent-output reader before it reaches the lens:
+  remove terminal escapes, redraw residue, decorative ASCII, and coding-tool
+  chrome while keeping readable replies, commands, and logs.
 
 - The Host installer makes `herden` work in the current Terminal when it can:
   it links the command into a directory you own that is already on your PATH,
@@ -75,6 +132,12 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
   terminal keyboard.
 
 ### Fixed
+
+- Restore hands-free Even G2 voice sessions: a head-up tilt wakes the dark lens
+  and continuous microphone, adaptive silence ends each phrase, display SDK
+  stalls no longer block commands, and 15 seconds of inactivity sleeps both.
+  While the hardware path is stabilised, the spoken grammar is intentionally
+  limited to `open <n>` and `go back`, and voice-state churn never repaints.
 
 - Close the share sheet as soon as a shared file reaches the Agent, instead of
   stopping on a confirmation screen.

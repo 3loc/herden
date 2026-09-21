@@ -46,6 +46,7 @@ pub(super) fn command() -> Command {
         .subcommand(terminal_command())
         .subcommand(session_command())
         .subcommand(integration_command())
+        .subcommand(glasses_command())
         .subcommand(
             Command::new("pair")
                 .about("Display a Pairing Code for the Herden app")
@@ -133,6 +134,32 @@ fn update_command() -> Command {
     Command::new("update")
         .about("Download and install the latest version")
         .arg(flag("handoff").help("Try live handoff after installing"))
+}
+
+fn glasses_command() -> Command {
+    Command::new("glasses")
+        .about("Manage the optional private-network Even G2 HUD")
+        .subcommand(
+            Command::new("enable")
+                .about("Start the HUD endpoint on a private-network address")
+                .arg(option("bind", "ADDRESS").help("Explicit private LAN or Tailnet address"))
+                .arg(option("port", "PORT").help("Listener port (default: 8791)"))
+                .arg(flag("controls").help("Allow Send Enter, Interrupt and dictated text"))
+                .arg(flag("read-only").help("Disable all HUD controls"))
+                .arg(flag("reconfigure").help("Allow a bind or port change")),
+        )
+        .subcommand(Command::new("status").about("Show the HUD endpoint state without its token"))
+        .subcommand(Command::new("disable").about("Stop the HUD endpoint"))
+        .subcommand(
+            Command::new("token")
+                .about("Show or rotate the HUD bearer token")
+                .subcommand(Command::new("rotate").about("Replace the HUD bearer token")),
+        )
+        .subcommand(
+            Command::new("package")
+                .about("Build the Even G2 HUD package (pending hardware evidence)")
+                .arg(path_option("output", "PATH").required(true)),
+        )
 }
 
 fn status_command() -> Command {

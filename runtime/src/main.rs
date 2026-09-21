@@ -25,6 +25,7 @@ mod copy_mode;
 mod detect;
 mod events;
 mod ghostty;
+mod glasses;
 mod handoff_runtime;
 mod input;
 mod integration;
@@ -613,6 +614,7 @@ fn main() -> io::Result<()> {
         println!("       herden channel set <stable|preview>");
         println!("       herden machine <subcommand> ...");
         println!("       herden pair [--address <host>] [--port <port>]");
+        println!("       herden glasses <subcommand> ...");
         println!("       herden server stop");
         println!("       herden server reload-config");
         println!("       herden api <subcommand> ...");
@@ -632,6 +634,10 @@ fn main() -> io::Result<()> {
         for (command, description) in [
             ("herden", "Launch or attach to the persistent session"),
             ("herden pair", "Pair this Host with the Herden app"),
+            (
+                "herden glasses <subcommand>",
+                "Manage the optional Even G2 HUD",
+            ),
             (
                 "herden status [server|client]",
                 "Show local client and running server status",
@@ -777,6 +783,7 @@ fn main() -> io::Result<()> {
                 "pair",
                 "session",
                 "integration",
+                "glasses",
             ]
             .contains(&arg.as_str())
         {

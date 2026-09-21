@@ -1,0 +1,20 @@
+{
+  "protocol_version": 1,
+  "type": "snapshot",
+  "revision": 42,
+  "at": 1789208708058,
+  "inventory_valid": true,
+  "stale": false,
+  "controls_allowed": false,
+  "agents": [
+    {
+      "id": "wR:pC",
+      "name": "host-release",
+      "space": "runtime",
+      "status": "blocked",
+      "pinned": false
+    }
+  ],
+  "wake": [],
+  "summary": "1 blocked"
+}
