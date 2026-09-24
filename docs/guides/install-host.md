@@ -80,6 +80,15 @@ installed binary already matches the current release, it is verified and left
 in place. An already-running Herden session keeps its existing process until it
 is restarted.
 
+On Linux and macOS with a supported shell (zsh, bash, sh, fish, Nushell and
+similar), Herden starts managed Codex processes with `FORCE_COLOR=1`
+so their input bar remains readable when a persistent session is viewed from
+terminals with different light/dark themes. This affects new Codex launches and
+automatic resumes, not Codex processes already running. To opt out, set
+`codex_force_color = false` under `[advanced]` in `~/.config/herden/config.toml`.
+The setting is applied on Host config reload and does not change the shared
+terminal palette or other agents.
+
 ## Build from source
 
 Use this route to develop the Host or build a revision that has not been

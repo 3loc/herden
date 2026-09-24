@@ -72,6 +72,15 @@ application-facing context prevents one viewer from changing another viewer's
 running session, but it does not make already explicit RGB render differently
 for simultaneous light and dark viewers.
 
+Codex is a narrow exception at the process-capability level, not the client
+palette level. On supported Linux/macOS shells, Herden launches new or resumed
+Codex processes with `FORCE_COLOR=1`, making its TUI use theme-relative ANSI
+colours instead of retaining fixed RGB backgrounds from its startup viewer.
+No OSC 10/11 is sent and no light/dark choice enters shared PTY state. This is
+lossy versus Codex's richer colours and can be disabled with
+`[advanced] codex_force_color = false`. It cannot recolour an already-running
+Codex process; that process must be resumed or restarted to pick up the setting.
+
 An already-running TUI may have cached colours from the old launch wrapper.
 Removing the wrapper prevents new contamination; it does not rewrite existing
 Agent output or restart live work. Such an Agent may need to resume in a fresh

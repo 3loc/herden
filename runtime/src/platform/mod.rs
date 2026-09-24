@@ -360,6 +360,23 @@ pub(crate) fn interactive_unix_shell_command(
     Some(command)
 }
 
+#[cfg(any(target_os = "linux", target_os = "macos"))]
+pub(crate) fn codex_color_command(command: String, shell_name: &str) -> String {
+    if matches!(
+        normalized_process_name(shell_name).as_str(),
+        "sh" | "bash" | "zsh" | "dash" | "ash" | "ksh" | "mksh" | "fish" | "nu"
+    ) {
+        format!("FORCE_COLOR=1 {command}")
+    } else {
+        command
+    }
+}
+
+#[cfg(not(any(target_os = "linux", target_os = "macos")))]
+pub(crate) fn codex_color_command(command: String, _shell_name: &str) -> String {
+    command
+}
+
 pub(crate) fn quote_powershell_arg(value: &str) -> String {
     if !value.is_empty()
         && !value.starts_with('-')

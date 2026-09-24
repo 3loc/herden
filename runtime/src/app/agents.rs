@@ -204,6 +204,12 @@ impl App {
         argv.extend(params.args);
         let command = crate::platform::interactive_shell_command(&argv, &shell_name)
             .ok_or(AgentStartError::InvalidArgument)?;
+        let command = crate::agent_keyboard::command_with_codex_color(
+            Some(kind),
+            &shell_name,
+            command,
+            self.codex_force_color,
+        );
         // Legacy clients can still send terminal_colors. Never inject them into
         // the shared PTY: OSC 10/11 makes one client's theme an application-owned
         // override that leaks into every other attachment.

@@ -1023,6 +1023,8 @@ pub struct AdvancedConfig {
     /// Maximum scrollback buffer size in bytes retained per pane terminal. Default: 10000000.
     #[serde(alias = "scrollback_lines")]
     pub scrollback_limit_bytes: usize,
+    /// Launch Codex with a terminal-independent ANSI palette. Default: true.
+    pub codex_force_color: bool,
 }
 
 #[derive(Debug, Deserialize)]
@@ -1294,6 +1296,7 @@ impl Default for AdvancedConfig {
     fn default() -> Self {
         Self {
             scrollback_limit_bytes: DEFAULT_SCROLLBACK_LIMIT_BYTES,
+            codex_force_color: true,
         }
     }
 }
@@ -1989,6 +1992,7 @@ headless_rows = 50
     #[test]
     fn advanced_defaults_include_scrollback_limit_bytes() {
         let config = Config::default();
+        assert!(config.advanced.codex_force_color);
         assert_eq!(
             config.advanced.scrollback_limit_bytes,
             DEFAULT_SCROLLBACK_LIMIT_BYTES
@@ -2068,9 +2072,11 @@ switch_ascii_input_source_in_prefix = true
         let toml = r#"
 [advanced]
 scrollback_limit_bytes = 12345
+codex_force_color = false
 "#;
         let config: Config = toml::from_str(toml).unwrap();
         assert_eq!(config.advanced.scrollback_limit_bytes, 12345);
+        assert!(!config.advanced.codex_force_color);
     }
 
     #[test]

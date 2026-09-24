@@ -25,6 +25,22 @@ pub(crate) fn apply_to_resume(argv: &mut Vec<String>) {
     );
 }
 
+/// Keep Codex's TUI on ANSI colours across viewers with different terminal
+/// themes. This is a child-process environment override, not an OSC palette
+/// change to the shared PTY. Do not wrap other agents or unsupported shells.
+pub(crate) fn command_with_codex_color(
+    agent: Option<Agent>,
+    shell_name: &str,
+    command: String,
+    enabled: bool,
+) -> String {
+    if agent == Some(Agent::Codex) && enabled {
+        crate::platform::codex_color_command(command, shell_name)
+    } else {
+        command
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -66,5 +82,33 @@ mod tests {
         let original = argv.clone();
         apply_to_resume(&mut argv);
         assert_eq!(argv, original);
+    }
+
+    #[test]
+    fn codex_color_is_scoped_to_the_launched_command() {
+        let command = "codex resume session-123".to_string();
+        if cfg!(windows) {
+            return;
+        }
+        assert_eq!(
+            command_with_codex_color(Some(Agent::Codex), "zsh", command.clone(), true),
+            "FORCE_COLOR=1 codex resume session-123"
+        );
+        assert_eq!(
+            command_with_codex_color(Some(Agent::Codex), "zsh", command.clone(), false),
+            command
+        );
+        assert_eq!(
+            command_with_codex_color(Some(Agent::Claude), "zsh", command.clone(), true),
+            command
+        );
+        assert_eq!(
+            command_with_codex_color(Some(Agent::Codex), "pwsh", command.clone(), true),
+            command
+        );
+        assert_eq!(
+            command_with_codex_color(Some(Agent::Codex), "csh", command.clone(), true),
+            command
+        );
     }
 }

@@ -282,6 +282,17 @@ impl App {
             }
             return false;
         };
+        let shell_name = if self.state.default_shell.is_empty() {
+            std::env::var("SHELL").unwrap_or_default()
+        } else {
+            self.state.default_shell.clone()
+        };
+        let resume_command = crate::agent_keyboard::command_with_codex_color(
+            crate::detect::parse_agent_label(&plan.agent),
+            &shell_name,
+            resume_command,
+            self.codex_force_color,
+        );
         let Some(launch_env) = self
             .find_pane(pane_id)
             .and_then(|(ws_idx, _)| self.pane_launch_env(ws_idx, pane_id, Vec::new()))

@@ -37,6 +37,12 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ### Changed
 
+- Codex agents launched or automatically resumed by Herden now use
+  `FORCE_COLOR=1` on Linux and macOS, avoiding cached dark input-bar colours
+  when the same session is viewed from a light terminal. This affects new
+  Codex processes only and can be disabled with
+  `[advanced] codex_force_color = false`.
+
 - Fixed the glasses wake detector after a worn-device trace showed it remaining
   disarmed for seven minutes: resting IMU Y was about +0.03, while the former
   absolute gate required Y below -0.05. Wake now uses a relative head-up rise
