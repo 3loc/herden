@@ -53,11 +53,12 @@ import Testing
     @Test func pongResponseRoundTripsCommittedProtocolShape() throws {
         let pong = try roundTrip(
             PongResponse.self,
-            #"{"type":"pong","version":"0.9.8","protocol":22,"capabilities":{"live_handoff":true,"detached_server_daemon":true}}"#)
+            #"{"type":"pong","version":"0.9.15","protocol":22,"capabilities":{"live_handoff":true,"detached_server_daemon":true,"ssh_agent_registration":true}}"#)
 
-        #expect(pong.version == "0.9.8")
+        #expect(pong.version == "0.9.15")
         #expect(pong.protocolVersion == 22)
         #expect(pong.protocolVersion == HerdenSSHTransport.generatedProtocolVersion)
+        #expect(pong.capabilities?.sshAgentRegistration == true)
     }
 
     @Test func agentListResponseRoundTripsLiveCapture() throws {
@@ -123,6 +124,20 @@ import Testing
         #expect(layout.splits.first?.ratio == 0.5)
         #expect(layout.panes.count == 2)
         #expect(snapshot.agents.first?.agentStatus == .idle)
+        #expect(snapshot.agents.first?.completionSeq == nil)
+        #expect(snapshot.panes.first?.restoreError == nil)
+    }
+
+    @Test func upstreamCompletionAndRestoreDetailsRoundTrip() throws {
+        let agent = try roundTrip(
+            AgentInfo.self,
+            #"{"terminal_id":"term_saved","agent_status":"idle","workspace_id":"w1","tab_id":"w1:t1","pane_id":"w1:pA","focused":false,"revision":7,"completion_seq":42}"#)
+        let pane = try roundTrip(
+            PaneInfo.self,
+            #"{"terminal_id":"term_saved","agent_status":"unknown","workspace_id":"w1","tab_id":"w1:t1","pane_id":"w1:pA","focused":false,"revision":8,"restore_error":"Saved directory is unavailable."}"#)
+
+        #expect(agent.completionSeq == 42)
+        #expect(pane.restoreError == "Saved directory is unavailable.")
     }
 
     @Test func paneReadResponseRoundTripsLiveCapture() throws {

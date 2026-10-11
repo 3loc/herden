@@ -80,7 +80,9 @@ impl DirectTerminalAppearance {
     /// byte-for-byte intact. The deadline is never extended by sustained input.
     #[cfg(any(unix, test))]
     pub(super) fn consume(&mut self, data: &[u8], now: Instant) -> Option<bool> {
-        let events = crate::raw_input::parse_raw_input_bytes_sync(data);
+        // The stdin reader already frames split replies and releases timed-out keys.
+        // Decode that boundary without introducing a second timing policy.
+        let events = crate::raw_input::parse_framed_input(data);
         if events.is_empty() {
             return None;
         }
@@ -179,6 +181,9 @@ mod tests {
             b"hello".as_slice(),
             b"\x1b[200~\x1b]11;rgb:ffff/ffff/ffff\x07\x1b[201~",
             b"\x1b[A",
+            b"\x1b",
+            b"\x1b[",
+            b"\x1b]",
         ] {
             assert_eq!(state.consume(bytes, Instant::now()), None);
         }

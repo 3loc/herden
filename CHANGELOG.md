@@ -37,6 +37,15 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ### Changed
 
+- Synced the Host with herdr mainline through `75f46fe8`, bringing safer
+  session recovery, staggered Agent restores, faster rendering and remote
+  connections, native Kitty graphics, and terminal input fixes
+  ([herdr #4400](https://github.com/herdrdev/herdr/pull/4400),
+  [#4487](https://github.com/herdrdev/herdr/pull/4487),
+  [#5149](https://github.com/herdrdev/herdr/pull/5149)). The obsolete
+  `pane.graphics.*` API is removed upstream; applications display images
+  through the terminal Kitty graphics protocol.
+
 - Codex agents launched or automatically resumed by Herden now use
   `FORCE_COLOR=1` on Linux and macOS, avoiding cached dark input-bar colours
   when the same session is viewed from a light terminal. This affects new

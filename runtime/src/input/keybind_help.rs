@@ -10,9 +10,20 @@ use crate::{
 pub(crate) type KeybindHelpEntry = (String, Cow<'static, str>);
 pub(crate) type KeybindHelpGroup = (&'static str, Vec<KeybindHelpEntry>);
 
+/// The character a key types, for overlay shortcuts and text fields.
 pub(crate) fn keybind_help_text_char(key: &TerminalKey) -> Option<char> {
     if !key.modifiers.difference(KeyModifiers::SHIFT).is_empty() {
         return None;
+    }
+    // Text the host says the key produced is authoritative: kitty hosts may
+    // report Shift+/ as `/` with text `?` and no shifted alternate.
+    if let Some(text) = key.generated_text.as_deref() {
+        let mut chars = text.chars();
+        if let (Some(character), None) = (chars.next(), chars.next()) {
+            if !character.is_control() {
+                return Some(character);
+            }
+        }
     }
     if let Some(character) = key.shifted_codepoint.and_then(char::from_u32) {
         return Some(character);
@@ -63,13 +74,13 @@ fn indexed_range_prefix(bindings: &[IndexedKeybind]) -> Option<&str> {
 
 pub(crate) fn keybind_help_groups(
     keybinds: &Keybinds,
-    prefix: (crossterm::event::KeyCode, crossterm::event::KeyModifiers),
+    prefixes: &[crate::config::KeyCombo],
 ) -> Vec<KeybindHelpGroup> {
     let mut groups = vec![
         (
             "global",
             vec![
-                entry(crate::config::format_key_combo(prefix), "prefix mode"),
+                entry(crate::config::format_prefix_combos(prefixes), "prefix mode"),
                 entry(binding_label(&keybinds.help), "keybinds"),
                 entry(binding_label(&keybinds.settings), "settings"),
                 entry(binding_label(&keybinds.pair), "pair iPhone"),
@@ -161,6 +172,7 @@ pub(crate) fn keybind_help_groups(
                 entry(binding_label(&keybinds.close_pane), "close pane"),
                 entry(binding_label(&keybinds.rename_pane), "rename pane"),
                 entry(binding_label(&keybinds.edit_scrollback), "edit scrollback"),
+                entry(binding_label(&keybinds.clear_pane), "clear pane"),
                 entry(binding_label(&keybinds.copy_mode), "copy mode"),
                 entry(binding_label(&keybinds.zoom), "zoom pane"),
                 entry(binding_label(&keybinds.resize_mode), "resize mode"),
@@ -265,6 +277,28 @@ mod tests {
     }
 
     #[test]
+    fn text_char_prefers_generated_text_then_alternate_then_code() {
+        let parse = |bytes: &str| {
+            crate::input::parse_terminal_key_sequence(bytes)
+                .unwrap_or_else(|| panic!("{bytes:?} parses"))
+        };
+        for (bytes, want) in [
+            // Shift+/ typing `?` with no shifted alternate.
+            ("\x1b[47;2;63u", Some('?')),
+            ("\x1b[47u", Some('/')),
+            ("/", Some('/')),
+            // Portuguese Shift+7: alternate and text agree.
+            ("\x1b[55:47;2;47u", Some('/')),
+            ("\x1b[55:47;2u", Some('/')),
+            ("\x1b[55;2u", Some('7')),
+            ("\x1b[47;5u", None),
+            ("\x1b[47;3u", None),
+        ] {
+            assert_eq!(keybind_help_text_char(&parse(bytes)), want, "{bytes:?}");
+        }
+    }
+
+    #[test]
     fn filter_matches_labels_and_shortcuts_case_insensitively() {
         let filtered = filter_keybind_help_groups(groups(), "WoRk");
         assert_eq!(filtered.len(), 1);
@@ -279,9 +313,9 @@ mod tests {
     #[test]
     fn default_help_advertises_the_pairing_shortcut() {
         let config = crate::config::Config::default();
-        let prefix = config.prefix_key();
+        let prefixes = config.prefix_keys();
         let keybinds = config.keybinds();
-        let groups = keybind_help_groups(&keybinds, prefix);
+        let groups = keybind_help_groups(&keybinds, &prefixes);
         let pairing: Vec<_> = groups
             .iter()
             .flat_map(|(_, entries)| entries)
@@ -295,11 +329,11 @@ mod tests {
     #[test]
     fn endpoint_pairing_command_replaces_an_unset_builtin_help_entry() {
         let config = crate::config::Config::default();
-        let prefix = config.prefix_key();
+        let prefixes = config.prefix_keys();
         let mut keybinds = config.keybinds();
         keybinds.pair = ActionKeybinds::default();
 
-        let groups = keybind_help_groups(&keybinds, prefix);
+        let groups = keybind_help_groups(&keybinds, &prefixes);
         let pairing: Vec<_> = groups
             .iter()
             .flat_map(|(_, entries)| entries)
@@ -308,5 +342,19 @@ mod tests {
 
         assert_eq!(pairing.len(), 1);
         assert_eq!(pairing[0].0, "prefix+i");
+    }
+
+    #[test]
+    fn help_lists_every_configured_prefix() {
+        let groups = keybind_help_groups(
+            &Keybinds::default(),
+            &[
+                (KeyCode::Char(' '), KeyModifiers::CONTROL),
+                (KeyCode::Char('s'), KeyModifiers::CONTROL),
+            ],
+        );
+        let global = &groups[0].1;
+        assert_eq!(global[0].0, "ctrl+space / ctrl+s");
+        assert_eq!(global[0].1, "prefix mode");
     }
 }

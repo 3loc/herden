@@ -23,6 +23,12 @@ pub(crate) use super::unix_common::{
     ClientStreamReader, StatusCommandGuard,
 };
 
+#[cfg(test)]
+mod config_file_tests;
+
+mod shutdown;
+pub(crate) use shutdown::monitor_host_shutdown;
+
 const WSL_MARKER_ENV_VARS: &[&str] = &["WSL_DISTRO_NAME", "WSL_INTEROP"];
 const PROCESS_DETECTION_ENV_VAR: &str = "HERDR_PROCESS_DETECTION";
 const CHILD_GROUPS_SCAN_LIMIT: usize = 64;
@@ -102,6 +108,134 @@ pub(crate) fn launch_executable() -> std::io::Result<PathBuf> {
         }
     }
     Ok(executable)
+}
+
+pub(crate) fn config_file_link_count(path: &std::path::Path) -> std::io::Result<u64> {
+    use std::os::unix::fs::MetadataExt;
+    Ok(std::fs::metadata(path)?.nlink())
+}
+
+pub(crate) fn check_config_write_target(_target: &std::path::Path) -> std::io::Result<()> {
+    Ok(())
+}
+
+pub(crate) fn write_existing_config(
+    _target: &std::path::Path,
+    _contents: &[u8],
+) -> std::io::Result<bool> {
+    // Unix keeps atomic replacement for existing files too.
+    Ok(false)
+}
+
+pub(crate) fn create_config_temporary(
+    path: &std::path::Path,
+    private: bool,
+) -> std::io::Result<std::fs::File> {
+    use std::os::unix::fs::OpenOptionsExt;
+    std::fs::OpenOptions::new()
+        .write(true)
+        .create_new(true)
+        .mode(if private { 0o600 } else { 0o666 })
+        .open(path)
+}
+
+pub(crate) fn write_config_temporary(
+    source: Option<&std::path::Path>,
+    temporary: &std::path::Path,
+    contents: &[u8],
+) -> std::io::Result<()> {
+    use std::os::{fd::AsRawFd, unix::fs::MetadataExt};
+    let mut output = std::fs::OpenOptions::new()
+        .write(true)
+        .truncate(true)
+        .open(temporary)?;
+    if let Some(source) = source {
+        let input = std::fs::File::open(source)?;
+        let metadata = input.metadata()?;
+        let current = output.metadata()?;
+        if (metadata.uid(), metadata.gid()) != (current.uid(), current.gid()) {
+            // Keep ownership before restoring mode/ACLs; chown can clear mode bits.
+            if unsafe { libc::fchown(output.as_raw_fd(), metadata.uid(), metadata.gid()) } != 0 {
+                return Err(std::io::Error::last_os_error());
+            }
+        }
+        // Replace inherited ACLs before enabling the original mode. Prepare all
+        // access controls while the temporary is empty, before writing secrets.
+        copy_config_xattrs(input.as_raw_fd(), output.as_raw_fd())?;
+        output.set_permissions(metadata.permissions())?;
+    }
+    output.write_all(contents)?;
+    output.sync_all()
+}
+
+// Access ACLs and security labels live in xattrs on Linux. Mode bits alone can
+// silently broaden access, especially with a default ACL on the parent directory.
+fn copy_config_xattrs(source: RawFd, destination: RawFd) -> std::io::Result<()> {
+    use std::ffi::CStr;
+    fn names(fd: RawFd) -> std::io::Result<Vec<u8>> {
+        let size = unsafe { libc::flistxattr(fd, std::ptr::null_mut(), 0) };
+        if size < 0 {
+            let error = std::io::Error::last_os_error();
+            if error.raw_os_error() == Some(libc::ENOTSUP) {
+                return Ok(Vec::new());
+            }
+            return Err(error);
+        }
+        let mut buffer = vec![0; size as usize];
+        let read = unsafe { libc::flistxattr(fd, buffer.as_mut_ptr().cast(), buffer.len()) };
+        if read < 0 {
+            return Err(std::io::Error::last_os_error());
+        }
+        buffer.truncate(read as usize);
+        Ok(buffer)
+    }
+    fn value(fd: RawFd, name: &CStr) -> std::io::Result<Vec<u8>> {
+        let size = unsafe { libc::fgetxattr(fd, name.as_ptr(), std::ptr::null_mut(), 0) };
+        if size < 0 {
+            return Err(std::io::Error::last_os_error());
+        }
+        let mut buffer = vec![0; size as usize];
+        let read =
+            unsafe { libc::fgetxattr(fd, name.as_ptr(), buffer.as_mut_ptr().cast(), buffer.len()) };
+        if read < 0 {
+            return Err(std::io::Error::last_os_error());
+        }
+        buffer.truncate(read as usize);
+        Ok(buffer)
+    }
+    let source_names = names(source)?;
+    for bytes in names(destination)?.split_inclusive(|byte| *byte == 0) {
+        if !source_names
+            .split_inclusive(|byte| *byte == 0)
+            .any(|name| name == bytes)
+        {
+            let name = CStr::from_bytes_with_nul(bytes).map_err(std::io::Error::other)?;
+            if unsafe { libc::fremovexattr(destination, name.as_ptr()) } != 0 {
+                return Err(std::io::Error::last_os_error());
+            }
+        }
+    }
+    for bytes in source_names.split_inclusive(|byte| *byte == 0) {
+        let name = CStr::from_bytes_with_nul(bytes).map_err(std::io::Error::other)?;
+        let original = value(source, name)?;
+        // Avoid requiring relabel privileges when the inherited label already matches.
+        if value(destination, name).is_ok_and(|current| current == original) {
+            continue;
+        }
+        if unsafe {
+            libc::fsetxattr(
+                destination,
+                name.as_ptr(),
+                original.as_ptr().cast(),
+                original.len(),
+                0,
+            )
+        } != 0
+        {
+            return Err(std::io::Error::last_os_error());
+        }
+    }
+    Ok(())
 }
 
 pub fn raise_server_nofile_limit() {}
@@ -530,6 +664,78 @@ pub fn foreground_process_group_id_for_tty_fd(fd: RawFd) -> Option<u32> {
     (pgid > 0).then_some(pgid as u32)
 }
 
+/// Start time of `pid` in clock ticks since boot. It tells a process apart
+/// from a later one that reuses its pid.
+pub fn process_start_token(pid: u32) -> Option<u64> {
+    process_job_stat(pid).map(|stat| stat.start_time)
+}
+
+/// Process group of `pid` while that same process, matched by its start
+/// token, is alive in the terminal session of the pane shell `shell_pid`.
+/// A stopped or backgrounded job still counts.
+pub fn live_pane_process_group(shell_pid: u32, pid: u32, start_token: u64) -> Option<u32> {
+    let stat = process_job_stat(pid)?;
+    let shell_session = process_job_stat(shell_pid)?.session;
+    (!matches!(stat.state, 'Z' | 'X')
+        && stat.start_time == start_token
+        && stat.session == shell_session
+        && stat.pgrp > 0)
+        .then_some(stat.pgrp as u32)
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+struct ProcessJobStat {
+    state: char,
+    pgrp: i32,
+    session: i32,
+    start_time: u64,
+}
+
+fn process_job_stat(pid: u32) -> Option<ProcessJobStat> {
+    let stat = std::fs::read_to_string(format!("/proc/{pid}/stat")).ok()?;
+    process_job_stat_from_stat(&stat)
+}
+
+fn process_job_stat_from_stat(stat: &str) -> Option<ProcessJobStat> {
+    let rest = stat.get(stat.rfind(')')? + 2..)?;
+    let fields: Vec<&str> = rest.split_whitespace().collect();
+    // After (comm): state(0) ppid(1) pgrp(2) session(3) ... starttime(19)
+    Some(ProcessJobStat {
+        state: fields.first()?.chars().next()?,
+        pgrp: fields.get(2)?.parse().ok()?,
+        session: fields.get(3)?.parse().ok()?,
+        start_time: fields.get(19)?.parse().ok()?,
+    })
+}
+
+pub(super) fn socket_peer_pid(fd: RawFd) -> Option<u32> {
+    let mut cred: libc::ucred = unsafe { std::mem::zeroed() };
+    let mut len = std::mem::size_of::<libc::ucred>() as libc::socklen_t;
+    let result = unsafe {
+        libc::getsockopt(
+            fd,
+            libc::SOL_SOCKET,
+            libc::SO_PEERCRED,
+            (&mut cred as *mut libc::ucred).cast(),
+            &mut len,
+        )
+    };
+    (result == 0 && cred.pid > 0).then_some(cred.pid as u32)
+}
+
+pub(super) fn process_name_and_parent(pid: u32) -> Option<(String, u32)> {
+    let stat = std::fs::read_to_string(format!("/proc/{pid}/stat")).ok()?;
+    let close = stat.rfind(')')?;
+    let name = stat.get(1 + stat.find('(')?..close)?.to_string();
+    let parent = stat
+        .get(close + 2..)?
+        .split_whitespace()
+        .nth(1)?
+        .parse()
+        .ok()?;
+    Some((name, parent))
+}
+
 fn process_pgrp_comm_and_state(pid: u32) -> Option<(i32, String, char)> {
     let stat = std::fs::read_to_string(format!("/proc/{pid}/stat")).ok()?;
     process_pgrp_comm_and_state_from_stat(&stat)
@@ -658,6 +864,10 @@ pub fn read_clipboard_text() -> Option<String> {
             return Some(text);
         }
     }
+    None
+}
+
+pub fn clipboard_text_matches(_bytes: &[u8]) -> Option<bool> {
     None
 }
 
@@ -1033,6 +1243,17 @@ mod tests {
     fn env_lock() -> &'static Mutex<()> {
         static LOCK: OnceLock<Mutex<()>> = OnceLock::new();
         LOCK.get_or_init(|| Mutex::new(()))
+    }
+
+    #[test]
+    fn socket_peer_resolves_to_the_connecting_process_and_its_parent() {
+        use std::os::fd::AsRawFd as _;
+
+        let (local, _peer) = std::os::unix::net::UnixStream::pair().unwrap();
+        let pid = std::process::id();
+        assert_eq!(socket_peer_pid(local.as_raw_fd()), Some(pid));
+        let (_, parent) = process_name_and_parent(pid).unwrap();
+        assert_eq!(parent, std::os::unix::process::parent_id());
     }
 
     #[test]
@@ -1436,6 +1657,22 @@ mod tests {
             process_pgrp_comm_and_state_from_stat("123 (name with ) paren) S 1 456 789 0 456"),
             Some((456, "name with ) paren".to_string(), 'S'))
         );
+    }
+
+    #[test]
+    fn proc_stat_parsing_reads_job_fields_and_start_time() {
+        let stat =
+            "123 (node ) x) T 1 456 789 34816 456 4194560 1 2 3 4 5 6 7 8 20 0 11 0 987654 0 0";
+        assert_eq!(
+            process_job_stat_from_stat(stat),
+            Some(ProcessJobStat {
+                state: 'T',
+                pgrp: 456,
+                session: 789,
+                start_time: 987654,
+            })
+        );
+        assert_eq!(process_job_stat_from_stat("123 (short) S 1 456 789"), None);
     }
 
     #[test]

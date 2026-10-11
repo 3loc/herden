@@ -132,6 +132,24 @@ impl ClientWriter {
         self.render.queue.discard_pending_render();
     }
 
+    #[cfg(all(test, unix))]
+    pub(crate) fn test_paused() -> Self {
+        let queue = ClientWriterQueue::new();
+        Self {
+            control: ClientControlWriter::queue(queue.clone()),
+            render: ClientRenderWriter::queue(queue),
+        }
+    }
+
+    #[cfg(all(test, unix))]
+    pub(crate) fn test_drain(&self) -> Vec<Vec<u8>> {
+        let mut state = self.render.queue.lock_state();
+        let mut frames = state.control.drain(..).collect::<Vec<_>>();
+        frames.extend(state.ordered.drain(..));
+        frames.extend(state.render.take());
+        frames
+    }
+
     #[cfg(test)]
     pub(crate) fn test_fill_render(&self, data: Vec<u8>) {
         self.render.try_send(data).unwrap();
@@ -398,6 +416,9 @@ pub(crate) enum ServerEvent {
         endpoint_keybindings: bool,
         mouse_capture: bool,
         surface_active: bool,
+        surface_reuse: bool,
+        surface_delta: bool,
+        surface_scroll: bool,
         writer: ClientWriter,
     },
     /// A client sent an input message.
@@ -763,6 +784,9 @@ pub(crate) fn handle_client_handshake(
                     hello.endpoint_keybindings,
                     hello.mouse_capture,
                     hello.surface_active,
+                    hello.surface_reuse,
+                    hello.surface_delta,
+                    hello.surface_scroll,
                 )),
             )
         }
@@ -840,9 +864,9 @@ pub(crate) fn handle_client_handshake(
     // Spawn a writer thread that forwards messages from the channels to the stream.
     let write_stream = stream.try_clone()?;
     let writer_event_tx = server_event_tx.clone();
-    std::thread::spawn(move || {
+    crate::thread_spawn::spawn_named("herdr-client-writer", move || {
         client_writer_loop(write_stream, client_id, writer_queue, writer_event_tx);
-    });
+    })?;
 
     if should_quit.load(Ordering::Acquire) {
         send_shutdown_to_unregistered_client(&writer);
@@ -857,6 +881,9 @@ pub(crate) fn handle_client_handshake(
         endpoint_keybindings,
         mouse_capture,
         surface_active,
+        surface_reuse,
+        surface_delta,
+        surface_scroll,
     )) = shell_options
     {
         ServerEvent::ClientShellConnected {
@@ -870,6 +897,9 @@ pub(crate) fn handle_client_handshake(
             endpoint_keybindings,
             mouse_capture,
             surface_active,
+            surface_reuse,
+            surface_delta,
+            surface_scroll,
             writer,
         }
     } else {
@@ -1444,6 +1474,9 @@ mod tests {
             endpoint_keybindings: true,
             mouse_capture: true,
             surface_active: true,
+            surface_reuse: false,
+            surface_delta: false,
+            surface_scroll: false,
             snapshot_codecs: vec![crate::protocol::endpoint::SNAPSHOT_CODEC_V1.into()],
             surface_codecs: vec![crate::protocol::endpoint::SURFACE_CODEC_V1.into()],
             input_codecs: vec![crate::protocol::endpoint::INPUT_CODEC_V1.into()],
@@ -1959,8 +1992,14 @@ mod tests {
                 endpoint_keybindings,
                 mouse_capture,
                 surface_active,
+                surface_reuse,
+                surface_delta,
+                surface_scroll,
                 writer,
             } => {
+                assert!(!surface_reuse);
+                assert!(!surface_delta);
+                assert!(!surface_scroll);
                 assert_eq!(client_id, 43);
                 assert_eq!((surface_cols, surface_rows), (80, 29));
                 assert_eq!((cell_width_px, cell_height_px), (8, 16));

@@ -25,6 +25,7 @@ struct AgentInfo: Codable, Equatable, Sendable {
     let agent: String?
     let agentSession: AgentSessionInfo?
     let agentStatus: AgentStatus
+    let completionSeq: Int?
     let cwd: String?
     let displayAgent: String?
     let focused: Bool
@@ -56,6 +57,7 @@ struct AgentInfo: Codable, Equatable, Sendable {
         workspaceID: String,
         agent: String? = nil,
         agentSession: AgentSessionInfo? = nil,
+        completionSeq: Int? = nil,
         cwd: String? = nil,
         displayAgent: String? = nil,
         foregroundCwd: String? = nil,
@@ -80,6 +82,7 @@ struct AgentInfo: Codable, Equatable, Sendable {
         self.workspaceID = workspaceID
         self.agent = agent
         self.agentSession = agentSession
+        self.completionSeq = completionSeq
         self.cwd = cwd
         self.displayAgent = displayAgent
         self.foregroundCwd = foregroundCwd
@@ -100,6 +103,7 @@ struct AgentInfo: Codable, Equatable, Sendable {
         case agent
         case agentSession = "agent_session"
         case agentStatus = "agent_status"
+        case completionSeq = "completion_seq"
         case cwd
         case displayAgent = "display_agent"
         case focused
@@ -364,6 +368,7 @@ struct PaneInfo: Codable, Equatable, Sendable {
     let foregroundCwd: String?
     let label: String?
     let paneID: String
+    let restoreError: String?
     let revision: Int
     let scroll: PaneScrollInfo?
     let stateLabels: [String: String]?
@@ -389,6 +394,7 @@ struct PaneInfo: Codable, Equatable, Sendable {
         displayAgent: String? = nil,
         foregroundCwd: String? = nil,
         label: String? = nil,
+        restoreError: String? = nil,
         scroll: PaneScrollInfo? = nil,
         stateLabels: [String: String]? = nil,
         terminalTitle: String? = nil,
@@ -409,6 +415,7 @@ struct PaneInfo: Codable, Equatable, Sendable {
         self.displayAgent = displayAgent
         self.foregroundCwd = foregroundCwd
         self.label = label
+        self.restoreError = restoreError
         self.scroll = scroll
         self.stateLabels = stateLabels
         self.terminalTitle = terminalTitle
@@ -427,6 +434,7 @@ struct PaneInfo: Codable, Equatable, Sendable {
         case foregroundCwd = "foreground_cwd"
         case label
         case paneID = "pane_id"
+        case restoreError = "restore_error"
         case revision
         case scroll
         case stateLabels = "state_labels"
@@ -802,6 +810,7 @@ struct ServerCapabilities: Codable, Equatable, Sendable {
     let endpointProtocolGeneration: Int?
     let healthCheck: Bool?
     let liveHandoff: Bool
+    let sshAgentRegistration: Bool?
     let surfaceInterest: Bool?
 
     init(
@@ -809,12 +818,14 @@ struct ServerCapabilities: Codable, Equatable, Sendable {
         detachedServerDaemon: Bool? = nil,
         endpointProtocolGeneration: Int? = nil,
         healthCheck: Bool? = nil,
+        sshAgentRegistration: Bool? = nil,
         surfaceInterest: Bool? = nil
     ) {
         self.liveHandoff = liveHandoff
         self.detachedServerDaemon = detachedServerDaemon
         self.endpointProtocolGeneration = endpointProtocolGeneration
         self.healthCheck = healthCheck
+        self.sshAgentRegistration = sshAgentRegistration
         self.surfaceInterest = surfaceInterest
     }
 
@@ -823,6 +834,7 @@ struct ServerCapabilities: Codable, Equatable, Sendable {
         case endpointProtocolGeneration = "endpoint_protocol_generation"
         case healthCheck = "health_check"
         case liveHandoff = "live_handoff"
+        case sshAgentRegistration = "ssh_agent_registration"
         case surfaceInterest = "surface_interest"
     }
 }

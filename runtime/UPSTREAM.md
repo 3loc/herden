@@ -7,7 +7,7 @@ upstream commit and its complete ancestry are connected to Herden's history as
 a merge parent.
 
 The runtime was last synchronized to upstream commit
-`c77af1892ff121736ecb103b32d504d6f1b31805` (Herdr 0.9.8) on 14 September
+`75f46fe812dbc2946f7e4104c7c89b70f5a84f0a` (Herdr 0.9.3 mainline) on 11 October
 2026. Upstream is merged with Git's subtree
 strategy so its repository root maps only to Herden's `runtime/` directory.
 
