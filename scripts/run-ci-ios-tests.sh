@@ -1605,6 +1605,15 @@ run_suite() {
     pinned_lane_logs+=("$log")
 }
 
+# Swift Testing prints a case count between a parameterized test's name and
+# its verdict. Normalize only positive case counts; zero cases prove nothing.
+passed_test_names() {
+    sed -n \
+        -e '/Test run with /d' \
+        -e 's/^.*Test \(.*\) passed after .*$/\1/p' "$@" \
+        | sed 's/ with [1-9][0-9]* test cases$//'
+}
+
 # Every behaviour the merge gate treats as mandatory names the test that proves
 # it. A count alone cannot show that Events, resize, or SFTP specifically ran.
 assert_behavior() {
@@ -1613,7 +1622,7 @@ assert_behavior() {
     local test_name=$3
     local log="$fixture_dir/$log_name.log"
 
-    if ! grep -qF "Test $test_name passed" "$log"; then
+    if ! passed_test_names "$log" | grep -Fx "$test_name" >/dev/null; then
         echo "Mandatory behaviour not proven: $behavior ($test_name)" >&2
         exit 1
     fi
@@ -1644,10 +1653,7 @@ assert_full_lane_coverage() {
     # `Test <name> passed after 1.234 seconds.` — the run summary reads
     # `Test run with N tests in M suites passed after ...`, which the same
     # pattern would otherwise reduce to a name, so it is deleted first.
-    cat "${pinned_lane_logs[@]}" \
-        | sed -n \
-            -e '/Test run with /d' \
-            -e 's/^.*Test \(.*\) passed after .*$/\1/p' \
+    passed_test_names "${pinned_lane_logs[@]}" \
         | LC_ALL=C sort -u > "$covered"
     if [[ "$password_fixture_available" != "1" ]]; then
         # The one behaviour a developer laptop may omit, and the only place a
