@@ -12,7 +12,7 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 - iOS Hosts can save a backup SSH address for the same machine. Herden uses it
   when the primary address is unreachable, while requiring the Host's trusted
-  SSH key to match on both routes.
+  SSH key to match on both routes ([#8](https://github.com/3loc/herden/pull/8)).
 - Added a generic private gateway and reproducible Even Hub package workflow
   for an installed G2 beta. Deployment-specific Hosts and the exact HTTPS
   origin are injected only at build time; Host credentials remain server-side.
@@ -45,7 +45,8 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 - Requests wait for a replacement Host connection before dispatch, and SSH
   commands prefer the user's current Herden installation over an older system copy.
 - Removing a Host ends its Live Activity and drops queued notification writes,
-  including writes that were already in flight.
+  including writes that were already in flight
+  ([#8](https://github.com/3loc/herden/pull/8)).
 
 ### Changed
 
