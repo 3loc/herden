@@ -350,8 +350,8 @@ preserve_failure_diagnostics() {
 }
 
 cleanup() {
-    trap - ERR
     local status=$?
+    trap - ERR
     local preserve_password_fixture=0
     trap - EXIT INT TERM
     set +e
