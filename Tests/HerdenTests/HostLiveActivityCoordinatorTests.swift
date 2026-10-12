@@ -127,6 +127,106 @@ struct HostLiveActivityCoordinatorTests {
         return details.agents.map(\.paneID)
     }
 
+    @Test func aHostOutsideTheCatalogWritesNothingWhileItsActivityIsLive() async throws {
+        let (defaults, cleanup) = try makeDefaults()
+        defer { cleanup() }
+        try await registerDevice()
+        armWorld()
+        let coordinator = makeCoordinator(defaults: defaults)
+        coordinator.start()
+        let agents = [agent(observedPaneID, .working)]
+        coordinator.agentsDidChange(agents)
+        try await waitUntil("the activity should start") { !controller.requestedHandles.isEmpty }
+        let activityID = try #require(controller.requestedHandles.first?.id)
+        controller.emitToken(id: activityID, Data([0xde, 0xad]))
+        try await waitUntil("the push token should land on the Host") {
+            try await liveActivityToken() == "dead"
+        }
+        let reads = await transport.notificationRegistrationReads
+        let writes = await transport.replacedNotificationRegistrations.count
+        let updates = controller.updates.count
+
+        // No forgetHost: an unreadable catalog also reads as no Hosts.
+        // The Host stays opted in with a live session, so only the
+        // catalog checks keep its Agents, pins, and layout from writing.
+        world.knownHostIDs = []
+        coordinator.agentsDidChange(agents + [agent("w:p-new", .blocked)])
+        coordinator.pinsDidChange()
+        coordinator.connectionsDidChange()
+        try await waitPastSettle()
+
+        #expect(controller.requestedHandles.count == 1)
+        #expect(controller.updates.count == updates)
+        #expect(controller.ended.isEmpty)
+        #expect(await transport.notificationRegistrationReads == reads)
+        #expect(await transport.replacedNotificationRegistrations.count == writes)
+
+        // A foreground return ends the activity without a clear it has
+        // no Console projection to write through.
+        coordinator.reconcile()
+        try await waitPastSettle()
+        #expect(controller.ended.map(\.id) == [activityID])
+        #expect(controller.requestedHandles.count == 1)
+        #expect(await transport.notificationRegistrationReads == reads)
+        #expect(await transport.replacedNotificationRegistrations.count == writes)
+        #expect(coordinator.isEnabled(for: host.id))
+    }
+
+    @Test func forgettingAHostEndsActivityAndPreventsStaleInventoryRevival() async throws {
+        let (defaults, cleanup) = try makeDefaults()
+        defer { cleanup() }
+        try await registerDevice()
+        armWorld()
+        let coordinator = makeCoordinator(defaults: defaults)
+        coordinator.start()
+        let agents = [agent(observedPaneID, .working)]
+        coordinator.agentsDidChange(agents)
+        try await waitUntil("the activity should start") { !controller.requestedHandles.isEmpty }
+        let activityID = try #require(controller.requestedHandles.first?.id)
+        let reads = await transport.notificationRegistrationReads
+        world.knownHostIDs.remove(host.id)
+        coordinator.forgetHost(host.id)
+        coordinator.agentsDidChange(agents)
+        coordinator.reconcile()
+        coordinator.connectionsDidChange()
+        coordinator.pinsDidChange()
+        try await waitPastSettle()
+        #expect(controller.ended.map(\.id) == [activityID])
+        #expect(controller.requestedHandles.count == 1)
+        #expect(!coordinator.isEnabled(for: host.id))
+        #expect(await transport.notificationRegistrationReads == reads)
+    }
+
+    @Test(arguments: [false, true])
+    func aRemovedHostsInflightWriteCannotRecreateADirtyPipe(explicitRemoval: Bool) async throws {
+        let (defaults, cleanup) = try makeDefaults()
+        defer { cleanup() }
+        try await registerDevice()
+        armWorld()
+        let coordinator = makeCoordinator(defaults: defaults)
+        coordinator.start()
+        coordinator.agentsDidChange([agent(observedPaneID, .working)])
+        try await waitUntil("the activity should start") { !controller.requestedHandles.isEmpty }
+        let activityID = try #require(controller.requestedHandles.first?.id)
+        await transport.setNotificationRegistrationWriteFailure(.writeFailed(detail: "offline"))
+        let gate = ScriptedTransportCallGate()
+        await transport.holdNotificationWrite(using: gate)
+        controller.emitToken(id: activityID, Data([0xde, 0xad]))
+        await gate.waitForEntry()
+        world.knownHostIDs = []
+        if explicitRemoval { coordinator.forgetHost(host.id) }
+        await gate.open()
+        try await waitUntil("the in-flight write should return") {
+            await !transport.notificationWriteIsBlocked
+        }
+        try await waitPastSettle()
+        let reads = await transport.notificationRegistrationReads
+        world.knownHostIDs = [host.id]
+        coordinator.connectionsDidChange()
+        try await waitPastSettle()
+        #expect(await transport.notificationRegistrationReads == reads)
+    }
+
     // MARK: Start / settle / flap
 
     @Test func startsAfterTheSettleNotOnFirstSight() async throws {

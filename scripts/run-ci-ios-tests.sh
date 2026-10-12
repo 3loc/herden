@@ -77,8 +77,8 @@ lock_owner_start="$(ps -o lstart= -p "$$" | sed 's/^ *//; s/ *$//')"
 # several directories deep, so anchor at /tmp: the per-user TMPDIR alone is
 # already 69 characters and overflows the limit.
 fixture_dir="$(mktemp -d /tmp/herden-ci.XXXXXX)"
-app_derived_data_path="$fixture_dir/AppDerivedData"
-package_derived_data_path="$fixture_dir/PackageDerivedData"
+app_derived_data_path="${HERDEN_CI_APP_DERIVED_DATA:-$fixture_dir/AppDerivedData}"
+package_derived_data_path="${HERDEN_CI_PACKAGE_DERIVED_DATA:-$fixture_dir/PackageDerivedData}"
 # Stable SourcePackages tree for the app lane. Hosted CI restores this via
 # actions/cache so libghostty's XCFramework is not re-fetched every run.
 # Package-lane builds have no remote SwiftPM deps and leave this unused.

@@ -260,6 +260,8 @@ struct PairingScanStoreTests {
 
     @Test(arguments: [
         PairingCeremonyError.hostUnreachable(detail: "x"),
+        .tailscaleSSH(addresses: ["100.64.0.1"], port: 22),
+        .enrollmentUnanswered,
         .bootstrapRejected,
         .enrollmentRefused(.unknownPairing),
         .enrollmentRefused(.expired),
@@ -322,6 +324,18 @@ struct PairingScanStoreTests {
         #expect(failure.message.contains("expired"))
         #expect(failure.message.contains("computer"))
         #expect(await env.connector.capturedCodes.isEmpty)
+        #expect(env.catalog.hosts.isEmpty)
+    }
+
+    @Test func tailscaleSSHExplainsHowToChooseTheOpenSSHPort() async throws {
+        let env = try makeEnv(outcomes: [.fails(.tailscaleSSH(addresses: ["100.64.0.1"], port: 22))])
+        defer { env.cleanup() }
+        env.store.submit(scannedCode: Self.bootstrapVector.code)
+        await env.store.pair()
+        let failure = try #require(env.store.failure)
+        #expect(!failure.canRetry)
+        #expect(failure.message.contains("herden pair --port"))
+        #expect(failure.message.contains("OpenSSH"))
         #expect(env.catalog.hosts.isEmpty)
     }
 

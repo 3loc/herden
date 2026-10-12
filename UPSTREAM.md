@@ -19,6 +19,13 @@ and their ancestry are retained in Herden's public Git history.
 Heeler is observed rather than merged wholesale. Later changes are reviewed
 and ported only when they remain useful to Herden's current architecture.
 
+The October 2026 review covers Heeler through
+`78481680aac92bc3743035b638639b8ee0263bbc`. Selected ports retain their upstream
+commit references: bounded key-exchange retry (`2c9066b5`), SSH server identity
+and Tailscale pairing diagnostics (`4b7778d0`, `3b7ddf64`), connection replacement
+waiting (`c48346f1`), executable PATH precedence (`368fb816`), and removed-Host
+Live Activity cleanup (`fc494b2c`, `8937ae01`, `b6690bf6`, `c51d8174`).
+
 ## herdr
 
 The Host runtime began from

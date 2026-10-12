@@ -36,6 +36,8 @@ enum SSHConnectionTeardownStep: Sendable, Equatable {
 /// which #149 tracks only some.
 public final class SSHConnection: Sendable {
     public let hostKey: SSHHostKey
+    /// Identification sent by the SSH server during its handshake.
+    public let serverIdentification: String?
 
     private let driver: SessionDriver
     private let parent: SSHConnection?
@@ -45,24 +47,50 @@ public final class SSHConnection: Sendable {
     private init(
         driver: SessionDriver,
         hostKey: SSHHostKey,
+        serverIdentification: String?,
         parent: SSHConnection? = nil,
         byteTransport: (any SSHByteTransport)? = nil,
         teardownObserver: (@Sendable (SSHConnectionTeardownStep) -> Void)? = nil
     ) {
         self.driver = driver
         self.hostKey = hostKey
+        self.serverIdentification = serverIdentification
         self.parent = parent
         self.byteTransport = byteTransport
         self.teardownObserver = teardownObserver
     }
 
+    /// Attempts one handshake makes before a key-exchange failure is reported.
+    /// See `SessionDriver.handshakeFailedInKeyExchange` for why the second
+    /// attempt is independent of the first rather than a repeat of it (#332).
+    /// Every attempt shares the caller's deadline, so a redial cannot extend
+    /// the timeout the caller asked for.
+    static let handshakeAttemptLimit = 2
+
     public static func connect(
         to endpoint: SSHEndpoint,
         timeout: Duration
     ) async throws -> SSHConnection {
-        let driver = SessionDriver()
-        let hostKey = try await driver.handshake(endpoint: endpoint, timeout: timeout)
-        return SSHConnection(driver: driver, hostKey: hostKey)
+        let deadline = ContinuousClock.now.advanced(by: timeout)
+        var attemptsLeft = handshakeAttemptLimit
+        while true {
+            attemptsLeft -= 1
+            let driver = SessionDriver()
+            do {
+                let hostKey = try await driver.handshake(
+                    endpoint: endpoint,
+                    timeout: ContinuousClock.now.duration(to: deadline))
+                return SSHConnection(
+                    driver: driver, hostKey: hostKey,
+                    serverIdentification: await driver.serverIdentification)
+            } catch {
+                guard
+                    attemptsLeft > 0,
+                    await driver.handshakeFailedInKeyExchange,
+                    ContinuousClock.now < deadline
+                else { throw error }
+            }
+        }
     }
 
     /// Opens an SSH connection to `endpoint` through this authenticated Jump
@@ -83,26 +111,40 @@ public final class SSHConnection: Sendable {
         timeout: Duration,
         teardownObserver: (@Sendable (SSHConnectionTeardownStep) -> Void)?
     ) async throws -> SSHConnection {
-        let transport = try await driver.openDirectTCPIP(
-            endpoint: endpoint,
-            timeout: timeout)
-        let targetDriver = SessionDriver()
-        do {
-            let hostKey = try await targetDriver.handshake(
-                transport: transport,
-                timeout: timeout)
-            return SSHConnection(
-                driver: targetDriver,
-                hostKey: hostKey,
-                parent: self,
-                byteTransport: transport,
-                teardownObserver: teardownObserver)
-        } catch {
-            await targetDriver.invalidate()
-            transport.abort()
-            try? await transport.close(timeout: .seconds(2))
-            try? await close(timeout: .seconds(2))
-            throw error
+        let deadline = ContinuousClock.now.advanced(by: timeout)
+        var attemptsLeft = Self.handshakeAttemptLimit
+        while true {
+            attemptsLeft -= 1
+            let remaining = ContinuousClock.now.duration(to: deadline)
+            let transport = try await driver.openDirectTCPIP(
+                endpoint: endpoint,
+                timeout: remaining)
+            let targetDriver = SessionDriver()
+            do {
+                let hostKey = try await targetDriver.handshake(
+                    transport: transport,
+                    timeout: ContinuousClock.now.duration(to: deadline))
+                return SSHConnection(
+                    driver: targetDriver,
+                    hostKey: hostKey,
+                    serverIdentification: await targetDriver.serverIdentification,
+                    parent: self,
+                    byteTransport: transport,
+                    teardownObserver: teardownObserver)
+            } catch {
+                // Read before invalidating: only the target hop is retryable,
+                // and only the forwarding channel it rode on is discarded. The
+                // Jump Host session stays open for the redial and is closed
+                // below once no attempt is left.
+                let retryable = await targetDriver.handshakeFailedInKeyExchange
+                await targetDriver.invalidate()
+                transport.abort()
+                try? await transport.close(timeout: .seconds(2))
+                guard attemptsLeft > 0, retryable, ContinuousClock.now < deadline else {
+                    try? await close(timeout: .seconds(2))
+                    throw error
+                }
+            }
         }
     }
 

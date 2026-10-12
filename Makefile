@@ -132,6 +132,14 @@ ios-test-one: prepare-ios-cache ## Run one iOS suite (SUITE=PairingCodeTests)
 ios-test-ssh: ## Run only the repository-local HerdenSSH package tests
 	scripts/run-herdenssh-package-tests.sh 'platform=iOS Simulator,name=$(SIM)'
 
+.PHONY: ios-test-integration
+ios-test-integration: prepare-ios-cache ## Run disposable real-SSH fixtures (LANE=app or package)
+	HERDEN_CI_LANE="$(or $(LANE),app)" \
+	HERDEN_CI_APP_DERIVED_DATA="$(DERIVED)" \
+	HERDEN_CI_PACKAGE_DERIVED_DATA="$(SSH_DERIVED)" \
+	HERDEN_CI_SOURCE_PACKAGES_DIR="$(SOURCE_PACKAGES)" \
+	bash scripts/run-ci-ios-tests.sh
+
 ios-test-all: ios-test ios-test-ssh ## Run both iOS test surfaces
 
 test-all: host-test ios-test-all ## Run Host and iOS suites; use only before cross-product/release work

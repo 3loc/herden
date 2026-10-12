@@ -38,6 +38,15 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
   with text wrapped using the G2 firmware font metrics; capped Host reads keep
   their newest lines instead of their oldest.
 
+### Fixed
+
+- SSH setup retries one interrupted key exchange within its original deadline.
+  Pairing identifies Tailscale SSH and explains how to select the OpenSSH port.
+- Requests wait for a replacement Host connection before dispatch, and SSH
+  commands prefer the user's current Herden installation over an older system copy.
+- Removing a Host ends its Live Activity and drops queued notification writes,
+  including writes that were already in flight.
+
 ### Changed
 
 - Hosts remember LAN and VPN addresses after pairing or a trusted connection,

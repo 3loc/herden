@@ -209,6 +209,13 @@ final class PairingScanStore {
                     + "connected through Tailscale or another VPN. Then try again with "
                     + "the same code.",
                 canRetry: true)
+        case .tailscaleSSH(let addresses, let port):
+            PairingFailure(
+                step: .reach,
+                message: "Tailscale SSH answers port \(port) at \(addresses.joined(separator: ", ")). "
+                    + "Pairing needs OpenSSH. On the computer, run herden pair --port with "
+                    + "the port OpenSSH listens on, then scan the new Pairing Code.",
+                canRetry: false)
         case .bootstrapRejected:
             PairingFailure(
                 step: .authenticate,
@@ -228,7 +235,7 @@ final class PairingScanStore {
             PairingFailure(
                 step: .enroll,
                 message: "The Host did not accept this device's key. Try again; if it keeps "
-                    + "failing, update the app and the pairing plugin so they match.",
+                    + "failing, update the app and Herden Host so they match.",
                 canRetry: true)
         case .enrollmentRefused(.noInput):
             PairingFailure(
@@ -238,8 +245,15 @@ final class PairingScanStore {
         case .enrollmentRefused(.unrecognized(let code)):
             PairingFailure(
                 step: .enroll,
-                message: "The Host refused Enrollment (\(code)). Update the app and the pairing "
-                    + "plugin so they match, then generate a new Pairing Code.",
+                message: "The Host refused Enrollment (\(code)). Update the app and Herden "
+                    + "Host so they match, then generate a new Pairing Code.",
+                canRetry: false)
+        case .enrollmentUnanswered:
+            PairingFailure(
+                step: .enroll,
+                message: "The Host accepted this Pairing Code, but its pairing command ended "
+                    + "without answering. Check that Herden is installed and OpenSSH answers "
+                    + "this port, then generate a new Pairing Code.",
                 canRetry: false)
         case .enrollmentFailed:
             PairingFailure(
@@ -269,7 +283,7 @@ final class PairingScanStore {
             "That QR code is not a herden Pairing Code."
         case .unsupportedVersion(let found):
             "This Pairing Code uses version \(found), which this app does not "
-                + "understand. Update the app and the pairing plugin so they match."
+                + "understand. Update the app and Herden Host so they match."
         case .badEncoding, .badPayload:
             "The Pairing Code could not be read. Regenerate it in herden and scan again."
         }

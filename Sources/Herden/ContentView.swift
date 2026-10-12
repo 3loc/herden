@@ -113,6 +113,8 @@ struct ContentView: View {
         // pushed screen, and UIKit terminal surface resolves the same mode.
         .preferredColorScheme(appearance.preferredColorScheme)
         .environment(\.appAppearance, appearance)
+        .environment(\.hostRemovalDependencies, HostRemovalDependencies(
+            didRemoveHost: { [liveActivities] id in liveActivities.forgetHost(id) }))
         .tint(Brand.primary)
         .task {
             console.setHosts(hostStore.hosts)
