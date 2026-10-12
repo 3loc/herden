@@ -350,6 +350,7 @@ preserve_failure_diagnostics() {
 }
 
 cleanup() {
+    trap - ERR
     local status=$?
     local preserve_password_fixture=0
     trap - EXIT INT TERM
@@ -673,7 +674,7 @@ unset env(HERDEN_SYSADMINCTL_PASSWORD)
 
 spawn /usr/bin/sudo -n /usr/sbin/sysadminctl \
     -addUser $env(HERDEN_SYSADMINCTL_USERNAME) \
-    -fullName {Herden SSH CI} \
+    -fullName "Herden SSH CI $env(HERDEN_SYSADMINCTL_USERNAME)" \
     -UID $env(HERDEN_SYSADMINCTL_UID) \
     -GID 20 \
     -shell /bin/zsh \
