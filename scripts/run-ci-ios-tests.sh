@@ -702,6 +702,9 @@ expect {
 
 if {!$sent_password || [catch {wait} child_status]} {
     puts stderr "sysadminctl did not complete its password prompt"
+    if {[info exists expect_out(buffer)]} {
+        puts stderr [string map [list $password {<redacted>}] $expect_out(buffer)]
+    }
     exit 1
 }
 if {[llength $child_status] < 4 || [lindex $child_status 2] ne "0"} {
