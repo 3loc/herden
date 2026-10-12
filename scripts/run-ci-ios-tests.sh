@@ -1741,7 +1741,7 @@ if [[ "$password_fixture_available" == "1" ]]; then
 fi
 run_suite HerdenSSHDirectStreamLocalE2ETests 9 1 0 \
     HerdenSSHDirectStreamLocalE2ETests
-run_suite SharedFixtureE2ETests 94 6 0 \
+run_suite SharedFixtureE2ETests 96 6 0 \
     HerdenSSHPTYE2ETests \
     HerdenSSHJumpHostGateE2ETests \
     HerdenSSHTransportBehaviorE2ETests \
@@ -1767,6 +1767,10 @@ if [[ "$password_fixture_available" == "1" ]]; then
 fi
 assert_behavior "Device Key" HerdenSSHSessionE2ETests \
     '"authorized Device Key authenticates and executes through real sshd"'
+assert_behavior "Tailscale SSH is rejected before authentication" PairingCeremonyE2ETests \
+    'tailscaleSSHIsRefusedBeforePinOrAuthentication()'
+assert_behavior "silent enrollment exit is actionable" PairingCeremonyE2ETests \
+    'silentEntrypointExitIsReportedAsUnanswered()'
 assert_behavior "Bootstrap Key" PairingCeremonyE2ETests \
     'fullCeremonyEnrollsTheDeviceKeyAndVerifies()'
 assert_behavior "two-hop trust" HerdenSSHJumpHostGateE2ETests \
