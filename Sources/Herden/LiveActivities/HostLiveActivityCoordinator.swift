@@ -29,6 +29,7 @@ final class HostLiveActivityCoordinator {
     @ObservationIgnored private var applied: [Host.ID: AgentActivityDesire] = [:]
     @ObservationIgnored private var settleTasks: [Host.ID: Task<Void, Never>] = [:]
     @ObservationIgnored private var sessions: [Host.ID: ActivitySession] = [:]
+    @ObservationIgnored private var writerTasks: [Host.ID: Task<Void, Never>] = [:]
     @ObservationIgnored private var pipes: [Host.ID: TokenPipe] = [:]
 
     var areActivitiesEnabled: Bool { controller.areEnabled }
@@ -115,7 +116,9 @@ final class HostLiveActivityCoordinator {
     /// launch with already-working Agents should start an activity once the
     /// settle elapses. Newer input cancels an in-flight settle.
     func agentsDidChange(_ agents: [ConsoleAgent]) {
-        let grouped = Dictionary(grouping: agents, by: \.hostID)
+        let known = knownHostIDs()
+        let grouped = Dictionary(
+            grouping: agents.filter { known.contains($0.hostID) }, by: \.hostID)
         var hosts = Set(latestAgents.keys)
         hosts.formUnion(grouped.keys)
         hosts.formUnion(sessions.keys)
@@ -124,6 +127,25 @@ final class HostLiveActivityCoordinator {
         for hostID in hosts {
             scheduleSettle(for: hostID)
         }
+    }
+
+    /// An explicitly removed Host (#414): ends its activity, forgets its
+    /// opt-in, and drops everything queued for it. Nothing is written to the
+    /// Host: its Console projection is gone, so a clear could only fail and
+    /// stay dirty. Call after the catalog removal, so `knownHostIDs` already
+    /// excludes the Host and nothing re-creates its state.
+    func forgetHost(_ hostID: Host.ID) {
+        // Only here, never by catalog difference: an unreadable catalog also
+        // reads as no Hosts, and that must not cost every Host its opt-in.
+        preferences.setEnabled(false, for: hostID)
+        var activityIDs = Set(
+            controller.currentActivities().filter { $0.hostID == hostID }.map(\.id))
+        if let session = sessions[hostID] { activityIDs.insert(session.id) }
+        dropSession(hostID, endOnController: false)
+        for id in activityIDs.sorted() {
+            controller.end(id: id, finalContent: nil, immediate: true)
+        }
+        dropTransientState(for: hostID)
     }
 
     /// Foreground return: notice dismissals that happened while we were away,
@@ -139,13 +161,20 @@ final class HostLiveActivityCoordinator {
             controller.end(id: id, finalContent: nil, immediate: true)
             if sessions[hostID]?.id == id {
                 dropSession(hostID, endOnController: false)
-                enqueue(.clear, for: hostID)
             }
         }
 
         for (hostID, session) in sessions where currentByID[session.id] == nil {
             dropSession(hostID, endOnController: false)
             enqueue(.clear, for: hostID)
+        }
+
+        var tracked = Set(pipes.keys).union(settleTasks.keys).union(writerTasks.keys)
+        tracked.formUnion(applied.keys)
+        tracked.formUnion(latestAgents.keys)
+        tracked.formUnion(reconcileNotes.keys)
+        for hostID in tracked.subtracting(known) {
+            dropTransientState(for: hostID)
         }
 
         for (id, hostID) in current where known.contains(hostID) && sessions[hostID] == nil {
@@ -189,6 +218,10 @@ final class HostLiveActivityCoordinator {
     // MARK: Desire / settle
 
     private func scheduleSettle(for hostID: Host.ID) {
+        guard knownHostIDs().contains(hostID) else {
+            settleTasks.removeValue(forKey: hostID)?.cancel()
+            return
+        }
         holdIfUnknown(hostID)
         if shouldDeferApply(for: hostID) {
             settleTasks[hostID]?.cancel()
@@ -212,7 +245,7 @@ final class HostLiveActivityCoordinator {
     }
 
     private func apply(_ hostID: Host.ID) {
-        guard didStart else { return }
+        guard didStart, knownHostIDs().contains(hostID) else { return }
         holdIfUnknown(hostID)
         if shouldDeferApply(for: hostID) { return }
         let desired = computeDesired(for: hostID)
@@ -402,6 +435,19 @@ final class HostLiveActivityCoordinator {
         }
     }
 
+    /// Everything held in memory for a Host other than its activity
+    /// session: settle and writer tasks, the token pipe, and the last desire, Agent list, and reconcile verdict. Safe
+    /// to drop for any Host outside the catalog; the persisted opt-in is
+    /// `forgetHost`'s alone.
+    private func dropTransientState(for hostID: Host.ID) {
+        settleTasks.removeValue(forKey: hostID)?.cancel()
+        writerTasks.removeValue(forKey: hostID)?.cancel()
+        pipes[hostID] = nil
+        applied[hostID] = nil
+        latestAgents[hostID] = nil
+        if reconcileNotes[hostID] != nil { reconcileNotes[hostID] = nil }
+    }
+
     // MARK: Token pipe
 
     private enum TokenJob: Equatable {
@@ -417,6 +463,7 @@ final class HostLiveActivityCoordinator {
     }
 
     private func enqueue(_ job: TokenJob, for hostID: Host.ID) {
+        guard didStart, knownHostIDs().contains(hostID) else { return }
         var pipe = pipes[hostID] ?? TokenPipe()
         switch (pipe.pending, job) {
         case (.some(.set), .setPins), (.some(.clear), .setPins):
@@ -435,9 +482,15 @@ final class HostLiveActivityCoordinator {
         pipe.pending = nil
         pipe.inFlight = true
         pipes[hostID] = pipe
-        Task { [weak self] in
+        writerTasks[hostID] = Task { [weak self] in
             guard let self else { return }
             let succeeded = await self.perform(job, hostID: hostID)
+            guard !Task.isCancelled, self.didStart else { return }
+            self.writerTasks[hostID] = nil
+            guard self.knownHostIDs().contains(hostID) else {
+                self.dropTransientState(for: hostID)
+                return
+            }
             var pipe = self.pipes[hostID] ?? TokenPipe()
             pipe.inFlight = false
             let newer = pipe.pending
@@ -482,7 +535,12 @@ final class HostLiveActivityCoordinator {
     }
 
     private func retryDirtyPipes(onlyIfConnected: Bool) {
+        let known = knownHostIDs()
         for (hostID, pipe) in pipes where pipe.isDirty {
+            guard known.contains(hostID) else {
+                dropTransientState(for: hostID)
+                continue
+            }
             if onlyIfConnected, connectionStatus(hostID) != .connected { continue }
             pump(hostID)
         }

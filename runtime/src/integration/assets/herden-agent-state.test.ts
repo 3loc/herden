@@ -5,6 +5,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 
 const originalPlatform = process.platform;
+const originalArgv = process.argv;
 const originalCreateConnection = net.createConnection;
 const originalEnvironment = {
   HERDR_ENV: process.env.HERDR_ENV,
@@ -35,6 +36,7 @@ afterEach(async () => {
 
   Object.defineProperty(process, "platform", { value: originalPlatform });
   net.createConnection = originalCreateConnection;
+  process.argv = originalArgv;
   for (const [name, value] of Object.entries(originalEnvironment)) {
     if (value === undefined) {
       delete process.env[name];
@@ -86,6 +88,8 @@ function createExtensionHarness() {
 }
 
 function configureIntegrationEnvironment(recordingSocketPath: string) {
+  // Tests may run inside an OMP shell; nested-session cases opt in explicitly.
+  delete process.env.OMPCODE;
   process.env.HERDR_ENV = "1";
   process.env.HERDR_SOCKET_PATH = recordingSocketPath;
   process.env.HERDR_PANE_ID = "test:p1";
@@ -135,6 +139,7 @@ for (const socketPlugin of socketPlugins) {
     Object.defineProperty(process, "platform", { value: "win32" });
     const connectedEndpoint = captureConnectionEndpoint();
 
+    process.argv = ["bun", "/$bunfs/root/src/index.js", "run"];
     const { HerdenAgentStatePlugin } = await importFresh(socketPlugin.modulePath);
     const plugin = await HerdenAgentStatePlugin();
     await plugin.event({
@@ -285,9 +290,14 @@ test("Pi reports a Windows session path", async () => {
       },
     },
   );
-  await waitFor(() => requests.length === 2);
+  const sessionReports = () => requests.filter((request) =>
+    isRecord(request) &&
+    (request.method === "pane.report_agent_session" || request.method === "pane.report_agent"),
+  );
+  await waitFor(() => sessionReports().length === 2);
 
-  expect(requests.map(requestSessionPath)).toEqual([sessionPath, sessionPath]);
+  expect(sessionReports().map(requestSessionPath)).toEqual([sessionPath, sessionPath]);
+  expect(requestStates(requests)).toEqual(["idle"]);
 });
 
 test("Pi reports idle only after the agent settles", async () => {

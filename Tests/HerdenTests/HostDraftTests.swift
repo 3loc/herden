@@ -28,6 +28,27 @@ struct HostDraftTests {
         #expect(rebuilt == host)
     }
 
+    @Test func prefillsAndRoundTripsABackupAddress() throws {
+        let host = Host(
+            name: "fansvine", address: "192.168.10.61",
+            backupAddress: "100.64.0.14", username: "ted")
+        let draft = HostDraft(host: host)
+        #expect(draft.makeHost(id: host.id) == host)
+    }
+
+    @Test func rejectsDuplicateAddressOrBackupWithJumpHost() {
+        var draft = HostDraft()
+        draft.name = "fansvine"
+        draft.address = "192.168.10.61"
+        draft.username = "ted"
+        draft.backupAddress = "192.168.10.61"
+        #expect(!draft.isValid)
+        draft.backupAddress = "100.64.0.14"
+        #expect(draft.isValid)
+        draft.jumpAddress = "jump.example"
+        #expect(!draft.isValid)
+    }
+
     @Test func blankJumpAddressMeansDirectConnection() throws {
         var draft = HostDraft()
         draft.name = "box"
@@ -178,5 +199,79 @@ struct HostDraftTests {
         draft = HostDraft(host: keyHost)
         draft.authMethod = .password
         #expect(!draft.canSave(editing: keyHost))
+    }
+}
+
+private actor AddressConnector: TransportConnector {
+    let failures: [String: TransportError]
+    private(set) var attempted: [String] = []
+
+    init(failures: [String: TransportError] = [:]) {
+        self.failures = failures
+    }
+
+    func connect(settings: SSHTransportSettings) async throws -> any Transport {
+        attempted.append(settings.host)
+        if let failure = failures[settings.host] { throw failure }
+        return FakeTransport(pingResult: .success(
+            ServerInfo(version: "0.8.2", protocolVersion: 17)))
+    }
+}
+
+@Suite("Host connection addresses")
+struct HostConnectionTests {
+    private let primary = "192.168.10.61"
+    private let backup = "100.64.0.14"
+
+    private func connect(
+        host: Host, connector: AddressConnector
+    ) async throws -> any Transport {
+        let policy = HostKeyPolicy(knownHosts: InMemoryKnownHostsStore()) { _ in false }
+        return try await HostConnection.connect(
+            host: host, credentials: .password("test"), policy: policy,
+            connector: connector)
+    }
+
+    @Test func usesPrimaryWhenReachable() async throws {
+        let connector = AddressConnector()
+        let host = Host(address: primary, backupAddress: backup, username: "ted")
+        _ = try await connect(host: host, connector: connector)
+        #expect(await connector.attempted == [primary])
+    }
+
+    @Test func triesBackupAfterNetworkFailure() async throws {
+        let connector = AddressConnector(failures: [
+            primary: .sshUnreachable(detail: "no route")])
+        let host = Host(address: primary, backupAddress: backup, username: "ted")
+        _ = try await connect(host: host, connector: connector)
+        #expect(await connector.attempted == [primary, backup])
+    }
+
+    @Test func doesNotTryBackupAfterAuthenticationFailure() async {
+        let connector = AddressConnector(failures: [primary: .authenticationFailed])
+        let host = Host(address: primary, backupAddress: backup, username: "ted")
+        do {
+            _ = try await connect(host: host, connector: connector)
+            Issue.record("authentication failure must stop failover")
+        } catch let error as TransportError {
+            #expect(error == .authenticationFailed)
+        } catch {
+            Issue.record("unexpected error: \(error)")
+        }
+        #expect(await connector.attempted == [primary])
+    }
+
+    @Test func pinFromEitherAddressIsRequiredAtTheOther() async throws {
+        let base = InMemoryKnownHostsStore()
+        let trusted = HostKeyFingerprint(publicKeyBlob: Data("real host".utf8))
+        await base.setFingerprint(trusted, host: primary, port: 22)
+        let aliases = AlternateAddressKnownHostsStore(
+            base: base, primary: primary, backup: backup, port: 22)
+        #expect(await aliases.fingerprint(
+            host: backup, port: 22, algorithm: trusted.algorithm) == trusted)
+        #expect(await aliases.fingerprints(host: backup, port: 22) == [trusted])
+        let conflicting = HostKeyFingerprint(publicKeyBlob: Data("other host".utf8))
+        await base.setFingerprint(conflicting, host: backup, port: 22)
+        #expect(await aliases.fingerprints(host: backup, port: 22) == [trusted])
     }
 }

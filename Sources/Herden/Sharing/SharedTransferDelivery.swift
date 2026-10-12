@@ -63,8 +63,9 @@ enum SharedTransferDelivery {
         let credentials = try HostCredentialsProvider().credentials(for: host)
         let policy = HostKeyPolicy(knownHosts: UserDefaultsKnownHostsStore.shared,
                                    confirmFirstConnect: { _ in false })
-        let transport = try await SSHTransportConnector().connect(settings:
-            SSHTransportSettings(host: host, credentials: credentials, hostKeyPolicy: policy))
+        let transport = try await HostConnection.connect(
+            host: host, credentials: credentials, policy: policy,
+            connector: SSHTransportConnector())
         do {
             _ = try await transport.ping()
             return transport

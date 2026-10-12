@@ -5,63 +5,6 @@ pub(super) const NEW_TAB_WIDTH: u16 = 3;
 pub(super) const WORKSPACE_HEADER_ROWS: u16 = 2;
 const ENDPOINT_ERROR_TIMEOUT_SECS: u64 = 5;
 
-fn pane_surface_row<'a>(
-    surface: &'a PaneSurfaceFrame,
-    pane: &crate::protocol::PaneSurfacePane,
-    absolute_row: u32,
-) -> Option<&'a [crate::protocol::CellData]> {
-    let viewport_top = pane
-        .scroll
-        .map(|scroll| {
-            scroll
-                .max_offset_from_bottom
-                .saturating_sub(scroll.offset_from_bottom) as u32
-        })
-        .unwrap_or(0);
-    let viewport_row = u16::try_from(absolute_row.checked_sub(viewport_top)?).ok()?;
-    if viewport_row >= pane.inner_rect.height {
-        return None;
-    }
-    let start = (usize::from(pane.inner_rect.y) + usize::from(viewport_row))
-        * usize::from(surface.frame.width)
-        + usize::from(pane.inner_rect.x);
-    surface
-        .frame
-        .cells
-        .get(start..start + usize::from(pane.inner_rect.width))
-}
-
-fn selection_cells_unchanged(
-    selection: &crate::selection::Selection<String>,
-    previous_surface: &PaneSurfaceFrame,
-    previous_pane: &crate::protocol::PaneSurfacePane,
-    next_surface: &PaneSurfaceFrame,
-    next_pane: &crate::protocol::PaneSurfacePane,
-) -> bool {
-    let ((start_row, start_col), (end_row, end_col)) = selection.ordered_cells();
-    (start_row..=end_row).all(|row| {
-        let first_col = if row == start_row { start_col } else { 0 };
-        let last_col = if row == end_row {
-            end_col
-        } else {
-            previous_pane.inner_rect.width.saturating_sub(1)
-        };
-        pane_surface_row(previous_surface, previous_pane, row)
-            .zip(pane_surface_row(next_surface, next_pane, row))
-            .and_then(|(previous, next)| {
-                previous
-                    .get(usize::from(first_col)..=usize::from(last_col))
-                    .zip(next.get(usize::from(first_col)..=usize::from(last_col)))
-            })
-            .is_some_and(|(previous, next)| {
-                previous
-                    .iter()
-                    .zip(next)
-                    .all(|(previous, next)| previous.symbol == next.symbol)
-            })
-    })
-}
-
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub(crate) enum ClientShellKeybindingSource {
     Local,
@@ -179,6 +122,8 @@ pub(super) struct ShellHitMap {
     pub(super) navigator_popup: Rect,
     pub(super) navigator_search: Rect,
     pub(super) navigator_rows: Vec<(Rect, ClientNavigatorTarget)>,
+    pub(super) navigator_scrollbar: Rect,
+    pub(super) navigator_scroll_metrics: Option<crate::pane::ScrollMetrics>,
     pub(super) worktree_search: Rect,
     pub(super) worktree_rows: Vec<(Rect, usize)>,
     pub(super) help_popup: Rect,
@@ -252,6 +197,9 @@ pub(super) enum ClientChromeDrag {
         grab_row_offset: u16,
     },
     HelpScrollbar {
+        grab_row_offset: u16,
+    },
+    NavigatorScrollbar {
         grab_row_offset: u16,
     },
     ProductAnnouncementScrollbar {
@@ -373,8 +321,7 @@ pub(super) enum ClientRenameTarget {
 #[derive(Debug)]
 pub(super) struct ClientRenameOverlay {
     pub(super) title: &'static str,
-    pub(super) input: String,
-    pub(super) replace_on_type: bool,
+    pub(super) input: TextEditor,
     pub(super) target: ClientRenameTarget,
 }
 
@@ -395,10 +342,6 @@ pub(super) enum ClientNavigatorTarget {
         endpoint_id: ClientEndpointId,
         workspace_id: String,
     },
-    Tab {
-        endpoint_id: ClientEndpointId,
-        tab_id: String,
-    },
     Pane {
         endpoint_id: ClientEndpointId,
         pane_id: String,
@@ -410,6 +353,8 @@ pub(super) struct ClientNavigatorRow {
     pub(super) depth: u8,
     pub(super) label: String,
     pub(super) meta: String,
+    pub(super) detail: String,
+    pub(super) agent: Option<String>,
     pub(super) status: Option<crate::api::schema::AgentStatus>,
     pub(super) stale: bool,
     pub(super) current: bool,
@@ -418,17 +363,16 @@ pub(super) struct ClientNavigatorRow {
 
 #[derive(Debug)]
 pub(super) struct ClientNavigatorOverlay {
-    pub(super) query: String,
+    pub(super) query: TextEditor,
     pub(super) search_focused: bool,
     pub(super) selected: Option<ClientNavigatorTarget>,
     pub(super) scroll: usize,
     pub(super) filter: Option<ClientNavigatorFilter>,
-    pub(super) expanded_workspaces: HashSet<(ClientEndpointId, String)>,
 }
 
 #[derive(Debug)]
 pub(super) struct ClientHelpOverlay {
-    pub(super) query: String,
+    pub(super) query: TextEditor,
     pub(super) search_focused: bool,
     pub(super) scroll: usize,
 }
@@ -483,9 +427,8 @@ pub(super) struct ClientSettingsOverlay {
 pub(super) struct ClientWorktreeCreateOverlay {
     pub(super) source_workspace_id: String,
     pub(super) repo_name: String,
-    pub(super) branch: String,
+    pub(super) branch: TextEditor,
     pub(super) checkout_path: String,
-    pub(super) replace_on_type: bool,
     pub(super) error: Option<String>,
     pub(super) creating: bool,
 }
@@ -533,7 +476,7 @@ pub(super) struct ClientWorktreeOpenOverlay {
     pub(super) source_workspace_id: String,
     pub(super) entries: Vec<ClientWorktreeOpenEntry>,
     pub(super) selected: usize,
-    pub(super) query: String,
+    pub(super) query: TextEditor,
     pub(super) search_focused: bool,
     pub(super) error: Option<String>,
     pub(super) opening: bool,
@@ -590,6 +533,7 @@ pub(super) enum ClientContextMenuTarget {
         is_git: bool,
         is_linked_worktree: bool,
         has_worktree_children: bool,
+        close_group: bool,
         collapsed: bool,
     },
     Tab {
@@ -618,8 +562,16 @@ pub(super) struct ClientContextMenuItem {
 }
 
 #[derive(Debug)]
+pub(super) struct ClientTabCloseConfirmation {
+    pub(super) tab_id: String,
+    pub(super) workspace: WorkspaceNavigationTarget,
+}
+
+#[derive(Debug)]
 pub(super) struct ClientConfirmCloseOverlay {
     pub(super) workspace_id: String,
+    pub(super) close_group: bool,
+    pub(super) tab_target: Option<ClientTabCloseConfirmation>,
     pub(super) title: String,
     pub(super) detail: String,
 }
@@ -767,7 +719,17 @@ pub(crate) enum ClientShellNotificationEffect {
     System {
         title: String,
         body: Option<String>,
+        #[cfg(windows)]
+        target: Option<ClientSystemNotificationTarget>,
     },
+}
+
+#[cfg(windows)]
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub(crate) struct ClientSystemNotificationTarget {
+    pub(crate) endpoint_id: ClientEndpointId,
+    pub(crate) boot_id: String,
+    pub(crate) pane_id: String,
 }
 
 pub(super) struct ClientPendingNotification {
@@ -848,7 +810,7 @@ pub(super) enum ClientCopySelection {
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub(super) struct ClientCopySearchPrompt {
     pub(super) direction: crate::api::schema::PaneCopySearchDirection,
-    pub(super) query: String,
+    pub(super) query: TextEditor,
 }
 
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -874,6 +836,7 @@ pub(super) struct ClientCopyModeState {
     pub(super) pane_id: String,
     pub(super) content_revision: u64,
     pub(super) geometry: (u16, u16),
+    pub(super) alternate_screen_active: bool,
     pub(super) cursor: crate::api::schema::PaneTextPoint,
     pub(super) offset_from_bottom: usize,
     pub(super) max_offset_from_bottom: usize,
@@ -891,8 +854,11 @@ pub(super) struct ClientCopyModeState {
 }
 
 pub(crate) struct ClientShellState {
+    pub(super) machine_diagnostics: super::machine_diagnostics::MachineDiagnostics,
     pub(super) config: ClientShellConfig,
     pub(super) snapshot: Option<Box<ClientShellSnapshot>>,
+    pub(super) active_snapshot_generation: Option<u64>,
+    pub(super) pane_surface_generation: Option<u64>,
     pub(super) pane_surface: Option<PaneSurfaceFrame>,
     /// A future projection surface waits here until its matching snapshot arrives. The visible
     /// pane surface always remains an exact snapshot pair.
@@ -915,6 +881,7 @@ pub(crate) struct ClientShellState {
     pub(super) remote_collapsed_groups: HashMap<ClientEndpointId, HashSet<String>>,
     pub(super) workspace_scroll: usize,
     pub(super) agent_scroll: usize,
+    pub(super) pending_agent_reveal: Option<(ClientEndpointId, String)>,
     pub(super) tab_scroll: usize,
     pub(super) mobile_switcher_scroll: usize,
     pub(super) reveal_focused_workspace: bool,
@@ -931,12 +898,22 @@ pub(crate) struct ClientShellState {
     pub(super) collapsed_endpoints: HashSet<ClientEndpointId>,
     pub(super) mode: ClientShellMode,
     pub(super) navigate_workspace_id: Option<WorkspaceNavigationTarget>,
+    pub(super) pending_workspace_highlight: Option<PendingWorkspaceHighlight>,
     pub(super) reveal_navigation_workspace: bool,
     pub(super) overlay: Option<ClientShellOverlay>,
     pub(super) previous_pane_id: Option<String>,
     pub(super) pane_mouse_gesture: Option<ClientPaneMouseGesture>,
     pub(super) link_hover: Option<super::link_hover::LinkHover>,
     pub(super) url_click_consumes_until_up: bool,
+    /// The host terminal reports key releases (Kitty event types), so text
+    /// presses can be tracked until their release arrives.
+    pub(super) host_reports_key_releases: bool,
+    /// The host tty's erase character is `^H`: a raw 0x08 is Backspace, not
+    /// Ctrl+H (MobaXterm, PuTTY-style terminals; tmux reads VERASE the same way).
+    pub(super) host_erase_is_ctrl_h: bool,
+    /// The focused pane asks for every key as an escape code, so Herdr pushed
+    /// report-all to the host; plain text input then reaches it as text.
+    pub(super) host_reports_all_keys: bool,
     pub(super) replaying_url_click: bool,
     pub(super) selection: Option<crate::selection::Selection<String>>,
     pub(super) last_pane_click: Option<ClientPaneClick>,
@@ -1050,11 +1027,14 @@ impl ClientShellState {
                 .extend(saved.collapsed_groups);
         }
         Self {
+            machine_diagnostics: Default::default(),
             config,
             snapshot: None,
+            active_snapshot_generation: None,
+            pane_surface_generation: None,
             pane_surface: None,
             pending_pane_surface: None,
-            graphics: crate::kitty_graphics::surface::ClientState::default(),
+            graphics: crate::kitty_graphics::surface::ClientState::new(),
             graphics_cell_size: crate::kitty_graphics::HostCellSize {
                 width_px: 1,
                 height_px: 1,
@@ -1075,6 +1055,7 @@ impl ClientShellState {
             remote_collapsed_groups,
             workspace_scroll: 0,
             agent_scroll: 0,
+            pending_agent_reveal: None,
             tab_scroll: 0,
             mobile_switcher_scroll: 0,
             reveal_focused_workspace: true,
@@ -1091,12 +1072,16 @@ impl ClientShellState {
             collapsed_endpoints: HashSet::new(),
             mode: ClientShellMode::Terminal,
             navigate_workspace_id: None,
+            pending_workspace_highlight: None,
             reveal_navigation_workspace: false,
             overlay,
             previous_pane_id: None,
             pane_mouse_gesture: None,
             link_hover: None,
             url_click_consumes_until_up: false,
+            host_reports_key_releases: false,
+            host_erase_is_ctrl_h: false,
+            host_reports_all_keys: false,
             replaying_url_click: false,
             selection: None,
             last_pane_click: None,
@@ -1281,6 +1266,7 @@ impl ClientShellState {
         self.endpoint_error = None;
         self.endpoint_error_deadline = None;
         self.navigate_workspace_id = None;
+        self.pending_workspace_highlight = None;
         self.overlay = self
             .config
             .startup_onboarding
@@ -1307,7 +1293,11 @@ impl ClientShellState {
         self.dismissed_product_announcement = None;
     }
 
-    pub(super) fn apply_active_snapshot(&mut self, mut snapshot: Box<ClientShellSnapshot>) {
+    pub(super) fn apply_active_snapshot(
+        &mut self,
+        mut snapshot: Box<ClientShellSnapshot>,
+        generation: Option<u64>,
+    ) {
         snapshot
             .commands
             .retain(|command| command.action != crate::protocol::ClientShellCommandAction::Unknown);
@@ -1318,13 +1308,21 @@ impl ClientShellState {
         };
         let endpoint_boot_changed =
             self.snapshot.is_some() && self.graphics.scope() != graphics_scope;
+        let generation_changed = self.active_snapshot_generation != generation;
         if !endpoint_boot_changed
+            && !generation_changed
             && self.snapshot.as_ref().is_some_and(|current| {
                 current.boot_id == snapshot.boot_id && snapshot.revision < current.revision
             })
         {
             return;
         }
+        // Screen revisions restart per connection. Keep the displayed surface for selection
+        // content comparisons, but retire speculative frames from the old connection.
+        if generation_changed {
+            self.pending_pane_surface = None;
+        }
+        self.active_snapshot_generation = generation;
         self.graphics.set_scope(&graphics_scope);
         let command_bindings_changed = self.snapshot.as_ref().is_none_or(|current| {
             current.commands.len() != snapshot.commands.len()
@@ -1585,6 +1583,7 @@ impl ClientShellState {
             }
         }
         self.snapshot = Some(snapshot);
+        self.reconcile_pending_workspace_highlight();
         let pending_surface = self.pending_pane_surface.take();
         if let Some(surface) = pending_surface {
             let matching = self.snapshot.as_ref().is_some_and(|snapshot| {
@@ -1616,7 +1615,8 @@ impl ClientShellState {
             return;
         }
         if self.pane_surface.as_ref().is_some_and(|current| {
-            current.boot_id == surface.boot_id
+            self.pane_surface_generation == self.active_snapshot_generation
+                && current.boot_id == surface.boot_id
                 && (surface.projection_revision < current.projection_revision
                     || (surface.projection_revision == current.projection_revision
                         && surface.surface_revision < current.surface_revision))
@@ -1644,7 +1644,8 @@ impl ClientShellState {
             || surface.projection_revision < snapshot.revision
             || (!retain_future && surface.projection_revision != snapshot.revision)
             || self.pane_surface.as_ref().is_some_and(|current| {
-                current.boot_id == surface.boot_id
+                self.pane_surface_generation == self.active_snapshot_generation
+                    && current.boot_id == surface.boot_id
                     && (surface.projection_revision < current.projection_revision
                         || (surface.projection_revision == current.projection_revision
                             && surface.surface_revision < current.surface_revision))
@@ -1711,7 +1712,7 @@ impl ClientShellState {
             Some(gesture) => Some(&gesture.pane_id),
             None => self.selection.as_ref().map(|selection| &selection.pane_id),
         };
-        let selection_content_changed = selection_pane.is_some_and(|pane_id| {
+        let selection_invalidated = selection_pane.is_some_and(|pane_id| {
             let Some(previous_surface) = self.pane_surface.as_ref() else {
                 return false;
             };
@@ -1723,34 +1724,15 @@ impl ClientShellState {
             let (Some(previous), Some(next)) = (previous, next) else {
                 return false;
             };
-            if previous.inner_rect.width != next.inner_rect.width
+            previous.inner_rect.width != next.inner_rect.width
                 || previous.inner_rect.height != next.inner_rect.height
                 || previous.alternate_screen_active != next.alternate_screen_active
-            {
-                return true;
-            }
-            if previous.content_revision == next.content_revision {
-                return false;
-            }
-            match (&self.word_selection_gesture, &self.selection) {
-                // Word gestures cache boundaries outside the selected cells too.
-                (Some(_), _) => true,
-                (None, Some(selection)) => {
-                    self.config.copy_on_select
-                        && (!previous.content_revision.is_multiple_of(2)
-                            || !next.content_revision.is_multiple_of(2)
-                            || !selection_cells_unchanged(
-                                selection,
-                                previous_surface,
-                                previous,
-                                &surface,
-                                next,
-                            ))
-                }
-                (None, None) => false,
-            }
+                // Ordinary selections are live buffer ranges. Only word gestures
+                // cache content-dependent boundaries that output can invalidate.
+                || (self.word_selection_gesture.is_some()
+                    && previous.content_revision != next.content_revision)
         });
-        if selection_content_changed {
+        if selection_invalidated {
             self.word_selection_gesture = None;
             self.selection = None;
             self.stop_selection_autoscroll();
@@ -1777,19 +1759,22 @@ impl ClientShellState {
                 .find(|pane| pane.pane_id == copy_mode.pane_id)
             {
                 let geometry = (pane.inner_rect.width, pane.inner_rect.height);
-                if copy_mode.content_revision != pane.content_revision
-                    || copy_mode.geometry != geometry
-                {
+                let coordinates_changed = copy_mode.geometry != geometry
+                    || copy_mode.alternate_screen_active != pane.alternate_screen_active;
+                if copy_mode.content_revision != pane.content_revision || coordinates_changed {
                     copy_mode.content_revision = pane.content_revision;
                     copy_mode.geometry = geometry;
-                    copy_mode.selection = None;
+                    copy_mode.alternate_screen_active = pane.alternate_screen_active;
+                    if coordinates_changed {
+                        copy_mode.selection = None;
+                        invalidated_copy_pane = Some(copy_mode.pane_id.clone());
+                    }
                     copy_mode.search_matches.clear();
                     copy_mode.search_total = 0;
                     copy_mode.search_current = None;
                     copy_mode.search_current_global = None;
                     copy_mode.search_generation = copy_mode.search_generation.saturating_add(1);
                     copy_mode.copy_after_search = false;
-                    invalidated_copy_pane = Some(copy_mode.pane_id.clone());
                 }
                 if let Some(scroll) = pane.scroll {
                     let actual_offset =
@@ -1815,6 +1800,7 @@ impl ClientShellState {
         self.graphics
             .set_scene(std::mem::take(&mut surface.graphics));
         self.pane_surface = Some(surface);
+        self.pane_surface_generation = self.active_snapshot_generation;
         self.invalidate_link_hover();
         self.resume_mobile_switcher_if_ready();
         self.reconcile_input_source();

@@ -6,6 +6,7 @@ import Foundation
 struct HostDraft: Equatable, Sendable {
     var name = ""
     var address = ""
+    var backupAddress = ""
     var port = "22"
     var username = ""
     var authMethod: Host.AuthMethod = .deviceKey
@@ -25,6 +26,7 @@ struct HostDraft: Equatable, Sendable {
     init(host: Host) {
         name = host.name
         address = host.address
+        backupAddress = host.backupAddress
         port = String(host.port)
         username = host.username
         authMethod = host.authMethod
@@ -55,6 +57,10 @@ struct HostDraft: Equatable, Sendable {
             && !address.trimmingCharacters(in: .whitespaces).isEmpty
             && !username.trimmingCharacters(in: .whitespaces).isEmpty
             && portNumber != nil
+            && (backupAddress.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+                || (!usesJumpHost
+                    && backupAddress.trimmingCharacters(in: .whitespacesAndNewlines)
+                        != address.trimmingCharacters(in: .whitespacesAndNewlines)))
             && (trimmedSessionName.isEmpty || HerdrSessionName.isValid(trimmedSessionName))
             // A blank jump address disables the hop entirely, so its port only
             // has to parse when the hop is actually in use.
@@ -80,6 +86,7 @@ struct HostDraft: Equatable, Sendable {
             id: id,
             name: name.trimmingCharacters(in: .whitespaces),
             address: address.trimmingCharacters(in: .whitespaces),
+            backupAddress: backupAddress.trimmingCharacters(in: .whitespacesAndNewlines),
             port: portNumber,
             username: username.trimmingCharacters(in: .whitespaces),
             authMethod: authMethod,

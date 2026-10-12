@@ -7,6 +7,10 @@ import Foundation
 /// by hand. No SSH anywhere.
 final actor ScriptedTransport: Transport {
     private(set) var isClosed = false
+    /// Liveness is scripted separately from `close()`, so a test can model a
+    /// degraded connection (dead link, live events reader) before the session
+    /// decides to replace the transport.
+    private var connectionAlive = true
     /// Every subscription set received, in order; the Console's
     /// resubscribe-on-membership-change behavior asserts on this.
     private(set) var capturedSubscriptions: [[EventSubscription]] = []
@@ -619,7 +623,21 @@ final actor ScriptedTransport: Transport {
         return notificationRegistration
     }
 
+    private var notificationWriteGate: ScriptedTransportCallGate?
+    private(set) var notificationWriteIsBlocked = false
+
+    func holdNotificationWrite(using gate: ScriptedTransportCallGate) {
+        notificationWriteGate = gate
+    }
+
     func replaceNotificationRegistration(_ contents: Data) async throws {
+        if let gate = notificationWriteGate {
+            notificationWriteGate = nil
+            notificationWriteIsBlocked = true
+            await gate.waitUntilOpen()
+            notificationWriteIsBlocked = false
+            try Task.checkCancellation()
+        }
         if let failure = notificationRegistrationWriteFailure { throw failure }
         notificationRegistration = contents
         replacedNotificationRegistrations.append(contents)
@@ -638,7 +656,14 @@ final actor ScriptedTransport: Transport {
     }
 
     var isConnected: Bool {
-        !isClosed
+        connectionAlive && !isClosed
+    }
+
+    /// Scripts the connection's liveness independently of the events stream,
+    /// so a test can hold the session's silent transport-replacement path
+    /// open (a degraded connection its events reader has not reported yet).
+    func setConnectionAlive(_ alive: Bool) {
+        connectionAlive = alive
     }
 
     func close() async throws {

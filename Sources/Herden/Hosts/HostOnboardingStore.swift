@@ -31,6 +31,8 @@ final class HostOnboardingStore {
     private(set) var serverInfo: ServerInfo?
     private(set) var availableSessions: [HerdrSession] = []
     private(set) var sessionDiscoveryError: String?
+    private(set) var connectedAddress: String?
+    private(set) var attemptedAddress: String?
 
     let host: Host
 
@@ -65,6 +67,8 @@ final class HostOnboardingStore {
         serverInfo = nil
         availableSessions = []
         sessionDiscoveryError = nil
+        connectedAddress = nil
+        attemptedAddress = nil
         pendingHostKeyReplacement = nil
         defer { phase = .finished }
 
@@ -89,10 +93,13 @@ final class HostOnboardingStore {
         let policy = HostKeyPolicy(knownHosts: knownHosts) { [weak self] candidate in
             await self?.awaitFingerprintDecision(for: candidate) ?? false
         }
-        let settings = SSHTransportSettings(
-            host: host, credentials: resolved, hostKeyPolicy: policy)
         do {
-            let transport = try await connector.connect(settings: settings)
+            let transport = try await HostConnection.connect(
+                host: host, credentials: resolved, policy: policy, connector: connector,
+                onAttempt: { [weak self] address in
+                    await MainActor.run { self?.attemptedAddress = address }
+                })
+            connectedAddress = attemptedAddress
             do {
                 availableSessions = try await transport.listSessions()
             } catch {
@@ -131,7 +138,9 @@ final class HostOnboardingStore {
     /// confirmation, then immediately proves the new pin by rerunning preflight.
     func trustPresentedHostKey() async {
         guard phase != .running, let replacement = pendingHostKeyReplacement else { return }
-        await knownHosts.setFingerprint(replacement.presented, host: host.address, port: host.port)
+        for address in host.directAddresses {
+            await knownHosts.setFingerprint(replacement.presented, host: address, port: host.port)
+        }
         pendingHostKeyReplacement = nil
         await runChecks()
     }

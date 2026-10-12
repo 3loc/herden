@@ -19,7 +19,8 @@
 # a developer laptop without it still runs twelve of the thirteen mandatory
 # behaviours, and the script says loudly which one it left out.
 
-set -euo pipefail
+set -Eeuo pipefail
+trap 'printf "Herden fixture setup failed at line %s (status %s)\n" "$LINENO" "$?" >&2' ERR
 
 repo_root="$(cd "$(dirname "$0")/.." && pwd)"
 
@@ -77,8 +78,8 @@ lock_owner_start="$(ps -o lstart= -p "$$" | sed 's/^ *//; s/ *$//')"
 # several directories deep, so anchor at /tmp: the per-user TMPDIR alone is
 # already 69 characters and overflows the limit.
 fixture_dir="$(mktemp -d /tmp/herden-ci.XXXXXX)"
-app_derived_data_path="$fixture_dir/AppDerivedData"
-package_derived_data_path="$fixture_dir/PackageDerivedData"
+app_derived_data_path="${HERDEN_CI_APP_DERIVED_DATA:-$fixture_dir/AppDerivedData}"
+package_derived_data_path="${HERDEN_CI_PACKAGE_DERIVED_DATA:-$fixture_dir/PackageDerivedData}"
 # Stable SourcePackages tree for the app lane. Hosted CI restores this via
 # actions/cache so libghostty's XCFramework is not re-fetched every run.
 # Package-lane builds have no remote SwiftPM deps and leave this unused.
@@ -350,6 +351,7 @@ preserve_failure_diagnostics() {
 
 cleanup() {
     local status=$?
+    trap - ERR
     local preserve_password_fixture=0
     trap - EXIT INT TERM
     set +e
@@ -672,7 +674,7 @@ unset env(HERDEN_SYSADMINCTL_PASSWORD)
 
 spawn /usr/bin/sudo -n /usr/sbin/sysadminctl \
     -addUser $env(HERDEN_SYSADMINCTL_USERNAME) \
-    -fullName {Herden SSH CI} \
+    -fullName "Herden SSH CI $env(HERDEN_SYSADMINCTL_USERNAME)" \
     -UID $env(HERDEN_SYSADMINCTL_UID) \
     -GID 20 \
     -shell /bin/zsh \
@@ -700,6 +702,10 @@ expect {
 }
 
 if {!$sent_password || [catch {wait} child_status]} {
+    puts stderr "sysadminctl did not complete its password prompt"
+    if {[info exists expect_out(buffer)]} {
+        puts stderr [string map [list $password {<redacted>}] $expect_out(buffer)]
+    }
     exit 1
 }
 if {[llength $child_status] < 4 || [lindex $child_status 2] ne "0"} {
@@ -1599,6 +1605,15 @@ run_suite() {
     pinned_lane_logs+=("$log")
 }
 
+# Swift Testing prints a case count between a parameterized test's name and
+# its verdict. Normalize only positive case counts; zero cases prove nothing.
+passed_test_names() {
+    sed -n \
+        -e '/Test run with /d' \
+        -e 's/^.*Test \(.*\) passed after .*$/\1/p' "$@" \
+        | sed 's/ with [1-9][0-9]* test cases$//'
+}
+
 # Every behaviour the merge gate treats as mandatory names the test that proves
 # it. A count alone cannot show that Events, resize, or SFTP specifically ran.
 assert_behavior() {
@@ -1607,7 +1622,7 @@ assert_behavior() {
     local test_name=$3
     local log="$fixture_dir/$log_name.log"
 
-    if ! grep -qF "Test $test_name passed" "$log"; then
+    if ! passed_test_names "$log" | grep -Fx "$test_name" >/dev/null; then
         echo "Mandatory behaviour not proven: $behavior ($test_name)" >&2
         exit 1
     fi
@@ -1638,10 +1653,7 @@ assert_full_lane_coverage() {
     # `Test <name> passed after 1.234 seconds.` — the run summary reads
     # `Test run with N tests in M suites passed after ...`, which the same
     # pattern would otherwise reduce to a name, so it is deleted first.
-    cat "${pinned_lane_logs[@]}" \
-        | sed -n \
-            -e '/Test run with /d' \
-            -e 's/^.*Test \(.*\) passed after .*$/\1/p' \
+    passed_test_names "${pinned_lane_logs[@]}" \
         | LC_ALL=C sort -u > "$covered"
     if [[ "$password_fixture_available" != "1" ]]; then
         # The one behaviour a developer laptop may omit, and the only place a
@@ -1741,7 +1753,7 @@ if [[ "$password_fixture_available" == "1" ]]; then
 fi
 run_suite HerdenSSHDirectStreamLocalE2ETests 9 1 0 \
     HerdenSSHDirectStreamLocalE2ETests
-run_suite SharedFixtureE2ETests 94 6 0 \
+run_suite SharedFixtureE2ETests 96 6 0 \
     HerdenSSHPTYE2ETests \
     HerdenSSHJumpHostGateE2ETests \
     HerdenSSHTransportBehaviorE2ETests \
@@ -1767,6 +1779,10 @@ if [[ "$password_fixture_available" == "1" ]]; then
 fi
 assert_behavior "Device Key" HerdenSSHSessionE2ETests \
     '"authorized Device Key authenticates and executes through real sshd"'
+assert_behavior "Tailscale SSH is rejected before authentication" PairingCeremonyE2ETests \
+    'tailscaleSSHIsRefusedBeforePinOrAuthentication()'
+assert_behavior "silent enrollment exit is actionable" PairingCeremonyE2ETests \
+    'silentEntrypointExitIsReportedAsUnanswered()'
 assert_behavior "Bootstrap Key" PairingCeremonyE2ETests \
     'fullCeremonyEnrollsTheDeviceKeyAndVerifies()'
 assert_behavior "two-hop trust" HerdenSSHJumpHostGateE2ETests \
@@ -1923,9 +1939,12 @@ clear_simulator_environment
 
 if grep -q 'Suite "Session driver resource e2e" skipped' "$package_e2e_log" \
     || grep -q 'skipped:' "$package_e2e_log" \
-    || ! grep -q 'Test run with 49 tests in 3 suites passed' "$package_e2e_log" \
+    || ! grep -q 'Test run with 50 tests in 3 suites passed' "$package_e2e_log" \
     || ! grep -q \
         'Test "post-negotiation transport loss is not an algorithm mismatch" passed' \
+        "$package_e2e_log" \
+    || ! grep -q \
+        'Test "connection reports the server identification string" passed' \
         "$package_e2e_log" \
     || ! grep -q \
         'Test "handshake negotiates post-quantum key exchange" passed' \
@@ -2017,7 +2036,7 @@ if grep -q 'Suite "Session driver resource e2e" skipped' "$package_e2e_log" \
     || ! grep -q \
         'Test "a bridge write to a closed peer reports peerClosed" passed' \
         "$package_e2e_log"; then
-    echo "The mandatory HerdenSSH package suites did not execute all forty-nine tests" >&2
+    echo "The mandatory HerdenSSH package suites did not execute all fifty tests" >&2
     exit 1
 fi
 exit 0

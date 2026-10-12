@@ -10,6 +10,9 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ### Added
 
+- iOS Hosts can save a backup SSH address for the same machine. Herden uses it
+  when the primary address is unreachable, while requiring the Host's trusted
+  SSH key to match on both routes ([#8](https://github.com/3loc/herden/pull/8)).
 - Added a generic private gateway and reproducible Even Hub package workflow
   for an installed G2 beta. Deployment-specific Hosts and the exact HTTPS
   origin are injected only at build time; Host credentials remain server-side.
@@ -35,7 +38,29 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
   with text wrapped using the G2 firmware font metrics; capped Host reads keep
   their newest lines instead of their oldest.
 
+### Fixed
+
+- SSH setup retries one interrupted key exchange within its original deadline.
+  Pairing identifies Tailscale SSH and explains how to select the OpenSSH port.
+- Requests wait for a replacement Host connection before dispatch, and SSH
+  commands prefer the user's current Herden installation over an older system copy.
+- Removing a Host ends its Live Activity and drops queued notification writes,
+  including writes that were already in flight
+  ([#8](https://github.com/3loc/herden/pull/8)).
+
 ### Changed
+
+- Hosts remember LAN and VPN addresses after pairing or a trusted connection,
+  try alternate routes automatically, and reconnect when the iPhone network changes.
+
+- Synced the Host with herdr mainline through `75f46fe8`, bringing safer
+  session recovery, staggered Agent restores, faster rendering and remote
+  connections, native Kitty graphics, and terminal input fixes
+  ([herdr #4400](https://github.com/herdrdev/herdr/pull/4400),
+  [#4487](https://github.com/herdrdev/herdr/pull/4487),
+  [#5149](https://github.com/herdrdev/herdr/pull/5149)). The obsolete
+  `pane.graphics.*` API is removed upstream; applications display images
+  through the terminal Kitty graphics protocol.
 
 - Codex agents launched or automatically resumed by Herden now use
   `FORCE_COLOR=1` on Linux and macOS, avoiding cached dark input-bar colours

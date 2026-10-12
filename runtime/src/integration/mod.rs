@@ -2,6 +2,7 @@ mod actions;
 mod claude_settings;
 mod command;
 mod config_edit;
+mod config_file;
 mod env;
 mod file_ops;
 mod opencode_config;
@@ -59,7 +60,7 @@ const CODEX_HOOK_ASSET: &str = if cfg!(windows) {
 } else {
     include_str!("assets/codex/herden-agent-state.sh")
 };
-const CODEX_INTEGRATION_VERSION: u32 = 9;
+const CODEX_INTEGRATION_VERSION: u32 = 10;
 const KIMI_HOOK_INSTALL_NAME: &str = if cfg!(windows) {
     "herden-agent-state.ps1"
 } else {
@@ -183,7 +184,7 @@ const OPENCODE_TUI_PLUGIN_ASSET: &str = include_str!("assets/opencode/herden-tui
 const OPENCODE_V2_TUI_PLUGIN_DIR: &str = "herden-opencode";
 const OPENCODE_V2_TUI_PLUGIN_SPEC: &str = "./herden-opencode";
 const OPENCODE_V2_TUI_PLUGIN_ASSET: &str = include_str!("assets/opencode/tui.js");
-const OPENCODE_INTEGRATION_VERSION: u32 = 12;
+const OPENCODE_INTEGRATION_VERSION: u32 = 13;
 const KILO_PLUGIN_INSTALL_NAME: &str = "herden-agent-state.js";
 const KILO_PLUGIN_ASSET: &str = include_str!("assets/kilo/herden-agent-state.js");
 const KILO_INTEGRATION_VERSION: u32 = 4;
@@ -323,5 +324,7 @@ const GROK_INTEGRATION_VERSION: u32 = 2;
 
 pub(crate) const INSTALL_WARNING_PREFIX: &str = "warning:";
 
+#[cfg(test)]
+mod test_support;
 #[cfg(test)]
 mod tests;

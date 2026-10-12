@@ -13,6 +13,9 @@ protocol Transport: Sendable {
     /// API socket, so onboarding can recover from a stale manual selection.
     func listSessions() async throws -> [HerdrSession]
 
+    /// Usable interface addresses reported by this authenticated Host.
+    func connectionAddresses() async throws -> [String]
+
     /// Lists the Agents herden has detected across all workspaces.
     func listAgents() async throws -> [Agent]
 
@@ -237,6 +240,8 @@ extension Transport {
     /// Test doubles and alternative transports that do not expose Host-level
     /// session discovery can opt out without inventing sessions.
     func listSessions() async throws -> [HerdrSession] { [] }
+
+    func connectionAddresses() async throws -> [String] { [] }
 
     func availableAgentKinds() async throws -> [SupportedAgentKind] {
         []

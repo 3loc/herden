@@ -351,7 +351,7 @@ actor HerdenSSHTransport: Transport {
                     username: settings.username,
                     credentials: settings.credentials,
                     policy: settings.hostKeyPolicy,
-                    timeout: settings.requestTimeout)
+                    timeout: settings.connectTimeout ?? settings.requestTimeout)
             } catch {
                 // Every other hop maps before it throws; the direct hop must
                 // too, or a raw SSHError escapes the TransportError taxonomy
@@ -566,6 +566,11 @@ actor HerdenSSHTransport: Transport {
         let output = try await runHostCommand(agentDiscoveryCommand)
         return SSHTransportSettings.discoveredAgentKinds(
             from: String(decoding: output, as: UTF8.self))
+    }
+
+    func connectionAddresses() async throws -> [String] {
+        let output = try await runHostCommand(HostAddresses.discoveryCommand)
+        return HostAddresses.parse(String(decoding: output, as: UTF8.self))
     }
 
     func listSkills(_ query: SkillListQuery) async throws -> [AgentSkill] {

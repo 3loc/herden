@@ -53,6 +53,11 @@ Herden away from home, install Tailscale on both devices and sign in to the
 same network first. The [Host guide](docs/guides/install-host.md) has the short
 SSH and Tailscale setup if pairing cannot connect.
 
+For a Host reachable by both LAN and Tailnet, open its settings and set one
+route as **Address** and the other as **Backup address**. Herden tries the
+backup when the first address cannot be reached. Both must point to the same
+SSH Host and use the same port; a Jump Host cannot use a backup address.
+
 Herden is a persistent runtime for coding agents. It keeps their terminals,
 workspaces and processes alive on a computer you control, even when no client
 is attached. The native iPhone app connects to that Herden Host. It does not

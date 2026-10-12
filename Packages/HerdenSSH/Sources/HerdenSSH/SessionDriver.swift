@@ -10,6 +10,11 @@ enum HandshakeFailureObservation {
 #endif
 
 actor SessionDriver {
+    /// Only a key-exchange failure permits one independent redial. Algorithm
+    /// mismatch, host verification and authentication failures are not retried.
+    private(set) var handshakeFailedInKeyExchange = false
+    private(set) var serverIdentification: String?
+
     enum BridgeWriteResult: Equatable {
         case blocked
         case peerClosed
@@ -2090,10 +2095,15 @@ actor SessionDriver {
             libssh2_session_handshake(createdSession, descriptor)
         }
         guard handshakeResult == 0 else {
+            handshakeFailedInKeyExchange =
+                handshakeResult == LIBSSH2_ERROR_KEY_EXCHANGE_FAILURE
 #if DEBUG
             HandshakeFailureObservation.observer?(handshakeResult)
 #endif
             throw mapSessionError(handshakeResult)
+        }
+        serverIdentification = libssh2_session_banner_get(createdSession).map {
+            String(cString: $0)
         }
         return try extractHostKey(createdSession)
     }

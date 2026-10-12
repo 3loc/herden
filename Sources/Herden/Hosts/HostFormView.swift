@@ -38,6 +38,10 @@ struct HostFormView: View {
                         .textContentType(.URL)
                         .autocorrectionDisabled()
                         .textInputAutocapitalization(.never)
+                    TextField("Backup address (optional)", text: $draft.backupAddress)
+                        .textContentType(.URL)
+                        .autocorrectionDisabled()
+                        .textInputAutocapitalization(.never)
                     TextField("Port", text: $draft.port)
                         .keyboardType(.numberPad)
                     TextField("User", text: $draft.username)
@@ -47,7 +51,7 @@ struct HostFormView: View {
                 } header: {
                     Text("Host")
                 } footer: {
-                    Text("Hostname is required and appears as user@hostname. Address is used only to connect.")
+                    Text("Hostname appears as user@hostname. If Address is unreachable, Herden tries Backup address on the same SSH port. Use two addresses for the same machine, such as LAN and Tailnet. Backup address cannot be used with a Jump Host.")
                 }
 
                 Section {
