@@ -6,12 +6,16 @@ import Foundation
 final actor FakeTransport: Transport {
     private let pingResult: Result<ServerInfo, TransportError>
     private let sessions: [HerdrSession]
+    private let addresses: [String]
     private(set) var isClosed = false
 
-    init(pingResult: Result<ServerInfo, TransportError>, sessions: [HerdrSession] = []) {
+    init(pingResult: Result<ServerInfo, TransportError>, sessions: [HerdrSession] = [], addresses: [String] = []) {
         self.pingResult = pingResult
         self.sessions = sessions
+        self.addresses = addresses
     }
+
+    func connectionAddresses() async throws -> [String] { addresses }
 
     func ping() async throws -> ServerInfo {
         try pingResult.get()

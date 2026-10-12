@@ -147,6 +147,7 @@ struct HostStoreTests {
 
         let host = try #require(store.hosts.first)
         #expect(host.sessionName == "")
+        #expect(host.backupAddress == "")
         // Hosts saved before jump-host support must keep connecting directly.
         #expect(!host.usesJumpHost)
         #expect(host.jumpPort == 22)

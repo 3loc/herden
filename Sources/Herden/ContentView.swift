@@ -187,6 +187,15 @@ struct ContentView: View {
         }
         .task { await pushRegistration.refresh() }
         .task {
+            var changes = HostNetworkChangeFilter()
+            for await path in HostNetworkMonitor.paths() {
+                guard !Task.isCancelled else { return }
+                if changes.shouldReconnect(path), !activity.isBackgrounded {
+                    await console.networkDidChange()
+                }
+            }
+        }
+        .task {
             // Existing installs' Notification Keys predate the app-group
             // mirror; refresh it before a locked widget render needs it.
             NotificationKeyStore().refreshMirror()

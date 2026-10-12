@@ -10,6 +10,9 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ### Added
 
+- iOS Hosts can save a backup SSH address for the same machine. Herden uses it
+  when the primary address is unreachable, while requiring the Host's trusted
+  SSH key to match on both routes.
 - Added a generic private gateway and reproducible Even Hub package workflow
   for an installed G2 beta. Deployment-specific Hosts and the exact HTTPS
   origin are injected only at build time; Host credentials remain server-side.
@@ -36,6 +39,9 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
   their newest lines instead of their oldest.
 
 ### Changed
+
+- Hosts remember LAN and VPN addresses after pairing or a trusted connection,
+  try alternate routes automatically, and reconnect when the iPhone network changes.
 
 - Synced the Host with herdr mainline through `75f46fe8`, bringing safer
   session recovery, staggered Agent restores, faster rendering and remote

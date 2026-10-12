@@ -28,6 +28,7 @@ struct PairingScanStoreTests {
         let connector: FakePairingConnector
         let catalog: HostStore
         let knownHosts: InMemoryKnownHostsStore
+        let addresses: HostAddressStore
         let cleanup: () -> Void
     }
 
@@ -45,17 +46,19 @@ struct PairingScanStoreTests {
         let catalog = HostStore(defaults: defaults, secrets: InMemorySecretStore())
         let connector = FakePairingConnector(outcomes: outcomes)
         let knownHosts = InMemoryKnownHostsStore()
+        let addresses = HostAddressStore()
         let store = PairingScanStore(
             catalog: catalog,
             connector: connector,
             knownHosts: knownHosts,
+            addressStore: addresses,
             credentials: credentials
                 ?? HostCredentialsProvider(
                     deviceKeys: DeviceKeyStore(secrets: InMemorySecretStore()),
                     secrets: InMemorySecretStore()),
             now: { now })
         return Env(
-            store: store, connector: connector, catalog: catalog, knownHosts: knownHosts,
+            store: store, connector: connector, catalog: catalog, knownHosts: knownHosts, addresses: addresses,
             cleanup: { defaults.removePersistentDomain(forName: suiteName) })
     }
 
@@ -201,6 +204,8 @@ struct PairingScanStoreTests {
         let expectedBlob = try credentials.deviceKey().publicKeyBlob
         #expect(await env.connector.capturedDeviceKeyBlobs == [expectedBlob])
         let paired = try #require(env.store.pairedHost)
+        let candidates = try PairingCode.decode(Self.bootstrapVector.code).addresses
+        #expect(await env.addresses.addresses(for: paired) == HostAddresses.usable(candidates))
         #expect(env.catalog.hosts == [paired])
         #expect(paired.address == "10.0.0.7")
         #expect(paired.port == 22)

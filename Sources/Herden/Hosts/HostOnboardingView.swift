@@ -39,6 +39,12 @@ struct HostOnboardingView: View {
             Section {
                 LabeledContent("Hostname", value: store.host.displayName)
                 LabeledContent("Address", value: addressLine)
+                if !store.host.backupAddress.isEmpty {
+                    LabeledContent("Backup address", value: store.host.backupAddress)
+                }
+                if let connectedAddress = store.connectedAddress {
+                    LabeledContent("Connected through", value: connectedAddress)
+                }
                 LabeledContent("Session", value: sessionLine)
                 LabeledContent(
                     "Auth",

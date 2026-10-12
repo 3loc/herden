@@ -17,6 +17,8 @@ struct Host: Identifiable, Codable, Hashable, Sendable {
     /// manually entered DNS names may leave it blank and reuse `address`.
     var name: String
     var address: String
+    /// Optional second route to the same SSH Host (for example its Tailnet IP).
+    var backupAddress: String
     var port: Int
     var username: String
     var authMethod: AuthMethod
@@ -37,7 +39,7 @@ struct Host: Identifiable, Codable, Hashable, Sendable {
     /// still carry it on disk, and leaving it out of the keys both ignores it
     /// on decode and drops it on the Host's next save.
     private enum CodingKeys: String, CodingKey {
-        case id, name, address, port, username, authMethod, sessionName
+        case id, name, address, backupAddress, port, username, authMethod, sessionName
         case jumpAddress, jumpPort, jumpUsername
     }
 
@@ -56,6 +58,7 @@ struct Host: Identifiable, Codable, Hashable, Sendable {
         id: UUID = UUID(),
         name: String = "",
         address: String,
+        backupAddress: String = "",
         port: Int = 22,
         username: String,
         authMethod: AuthMethod = .deviceKey,
@@ -67,6 +70,7 @@ struct Host: Identifiable, Codable, Hashable, Sendable {
         self.id = id
         self.name = name
         self.address = address
+        self.backupAddress = backupAddress
         self.port = port
         self.username = username
         self.authMethod = authMethod
@@ -81,6 +85,7 @@ struct Host: Identifiable, Codable, Hashable, Sendable {
         id = try container.decode(UUID.self, forKey: .id)
         name = try container.decode(String.self, forKey: .name)
         address = try container.decode(String.self, forKey: .address)
+        backupAddress = try container.decodeIfPresent(String.self, forKey: .backupAddress) ?? ""
         port = try container.decode(Int.self, forKey: .port)
         username = try container.decode(String.self, forKey: .username)
         authMethod = try container.decode(AuthMethod.self, forKey: .authMethod)
@@ -118,6 +123,12 @@ struct Host: Identifiable, Codable, Hashable, Sendable {
     /// user-facing identity.
     var connectionIdentity: String {
         port == 22 ? address : "\(address):\(port)"
+    }
+
+    var directAddresses: [String] {
+        let backup = backupAddress.trimmingCharacters(in: .whitespacesAndNewlines)
+        return backup.isEmpty || backup == address || usesJumpHost
+            ? [address] : [address, backup]
     }
 
     /// The herden socket this Host's session name points at.

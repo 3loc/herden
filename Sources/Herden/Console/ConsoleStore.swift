@@ -134,6 +134,19 @@ final class ConsoleStore {
         await activate(revalidating: true)
     }
 
+    /// TCP sessions cannot migrate when Wi-Fi or the VPN changes. Reopen them
+    /// now, rather than waiting for a dead socket's keepalive deadline.
+    func networkDidChange() async {
+        await enqueueLifecycleTransition { [self] in
+            guard isActive else { return }
+            await withTaskGroup(of: Void.self) { group in
+                for projection in projections.values {
+                    group.addTask { await projection.retry() }
+                }
+            }
+        }
+    }
+
     private func activate(revalidating: Bool) async {
         await enqueueLifecycleTransition { [self] in
             isActive = true
@@ -636,11 +649,8 @@ extension ConsoleStore {
                     throw TransportError.authenticationFailed
                 }
                 let policy = HostKeyPolicy(knownHosts: knownHosts) { _ in false }
-                return try await connector.connect(
-                    settings: SSHTransportSettings(
-                        host: host,
-                        credentials: resolved,
-                        hostKeyPolicy: policy))
+                return try await HostConnection.connect(
+                    host: host, credentials: resolved, policy: policy, connector: connector)
             }
         }
     }

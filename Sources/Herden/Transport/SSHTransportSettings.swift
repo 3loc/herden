@@ -128,6 +128,8 @@ struct SSHTransportSettings: Sendable {
     /// It also bounds each individual PTY write and window-change on a live
     /// attach channel (`HerdenSSHTransport.runAttachChannel`).
     var requestTimeout: Duration = Self.defaultRequestTimeout
+    /// A short route-selection budget must not shorten RPC or file-transfer deadlines.
+    var connectTimeout: Duration? = nil
 }
 
 /// The Jump Host in front of a Host: its own coordinates and credentials. Its

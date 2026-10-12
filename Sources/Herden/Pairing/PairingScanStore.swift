@@ -45,6 +45,7 @@ final class PairingScanStore {
     @ObservationIgnored private let catalog: HostStore
     @ObservationIgnored private let connector: any PairingConnector
     @ObservationIgnored private let knownHosts: any KnownHostsStore
+    @ObservationIgnored private let addressStore: HostAddressStore
     @ObservationIgnored private let credentials: HostCredentialsProvider
     @ObservationIgnored private let now: @Sendable () -> Date
     /// The code the next attempt will use: the scanned code, except after a
@@ -64,12 +65,14 @@ final class PairingScanStore {
         catalog: HostStore,
         connector: any PairingConnector = SSHPairingConnector(),
         knownHosts: any KnownHostsStore = UserDefaultsKnownHostsStore.shared,
+        addressStore: HostAddressStore = .shared,
         credentials: HostCredentialsProvider = HostCredentialsProvider(),
         now: @escaping @Sendable () -> Date = { Date() }
     ) {
         self.catalog = catalog
         self.connector = connector
         self.knownHosts = knownHosts
+        self.addressStore = addressStore
         self.credentials = credentials
         self.now = now
     }
@@ -172,6 +175,9 @@ final class PairingScanStore {
         }
         await knownHosts.setFingerprint(
             result.hostKeyFingerprint, host: result.address, port: result.port)
+        // The first successful route is not the Host's only route. Keep the
+        // entire pairing envelope's candidate set for later roaming.
+        await addressStore.remember(code.addresses, for: host)
         pairedHost = host
     }
 

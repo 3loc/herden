@@ -39,3 +39,68 @@ extension SSHTransportSettings {
                 : nil)
     }
 }
+
+enum HostConnection {
+    static func connect(
+        host: Host,
+        credentials: SSHCredentials,
+        policy: HostKeyPolicy,
+        connector: any TransportConnector,
+        addressStore: HostAddressStore = .shared,
+        onAttempt: (@Sendable (String) async -> Void)? = nil
+    ) async throws -> any Transport {
+        let learned = await addressStore.addresses(for: host)
+        var seen = Set<String>()
+        let addresses = (host.directAddresses + learned)
+            .filter { seen.insert($0).inserted }
+            .enumerated().sorted {
+                let lhs = HostAddresses.rank($0.element), rhs = HostAddresses.rank($1.element)
+                return lhs == rhs ? $0.offset < $1.offset : lhs < rhs
+            }.map(\.element)
+        var policy = policy
+        if addresses.count > 1 {
+            policy.knownHosts = AlternateAddressKnownHostsStore(
+                base: policy.knownHosts, primary: host.address, backup: host.backupAddress,
+                port: host.port, additionalAddresses: learned)
+        }
+        for (index, address) in addresses.enumerated() {
+            try Task.checkCancellation()
+            await onAttempt?(address)
+            var settings = SSHTransportSettings(
+                host: host, credentials: credentials, hostKeyPolicy: policy)
+            settings.host = address
+            if addresses.count > 1 { settings.connectTimeout = .seconds(3) }
+            do {
+                let transport = try await connector.connect(settings: settings)
+                // Best effort and bounded: unsupported discovery must not turn
+                // a working SSH connection into a failed Host.
+                if !host.usesJumpHost,
+                    let discovered = try? await AsyncDeadline.run(for: .seconds(2), operation: {
+                        try await transport.connectionAddresses()
+                    }) {
+                    await addressStore.remember(discovered, for: host)
+                }
+                if Task.isCancelled {
+                    try? await transport.close()
+                    throw CancellationError()
+                }
+                return transport
+            } catch let error as TransportError {
+                guard index + 1 < addresses.count, error.isAddressReachabilityFailure else {
+                    throw error
+                }
+            }
+        }
+        // Every attempt either returned or threw, including the last one.
+        throw TransportError.sshUnreachable(detail: "No address could be reached")
+    }
+}
+
+private extension TransportError {
+    var isAddressReachabilityFailure: Bool {
+        switch self {
+        case .sshUnreachable, .timedOut: true
+        default: false
+        }
+    }
+}
