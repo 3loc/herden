@@ -1923,9 +1923,12 @@ clear_simulator_environment
 
 if grep -q 'Suite "Session driver resource e2e" skipped' "$package_e2e_log" \
     || grep -q 'skipped:' "$package_e2e_log" \
-    || ! grep -q 'Test run with 49 tests in 3 suites passed' "$package_e2e_log" \
+    || ! grep -q 'Test run with 50 tests in 3 suites passed' "$package_e2e_log" \
     || ! grep -q \
         'Test "post-negotiation transport loss is not an algorithm mismatch" passed' \
+        "$package_e2e_log" \
+    || ! grep -q \
+        'Test "connection reports the server identification string" passed' \
         "$package_e2e_log" \
     || ! grep -q \
         'Test "handshake negotiates post-quantum key exchange" passed' \
@@ -2017,7 +2020,7 @@ if grep -q 'Suite "Session driver resource e2e" skipped' "$package_e2e_log" \
     || ! grep -q \
         'Test "a bridge write to a closed peer reports peerClosed" passed' \
         "$package_e2e_log"; then
-    echo "The mandatory HerdenSSH package suites did not execute all forty-nine tests" >&2
+    echo "The mandatory HerdenSSH package suites did not execute all fifty tests" >&2
     exit 1
 fi
 exit 0
