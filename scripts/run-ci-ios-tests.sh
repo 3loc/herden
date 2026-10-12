@@ -19,7 +19,8 @@
 # a developer laptop without it still runs twelve of the thirteen mandatory
 # behaviours, and the script says loudly which one it left out.
 
-set -euo pipefail
+set -Eeuo pipefail
+trap 'printf "Herden fixture setup failed at line %s (status %s)\n" "$LINENO" "$?" >&2' ERR
 
 repo_root="$(cd "$(dirname "$0")/.." && pwd)"
 
@@ -700,6 +701,7 @@ expect {
 }
 
 if {!$sent_password || [catch {wait} child_status]} {
+    puts stderr "sysadminctl did not complete its password prompt"
     exit 1
 }
 if {[llength $child_status] < 4 || [lindex $child_status 2] ne "0"} {
